@@ -60,7 +60,6 @@ export default function Main() {
         try {
             const res = await axiosInstance.get('/product/main');
             if (res.data.length > 0) {
-                console.log(res.data);
                 setProductList(res.data);
             }
         } catch {

@@ -1,6 +1,8 @@
 "use client"
 
 import { toaster } from "@/components/ui/toaster";
+import { Board } from "@/interface";
+import axiosInstance from "@/utils/api";
 import {
     Badge,
     Box,
@@ -18,7 +20,7 @@ import {
     VStack,
 } from "@chakra-ui/react"
 import { Plus, Search, ShoppingBag } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -30,6 +32,20 @@ export default function HeaderClient() {
     const [parsedProduct, setParsedProduct] = useState<any>(null);
     const [newSnapTitle, setNewSnapTitle] = useState('');
     const [isParsing, setIsParsing] = useState(false);
+    const [boardList, setBoardList] = useState<Board[]>([]);
+
+    useEffect(() => {
+        getBoardList();
+    }, []);
+
+    const getBoardList = async () => {
+        try {
+            const res = await axiosInstance.get(`/post/boards`);
+            setBoardList(res.data);
+        } catch (error) {
+            console.error('Error fetching board list:', error);
+        }
+    };
 
     const handleCreateLookbook = async () => {
         try {
@@ -119,10 +135,12 @@ export default function HeaderClient() {
                     </Link>
 
                     <HStack gap={8} display={{ base: 'none', md: 'flex' }} fontSize="13px" fontWeight="600">
-                        <Link href="/" color="waba.purple" fontWeight="700">룩북 홈</Link>
-                        <Link href="#section-spaces" color="waba.muted" _hover={{ color: 'waba.charcoal' }}>라이프스냅</Link>
-                        <Link href="#section-objects" color="waba.muted" _hover={{ color: 'waba.charcoal' }}>케어라운지</Link>
-                        <Link href="#" color="waba.muted" _hover={{ color: 'waba.charcoal' }}>스토어·체험단</Link>
+                        <Link href="/" color="waba.purple" fontWeight="700">홈</Link>
+                        {boardList.map((board) => (
+                            <Link key={board.id} href={`/board/${board.id.toLowerCase()}`} color="waba.muted" _hover={{ color: 'waba.charcoal' }}>
+                                {board.name}
+                            </Link>
+                        ))}
                     </HStack>
 
                     <HStack gap={2.5}>

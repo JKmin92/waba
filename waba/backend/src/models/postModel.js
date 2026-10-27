@@ -282,3 +282,113 @@ export const getPostDetail = async (postId) => {
     const [rows] = await db.query(sql, [postId]);
     return rows[0] || null;
 }
+
+export const getBoardList = async () => {
+    const sql = `SELECT * FROM boards WHERE is_active = 1 ORDER BY sort_order ASC`;
+    const [rows] = await db.query(sql);
+    return rows;
+}
+
+export const getPostList = async (boardId) => {
+    const sql = `
+        SELECT 
+            JSON_OBJECT(
+                'id', p.id,
+                'board_id', p.board_id,
+                'user_id', p.user_id,
+                'curation_grade', p.curation_grade,
+                'title', p.title,
+                'content', p.content,
+                'related_disease_id', p.related_disease_id,
+                'is_vet_verified', (p.is_vet_verified = 1),
+                'view_count', p.view_count,
+                'like_count', p.like_count,
+                'bookmark_count', p.bookmark_count,
+                'comment_count', p.comment_count,
+                'status', p.status,
+                'promoted_at', p.promoted_at,
+                'created_at', p.created_at
+            ) AS post,
+            JSON_OBJECT(
+                'id', b.id,
+                'name', b.name,
+                'description', b.description,
+                'allow_product_pins', (b.allow_product_pins = 1),
+                'allow_vet_verify', (b.allow_vet_verify = 1)
+            ) AS board,
+            JSON_OBJECT(
+                'id', u.id,
+                'nickname', u.nickname,
+                'profile_image_url', u.profile_image_url,
+                'mentor_badge', u.mentor_badge,
+                'vet_license_info', u.vet_license_info,
+                'is_multi_species', (u.is_multi_species = 1)
+            ) AS user,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'id', pi.id,
+                        'post_id', pi.post_id,
+                        'image_url', pi.image_url,
+                        'is_thumbnail', (pi.is_thumbnail = 1),
+                        'is_ai_generated', (pi.is_ai_generated = 1),
+                        'sort_order', pi.sort_order
+                    )
+                )
+                FROM post_images pi
+                WHERE pi.post_id = p.id
+                ORDER BY pi.sort_order ASC
+            ), JSON_ARRAY()) AS post_images,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'pet_id', pt.id,
+                        'name', pt.name,
+                        'species', pt.species,
+                        'breed', pt.breed,
+                        'weight_kg', COALESCE(pp.weight_at_post_kg, pt.latest_weight_kg),
+                        'age_months', pp.age_months_at_post
+                    )
+                )
+                FROM post_pets pp
+                JOIN pets pt ON pp.pet_id = pt.id
+                WHERE pp.post_id = p.id
+            ), JSON_ARRAY()) AS post_pets,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'pin_id', pin.id,
+                        'post_image_id', pin.post_image_id,
+                        'pin_type', pin.pin_type,
+                        'pos_x', pin.pos_x,
+                        'pos_y', pin.pos_y,
+                        'is_official', (pin.product_id IS NOT NULL),
+                        'product_id', pin.product_id,
+                        'product_name', COALESCE(prd.name, pin.external_product_name, pt_pin.name),
+                        'brand_name', CASE
+                            WHEN pin.pin_type = 'PET' THEN CONCAT(pt_pin.breed, ' · ', pt_pin.latest_weight_kg, 'kg')
+                            WHEN pin.product_id IS NOT NULL THEN 'WABAMI'
+                            ELSE pin.external_brand_name
+                        END,
+                        'price', COALESCE(prd.sale_price, pin.external_price, 0),
+                        'reward_rate', COALESCE(prd.reward_rate, 0),
+                        'thumbnail_url', COALESCE(prd.thumbnail_url, pin.external_image_url, pt_pin.current_avatar_url),
+                        'external_url', pin.external_url,
+                        'pet_id', pin.pet_id,
+                        'pin_option_memo', pin.pin_option_memo
+                    )
+                )
+                FROM product_pins pin
+                LEFT JOIN products prd ON pin.product_id = prd.id
+                LEFT JOIN pets pt_pin ON pin.pet_id = pt_pin.id
+                WHERE pin.post_image_id IN (SELECT id FROM post_images WHERE post_id = p.id)
+            ), JSON_ARRAY()) AS product_pins
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        JOIN boards b ON p.board_id = b.id
+        WHERE p.board_id = UPPER(?) AND p.status = 'PUBLISHED'
+        ORDER BY p.created_at DESC
+    `;
+    const [rows] = await db.query(sql, [boardId]);
+    return rows;
+};

@@ -18,3 +18,22 @@ export const getPostDetail = async (req, res, next) => {
         next(e);
     }
 }
+
+export const getBoardList = async (req, res, next) => {
+    try {
+        const rows = await postService.getBoardList();
+        return res.status(200).json(rows);
+    } catch (e) {
+        next(e);
+    }
+}
+
+export const getPostList = async (req, res, next) => {
+    try {
+        const { boardId } = req.params;
+        const rows = await postService.getPostList(boardId);
+        return res.status(200).json(rows);
+    } catch (e) {
+        next(e);
+    }
+}
