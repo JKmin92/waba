@@ -33,3 +33,16 @@ waba/backend/config/.env
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Custom Agents & Skills
+.agents/
+.agent/
+_agents/
+_agent/
+
+# Documents & Planning
+*.doc
+*.docx
+PROJECT_PLAN.md
+project_plan.md
+
