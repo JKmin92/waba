@@ -54,3 +54,22 @@ export function formatRelativeTime(dateInput: string | Date | undefined): string
     const dd = String(targetDate.getDate()).padStart(2, '0');
     return `${yy}. ${mm}. ${dd}.`;
 }
+
+export const petSpeciesLabel = (species: string) => {
+    switch (species) {
+        case 'DOG':
+            return '강아지';
+        case 'CAT':
+            return '고양이';
+        case 'RABBIT':
+            return '토끼';
+        case 'HAMSTER':
+            return '햄스터';
+        case 'GUINEAPIG':
+            return '기니피그';
+        case 'CHINCHILLA':
+            return '친칠라';
+        default:
+            return '기타';
+    }
+};

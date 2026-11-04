@@ -8,6 +8,7 @@ import { PostDetail, PostImage } from "@/interface/community.interface";
 import { Product, ProductPinItem } from "@/interface";
 import { toaster } from "@/components/ui/toaster";
 import axiosInstance from "@/utils/api";
+import PostMasonryList from "./board/[id]/PostMasonryList";
 
 export default function Main() {
 
@@ -563,106 +564,7 @@ export default function Main() {
                         </HStack>
                     </Flex>
 
-                    <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-                        {postList.map((item: PostDetail) => (
-                            <Flex
-                                key={item.post.id}
-                                direction="column"
-                                bg="white"
-                                borderRadius="26px"
-                                overflow="hidden"
-                                border="1px solid"
-                                borderColor="waba.border"
-                                boxShadow="0 8px 24px -4px rgba(26, 28, 30, 0.04)"
-                                className="group"
-                            >
-                                <Box position="relative" aspectRatio={4 / 5} overflow="hidden" bg="waba.subtle">
-                                    <Image
-                                        src={item.post_images.filter((img) => img.is_thumbnail)[0].image_url}
-                                        alt={item.post.title}
-                                        w="100%"
-                                        h="100%"
-                                        objectFit="cover"
-                                        transition="transform 0.5s ease"
-                                        _groupHover={{ transform: 'scale(1.05)' }}
-                                    />
-                                    {/* <Badge
-                                        position="absolute"
-                                        top={4}
-                                        left={4}
-                                        bg="blackAlpha.700"
-                                        color="white"
-                                        backdropFilter="blur(6px)"
-                                        fontSize="11px"
-                                        px={3}
-                                        py={1}
-                                        borderRadius="full"
-                                    >
-                                        {item.post.snap_badge}
-                                    </Badge> */}
-
-                                    <IconButton
-                                        aria-label="저장"
-                                        position="absolute"
-                                        top={4}
-                                        right={4}
-                                        size="sm"
-                                        w="36px"
-                                        h="36px"
-                                        borderRadius="full"
-                                        bg="whiteAlpha.900"
-                                        color="waba.charcoal"
-                                        _hover={{ bg: 'white', color: 'waba.purple' }}
-                                    >
-                                        <Bookmark size={16} />
-                                    </IconButton>
-
-                                    {/* <Badge
-                                        position="absolute"
-                                        bottom={3}
-                                        left={4}
-                                        bg={item.post.source_type === 'USER_PROMOTED' ? 'waba.purple' : 'whiteAlpha.900'}
-                                        color={item.post.source_type === 'USER_PROMOTED' ? 'white' : 'waba.charcoal'}
-                                        fontSize="10px"
-                                        px={2.5}
-                                        py={0.5}
-                                        borderRadius="full"
-                                    >
-                                        {snap.sourceType === 'OFFICIAL_AI'
-                                            ? '✨ WABA AI 룩북'
-                                            : snap.sourceType === 'OFFICIAL_PHOTO'
-                                            ? '📸 WABA 공식 화보'
-                                            : '👑 룩북 선정 유저'}
-                                    </Badge> */}
-                                </Box>
-
-                                <Box p={5}>
-                                    <Text fontSize="13px" fontWeight="700" color="waba.charcoal" truncate>
-                                        {item.post.title}
-                                    </Text>
-                                    <Text fontSize="13px" color="waba.muted" mt={1} lineClamp={1}>
-                                        {item.post.title}
-                                    </Text>
-                                    <HStack
-                                        mt={3}
-                                        pt={3}
-                                        borderTop="1px solid"
-                                        borderColor="waba.border"
-                                        justify="space-between"
-                                        fontSize="11px"
-                                    >
-                                        <HStack gap={1} color="waba.purple" fontWeight="700" minW={0}>
-                                            {/* <Tag size={12} /> */}
-                                            {/* <Text truncate>{snap.taggedProduct}</Text> */}
-                                        </HStack>
-                                        <Text color="waba.faint" flexShrink={0}>
-                                            💘 {item.post.bookmark_count || 0}
-                                        </Text>
-                                    </HStack>
-                                </Box>
-                            </Flex>
-                        ))}
-                    </Grid>
+                    <PostMasonryList postList={postList} />
                 </Box>
             </Container>
         </Container>

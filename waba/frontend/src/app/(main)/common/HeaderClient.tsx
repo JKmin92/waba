@@ -21,6 +21,8 @@ import {
 } from "@chakra-ui/react"
 import { Plus, Search, ShoppingBag } from "lucide-react"
 import { useEffect, useState } from "react"
+import LoginClient from "../member/login/LoginClient";
+import MemberModal from "../member/MemberModal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -175,7 +177,9 @@ export default function HeaderClient() {
                                 bg="waba.purple"
                             />
                         </Box>
+                        <MemberModal />
                         <Button
+                            display="none"
                             onClick={onOpen}
                             bg="waba.charcoal"
                             color="white"

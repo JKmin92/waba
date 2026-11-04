@@ -7,6 +7,7 @@ import axiosInstance from "@/utils/api";
 import { PostDetail as PostDetailType } from "@/interface";
 import { formatDate, formatRelativeTime } from "@/utils/simpleUtils";
 import { ArrowUpRight, Eye, Heart, Share2, ShoppingCart, UserRound } from "lucide-react";
+import { toaster } from "@/components/ui/toaster";
 
 export default function PostDetail({ postId }: { postId: string }) {
 
@@ -21,8 +22,17 @@ export default function PostDetail({ postId }: { postId: string }) {
         try {
             const res = await axiosInstance.get(`/post/${postId}`);
             setPostDetail(res.data);
-        } catch (e) {
-            console.log(e);
+        } catch {
+            toaster.create({ title: '오류가 발생했습니다.', type: 'error' });
+        }
+    }
+
+    const toggleLike = async () => {
+        try {
+            const likeCount = (postDetail?.post.like_count || 0) + 1;
+            setPostDetail(prev => prev && ({ ...prev, post: { ...prev.post, like_count: likeCount } }));
+        } catch {
+            toaster.create({ title: '오류가 발생했습니다.', type: 'error' });
         }
     }
 
@@ -49,22 +59,22 @@ export default function PostDetail({ postId }: { postId: string }) {
                             </Avatar.Root>
                             <Stack gap="0">
                                 <Heading fontSize="md">@{postDetail?.user.nickname}</Heading>
-                                <Text fontSize="xs" letterSpacing="0.08em" color="gray.500">{formatDate(postDetail?.post.promoted_at || '')}</Text>
+                                <Text fontSize="xs" letterSpacing="0.08em" color="gray.500">{formatDate(postDetail?.post.created_at || '')}</Text>
                             </Stack>
                         </Stack>
                         <Stack direction="row" alignItems="center" gap="4">
                             <Box {...contentCountStyle}>
-                                <Icon><Eye /></Icon>
+                                <Icon size="sm"><Eye /></Icon>
                                 <Text fontSize="sm"><FormatNumber value={postDetail?.post.view_count || 0} /></Text>
                             </Box>
 
-                            <Box {...contentCountStyle} cursor="pointer">
-                                <Icon><Heart /></Icon>
+                            <Box {...contentCountStyle} cursor="pointer" onClick={toggleLike}>
+                                <Icon size="sm"><Heart /></Icon>
                                 <Text fontSize="sm"><FormatNumber value={postDetail?.post.like_count || 0} /></Text>
                             </Box>
 
                             <Box {...contentCountStyle} cursor="pointer">
-                                <Icon><Share2 /></Icon>
+                                <Icon size="sm"><Share2 /></Icon>
                                 <Text fontSize="sm">공유</Text>
                             </Box>
                         </Stack>
@@ -153,69 +163,78 @@ export default function PostDetail({ postId }: { postId: string }) {
                             }
                         })}
 
-                        <Box>
-                            <Stack mt="5" gap="5">
-                                <Separator />
-                                <HStack bg="bg" py="3" px="4" rounded="md">
-                                    {postDetail?.tags?.map((tag, idx) => (
-                                        <Box key={idx} bg="bg.muted" fontSize="sm" rounded="full" px="3" py="1">#{tag}</Box>
-                                    ))}
-                                </HStack>
+                        {postDetail?.tags && postDetail?.tags.length > 0 && (
+                            <Box>
+                                <Stack mt="5" gap="5">
+                                    <Separator />
+                                    <HStack bg="bg" py="3" px="4" rounded="md">
+                                        {postDetail?.tags?.map((tag, idx) => (
+                                            <Box key={idx} bg="bg.muted" fontSize="sm" rounded="full" px="3" py="1">#{tag}</Box>
+                                        ))}
+                                    </HStack>
+                                </Stack>
+                            </Box>
+                        )}
+                    </Stack>
+                    {postDetail?.post_pets && postDetail?.post_pets.length > 0 && (
+                        <Stack gap="5">
+                            <Stack gap="0">
+                                <Text color="fg.subtle">COMPANIONS</Text>
+                                <Heading>이 게시글에 태그된 반려동물</Heading>
                             </Stack>
-                        </Box>
-                    </Stack>
-                    <Stack gap="5">
-                        <Stack gap="0">
-                            <Text>COMPANIONS</Text>
-                            <Heading>이 게시글에 태그된 반려동물</Heading>
-                        </Stack>
-                        <HStack gap="10">
-                            {postDetail?.product_pins?.filter(p => p.pin_type === 'PET').map((pin) => {
-                                return (
-                                    <Stack key={pin.pin_id} separator={<StackSeparator />}>
-                                        <HStack gap="4">
-                                            <Avatar.Root>
-                                                {pin.thumbnail_url && (
-                                                    <Avatar.Image src={pin.thumbnail_url} />
-                                                )}
-                                            </Avatar.Root>
-                                            <Heading fontSize="xl">{pin.product_name}</Heading>
-                                        </HStack>
-                                    </Stack>
-                                )
-                            })}
-                        </HStack>
-                    </Stack>
-                    <Stack gap="5">
-                        <Stack gap="0">
-                            <Text>CURATED OBJECTS</Text>
-                            <Heading>태그된 전체 제품</Heading>
-                        </Stack>
-                        <HStack gap="6">
-                            {postDetail?.product_pins?.filter(p => p.pin_type !== 'PET').map((pin) => {
-                                return (
-                                    <Stack key={pin.pin_id} separator={<StackSeparator />} bg="bg" rounded="xl" p="4" gap="4">
-                                        <Stack>
-                                            <Image src={pin.thumbnail_url || ''} w="full" rounded="xl" />
-                                            <Stack gap="0">
-                                                <Box>{pin.brand_name}</Box>
-                                                <Heading fontSize="md">{pin.product_name}</Heading>
-                                                <Text fontSize="sm" color="fg.muted">{pin.pin_option_memo}</Text>
-                                            </Stack>
+                            <HStack gap="10">
+                                {postDetail?.post_pets.map((pet) => {
+                                    return (
+                                        <Stack key={pet.pet_id} separator={<StackSeparator />}>
+                                            <HStack gap="4">
+                                                <Avatar.Root>
+                                                    {pet.avatar_url && (
+                                                        <Avatar.Image src={pet.avatar_url} />
+                                                    )}
+                                                    <Avatar.Fallback>{pet.name.charAt(0).toUpperCase()}</Avatar.Fallback>
+                                                </Avatar.Root>
+                                                <Heading fontSize="xl">{pet.name}</Heading>
+                                            </HStack>
                                         </Stack>
-                                        <HStack justifyContent="space-between">
-                                            <Heading><FormatNumber value={pin.price} />원</Heading>
-                                            {pin.external_url ? (
-                                                <IconButton rounded="full" onClick={() => window.open(pin.external_url || '', '_blank')}><ArrowUpRight /></IconButton>
-                                            ) : (
-                                                <IconButton aria-label="장바구니" rounded="full"><ShoppingCart /></IconButton>
-                                            )}
-                                        </HStack>
-                                    </Stack>
-                                )
-                            })}
-                        </HStack>
-                    </Stack>
+                                    )
+                                })}
+                            </HStack>
+                        </Stack>
+                    )}
+
+                    {postDetail?.product_pins && postDetail?.product_pins.filter(p => p.pin_type !== 'PET').length > 0 && (
+                        <Stack gap="5">
+                            <Stack gap="0">
+                                <Text color="fg.subtle">CURATED OBJECTS</Text>
+                                <Heading>태그된 전체 제품</Heading>
+                            </Stack>
+                            <HStack gap="6">
+                                {postDetail?.product_pins?.filter(p => p.pin_type !== 'PET').map((pin) => {
+                                    return (
+                                        <Stack key={pin.pin_id} separator={<StackSeparator />} bg="bg" rounded="xl" p="4" gap="4">
+                                            <Stack>
+                                                <Image src={pin.thumbnail_url || ''} aspectRatio={1.5 / 1} w="full" rounded="xl" />
+                                                <Stack gap="0">
+                                                    <Box fontSize="sm">{pin.brand_name}</Box>
+                                                    <Heading fontSize="md">{pin.product_name}</Heading>
+                                                    <Text fontSize="sm" color="fg.muted">{pin.pin_option_memo}</Text>
+                                                </Stack>
+                                            </Stack>
+                                            <HStack justifyContent="space-between">
+                                                <Heading><FormatNumber value={pin.price} />원</Heading>
+                                                {pin.external_url ? (
+                                                    <IconButton rounded="full" onClick={() => window.open(pin.external_url || '', '_blank')}><ArrowUpRight /></IconButton>
+                                                ) : (
+                                                    <IconButton aria-label="장바구니" rounded="full"><ShoppingCart /></IconButton>
+                                                )}
+                                            </HStack>
+                                        </Stack>
+                                    )
+                                })}
+                            </HStack>
+                        </Stack>
+                    )}
+
                     <Stack gap="5">
                         <HStack justifyContent="space-between">
                             <Heading>댓글 {postDetail?.comments?.length}</Heading>

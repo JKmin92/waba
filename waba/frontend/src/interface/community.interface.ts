@@ -104,6 +104,8 @@ export interface PostPetSpec {
   weight_kg?: number | null;
   /** 게시글 작성 당시 개월 수 스냅샷 */
   age_months?: number | null;
+  /** 프로필 이미지 URL */
+  avatar_url?: string | null;
 }
 
 /** 5. 수의사 공식 검증 정보 (care_verifications 테이블) */
