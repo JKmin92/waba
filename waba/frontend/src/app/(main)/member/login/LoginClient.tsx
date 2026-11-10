@@ -1,23 +1,59 @@
 'use client'
 
-import { Box, Button, CloseButton, Container, Dialog, Field, Flex, Heading, HStack, IconButton, Image, Input, Link, Portal, Text, VStack } from "@chakra-ui/react"
-import { Eye, EyeOff, Gift, MapPin, MessageCircle } from "lucide-react"
+import { Box, Button, Dialog, Field, Flex, Heading, HStack, IconButton, Image, Input, Link, Span, Text, VStack } from "@chakra-ui/react"
+import { Eye, EyeOff, Gift } from "lucide-react"
 import { useState } from "react"
-import Header from "../../common/Header"
+import axiosInstance from "@/utils/api"
+import { setAuthSession } from "@/utils/authUtils"
+import { toaster } from "@/components/ui/toaster"
 
-// 좌측 룩북 이미지 (교체 필요)
-
-
-export default function LoginClient({ isEmailMode, setIsEmailMode }: { isEmailMode: boolean, setIsEmailMode: (open: boolean) => void }) {
-
+export default function LoginClient({
+    isEmailMode,
+    setIsEmailMode,
+    setModalType,
+    setOpen
+}: {
+    isEmailMode: boolean,
+    setIsEmailMode: (open: boolean) => void,
+    setModalType: (modalType: 'login' | 'join') => void,
+    setOpen: (open: boolean) => void
+}) {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [showPw, setShowPw] = useState(false)
     const [keepLogin, setKeepLogin] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
 
-    const handleEmailLogin = () => {
-        // TODO: 이메일 로그인 API 연동
-        console.log({ email, password, keepLogin })
+    const handleEmailLogin = async () => {
+        if (!email.trim() || !password) {
+            toaster.create({ title: '이메일과 비밀번호를 입력해주세요.', type: 'error' });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const res = await axiosInstance.post("/user/login", {
+                email: email.trim(),
+                password,
+                keepLogin
+            });
+
+            if (res.data?.accessToken) {
+                // ⭐️ 토큰 및 유저 정보 쿠키에 저장
+                setAuthSession(res.data.accessToken, res.data.refreshToken, res.data.user);
+                toaster.create({
+                    title: `반가워요, ${res.data.user.nickname}님!`,
+                    description: '와바에 오신 것을 환영합니다.',
+                    type: 'success'
+                });
+                setOpen(false);
+            }
+        } catch (e: any) {
+            const message = e.response?.data?.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
+            toaster.create({ title: message, type: 'error' });
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     const inputStyle = {
@@ -58,8 +94,15 @@ export default function LoginClient({ isEmailMode, setIsEmailMode }: { isEmailMo
             </Dialog.Description>
 
             {isEmailMode ? (
-                <VStack gap={4} align="stretch" as="form"
-                    onSubmit={(e: React.FormEvent) => { e.preventDefault(); handleEmailLogin() }}>
+                <VStack
+                    gap={4}
+                    align="stretch"
+                    as="form"
+                    onSubmit={(e: React.FormEvent) => {
+                        e.preventDefault();
+                        handleEmailLogin();
+                    }}
+                >
                     <Field.Root>
                         <Field.Label fontSize="12px" fontWeight="700">이메일</Field.Label>
                         <Input
@@ -67,6 +110,7 @@ export default function LoginClient({ isEmailMode, setIsEmailMode }: { isEmailMo
                             placeholder="name@wabami.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            required
                             {...inputStyle}
                         />
                     </Field.Root>
@@ -80,6 +124,7 @@ export default function LoginClient({ isEmailMode, setIsEmailMode }: { isEmailMo
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 pr={12}
+                                required
                                 {...inputStyle}
                             />
                             <IconButton
@@ -121,6 +166,7 @@ export default function LoginClient({ isEmailMode, setIsEmailMode }: { isEmailMo
                         color="white"
                         fontWeight="800"
                         _hover={{ bg: "black" }}
+                        loading={isLoading}
                     >
                         이메일로 로그인
                     </Button>
@@ -201,9 +247,9 @@ export default function LoginClient({ isEmailMode, setIsEmailMode }: { isEmailMo
 
             <Text textAlign="center" fontSize="12px" color="waba.muted" mt={6}>
                 아직 WABA 회원이 아니신가요?{" "}
-                <Link href="/member/join" color="waba.purple" fontWeight="800">
+                <Span color="waba.purple" fontWeight="800" onClick={() => setModalType('join')} cursor="pointer">
                     회원가입하기 →
-                </Link>
+                </Span>
             </Text>
         </Flex>
     )

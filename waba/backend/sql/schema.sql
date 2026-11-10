@@ -57,6 +57,7 @@ CREATE TABLE `pets` (
   `user_id` VARCHAR(30) NOT NULL COMMENT '보호자(회원) ID (users.id)',
   `name` VARCHAR(50) NOT NULL COMMENT '반려동물 이름',
   `species` ENUM('DOG', 'CAT', 'RABBIT', 'HAMSTER', 'GUINEAPIG', 'CHINCHILA', 'OTHER') NOT NULL COMMENT '반려동물 종 분류',
+  `custom_species` VARCHAR(50) DEFAULT NULL COMMENT 'species가 OTHER일 때 사용자가 직접 입력한 동물 종류',
   `breed` VARCHAR(100) NOT NULL COMMENT '세부 품종 (예: 랙돌, 롭이어, 골든햄스터, 말티푸)',
   `birth_date` DATE DEFAULT NULL COMMENT '생년월일 (나이/개월수 계산 기준)',
   `gender` VARCHAR(10) NOT NULL DEFAULT 'UNKNOWN' COMMENT '성별 (MALE, FEMALE, UNKNOWN)',

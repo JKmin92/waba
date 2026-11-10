@@ -3,6 +3,7 @@ import { Avatar, Badge, Box, Heading, HStack, Image, Stack, Text, useBreakpointV
 import { UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { LuUserRound } from "react-icons/lu";
 
 export default function PostMasonryList({ postList }: { postList: PostDetail[] }) {
 
@@ -64,7 +65,7 @@ export default function PostMasonryList({ postList }: { postList: PostDetail[] }
                                                 {item.user?.profile_image_url ? (
                                                     <Avatar.Image src={item.user.profile_image_url} />
                                                 ) : (
-                                                    <UserRound />
+                                                    <LuUserRound size={16} />
                                                 )}
                                             </Avatar.Root>
                                             <Text fontWeight="600">@{item.user?.nickname}</Text>

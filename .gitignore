@@ -40,6 +40,10 @@ next-env.d.ts
 _agents/
 _agent/
 
+# Uploaded media files
+waba/backend/public/*
+!waba/backend/public/.gitkeep
+
 # Documents & Planning
 *.doc
 *.docx

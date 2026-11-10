@@ -55,7 +55,7 @@ export function formatRelativeTime(dateInput: string | Date | undefined): string
     return `${yy}. ${mm}. ${dd}.`;
 }
 
-export const petSpeciesLabel = (species: string) => {
+export const petSpeciesLabel = (species: string, customSpecies?: string | null) => {
     switch (species) {
         case 'DOG':
             return '강아지';
@@ -67,9 +67,10 @@ export const petSpeciesLabel = (species: string) => {
             return '햄스터';
         case 'GUINEAPIG':
             return '기니피그';
+        case 'CHINCHILA':
         case 'CHINCHILLA':
             return '친칠라';
         default:
-            return '기타';
+            return customSpecies?.trim() || '기타';
     }
 };

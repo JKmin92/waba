@@ -98,6 +98,8 @@ export interface PostPetSpec {
   name: string;
   /** 반려동물 종 분류 ('DOG' | 'CAT' | 'RABBIT' | 'HAMSTER' | 'GUINEAPIG' | 'CHINCHILA' | 'OTHER') */
   species: PetSpecies;
+  /** 직접 입력한 동물 종류 ('OTHER'인 경우, 예: '페럿', '고슴도치') */
+  custom_species?: string | null;
   /** 세부 품종 (예: '랙돌', '홀랜드 롭이어', '말티푸') */
   breed: string;
   /** 게시글 작성 당시 체중(kg) 스냅샷 또는 최신 체중 (예: 4.8) */
@@ -138,6 +140,8 @@ export interface Comment {
   content: string;
   /** 질문/고민(Q&A) 게시판에서 질문자가 채택한 답변 여부 */
   is_accepted: boolean | number;
+  /** 익명 댓글 여부 */
+  is_anonymous?: boolean | number;
   /** 댓글 공감(좋아요) 수 */
   like_count: number;
   /** 댓글 상태 ('ACTIVE' | 'DELETED' | 'BLINDED') */
@@ -209,4 +213,8 @@ export interface PostDetail {
 
   /** 8) 게시글 댓글 목록 (상세 조회 시 포함) */
   comments?: Comment[];
+
+  /** 9) 현재 로그인한 회원의 인터랙션 상태 */
+  is_liked?: boolean;
+  is_bookmarked?: boolean;
 }

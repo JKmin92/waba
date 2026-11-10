@@ -1,6 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: [
+      '@chakra-ui/react',
+      'lucide-react',
+      'react-icons',
+      'framer-motion',
+    ],
+  },
   images: {
     remotePatterns: [
       {
@@ -17,7 +25,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:5000/api/:path*',
+        destination: 'http://127.0.0.1:5000/api/:path*',
+      },
+      {
+        source: '/public/:path*',
+        destination: 'http://127.0.0.1:5000/public/:path*',
       },
     ];
   },

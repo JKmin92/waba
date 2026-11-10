@@ -30,4 +30,19 @@ const pool = mysql.createPool({
     }
 });
 
+// pets 테이블 custom_species 컬럼 존재 여부 확인 및 자동 추가
+(async () => {
+    try {
+        const [columns] = await pool.query("SHOW COLUMNS FROM `pets` LIKE 'custom_species'");
+        if (columns.length === 0) {
+            await pool.query("ALTER TABLE `pets` ADD COLUMN `custom_species` VARCHAR(50) NULL DEFAULT NULL AFTER `species`");
+            console.log("✅ [DB Migration] pets.custom_species 컬럼이 추가되었습니다.");
+        }
+    } catch (err) {
+        if (err.code !== 'ER_NO_SUCH_TABLE') {
+            console.error("⚠️ [DB Migration] pets.custom_species 컬럼 검사/추가 실패:", err.message);
+        }
+    }
+})();
+
 export default pool;
