@@ -21,12 +21,16 @@ import {
 } from "@chakra-ui/react"
 import { Plus, Search, ShoppingBag } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation";
 import LoginClient from "../member/login/LoginClient";
 import MemberModal from "../member/MemberModal";
+import { isAuthenticated, getUserInfo } from "@/utils/authUtils";
+import UserIcon from "./UserIcon";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export default function HeaderClient() {
+    const router = useRouter();
     const [data, setData] = useState<any>(null);
     const { open, onOpen, onClose, setOpen } = useDisclosure();
     const [uploadSourceType, setUploadSourceType] = useState<'OFFICIAL_AI' | 'USER_COMMUNITY'>('OFFICIAL_AI');
@@ -35,6 +39,24 @@ export default function HeaderClient() {
     const [newSnapTitle, setNewSnapTitle] = useState('');
     const [isParsing, setIsParsing] = useState(false);
     const [boardList, setBoardList] = useState<Board[]>([]);
+
+    const [isLogin, setIsLogin] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
+    useEffect(() => {
+        // 첫 마운트 시 로그인 여부 및 회원 정보 확인
+        setIsLogin(isAuthenticated());
+        setCurrentUser(getUserInfo());
+
+        // auth-change 이벤트 수신 시 실시간으로 isLogin 및 회원정보 갱신
+        const handleAuthChange = () => {
+            setIsLogin(isAuthenticated());
+            setCurrentUser(getUserInfo());
+        };
+
+        window.addEventListener('auth-change', handleAuthChange);
+        return () => window.removeEventListener('auth-change', handleAuthChange);
+    }, []);
 
     useEffect(() => {
         getBoardList();
@@ -85,16 +107,12 @@ export default function HeaderClient() {
     const handleParseUrl = async () => {
         setIsParsing(true);
         try {
-            const res = await fetch(`${API_BASE}/api/pins/parse-url`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: externalUrl }),
-            });
-            const result = await res.json();
+            const res = await axiosInstance.post('/post/parse-url', { url: externalUrl });
+            const result = res.data;
             setParsedProduct(result);
             toaster.create({
                 title: '상품 정보 추출 완료',
-                description: result.productName,
+                description: result.product_name || result.productName,
                 type: 'success',
             });
         } catch (e) {
@@ -177,21 +195,29 @@ export default function HeaderClient() {
                                 bg="waba.purple"
                             />
                         </Box>
-                        <MemberModal />
-                        <Button
-                            display="none"
-                            onClick={onOpen}
-                            bg="waba.charcoal"
-                            color="white"
-                            borderRadius="full"
-                            px={5}
-                            h="40px"
-                            fontSize="13px"
-                            _hover={{ bg: 'waba.purple' }}
-                        >
-                            <Plus size={15} />
-                            공간·룩북 올리기
-                        </Button>
+
+                        {isLogin ? (
+                            <>
+                                <Button
+                                    onClick={() => router.push('/post/register')}
+                                    bg="waba.charcoal"
+                                    color="white"
+                                    borderRadius="full"
+                                    px={5}
+                                    h="40px"
+                                    fontSize="13px"
+                                    _hover={{ bg: 'waba.purple' }}
+                                >
+                                    <Plus size={15} />
+                                    공간·룩북 올리기
+                                </Button>
+                                <UserIcon />
+                            </>
+                        ) : (<MemberModal />)}
+
+
+
+
                     </HStack>
                 </Flex>
             </Box>

@@ -2,28 +2,69 @@
 
 import { Box, Button, CloseButton, Dialog, Flex, HStack, Portal, Text } from "@chakra-ui/react";
 import { MapPin } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LoginClient from "./login/LoginClient";
+import JoinClient from "./join/JoinClient";
 
 const LOOKBOOK_IMAGE = ""
 
-export default function MemberModal() {
-    const [open, setOpen] = useState(false);
-    const [isEmailMode, setIsEmailMode] = useState(false)
+interface MemberModalProps {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    showTrigger?: boolean;
+    triggerText?: string;
+}
+
+export default function MemberModal({
+    open: externalOpen,
+    onOpenChange: externalOnOpenChange,
+    showTrigger = true,
+    triggerText = '로그인'
+}: MemberModalProps = {}) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isControlled = externalOpen !== undefined;
+    const open = isControlled ? externalOpen : internalOpen;
+
+    const setOpen = (newOpen: boolean) => {
+        if (isControlled) {
+            externalOnOpenChange?.(newOpen);
+        } else {
+            setInternalOpen(newOpen);
+        }
+    };
+
+    const [isEmailMode, setIsEmailMode] = useState(false);
+    const [modalType, setModalType] = useState<'login' | 'join'>('login');
+
+    useEffect(() => {
+        const handleOpenLogin = () => {
+            setOpen(true);
+            setIsEmailMode(false);
+            setModalType('login');
+        };
+
+        window.addEventListener('open-login-modal', handleOpenLogin);
+        return () => window.removeEventListener('open-login-modal', handleOpenLogin);
+    }, [isControlled]);
 
     return (
         <Dialog.Root
             open={open}
             onOpenChange={(e) => {
                 setOpen(e.open)
-                if (!e.open) setIsEmailMode(false)
+                if (!e.open) {
+                    setIsEmailMode(false)
+                    setModalType('login')
+                }
             }}
             placement="center"
             scrollBehavior="inside"
         >
-            <Dialog.Trigger asChild>
-                <Button bg="waba.charcoal" color="white" rounded="full" px={5} h="40px" fontSize="13px" _hover={{ bg: 'waba.purple' }}>로그인</Button>
-            </Dialog.Trigger>
+            {showTrigger && (
+                <Dialog.Trigger asChild>
+                    <Button bg="waba.charcoal" color="white" rounded="full" px={5} h="40px" fontSize="13px" _hover={{ bg: 'waba.purple' }}>{triggerText}</Button>
+                </Dialog.Trigger>
+            )}
             <Portal>
                 <Dialog.Backdrop backdropFilter="blur(8px)" bg="blackAlpha.500" />
                 <Dialog.Positioner p={{ base: 0, md: 6 }}>
@@ -130,7 +171,12 @@ export default function MemberModal() {
                                         </Flex>
                                     </Box>
                                 </Box>
-                                <LoginClient isEmailMode={isEmailMode} setIsEmailMode={setIsEmailMode} />
+
+                                {modalType === 'login' ? (
+                                    <LoginClient isEmailMode={isEmailMode} setIsEmailMode={setIsEmailMode} setModalType={setModalType} setOpen={setOpen} />
+                                ) : (
+                                    <JoinClient setModalType={setModalType} setOpen={setOpen} />
+                                )}
                             </Flex>
                         </Dialog.Body>
                     </Dialog.Content>

@@ -5,6 +5,7 @@ import cors from 'cors';
 
 import postRoutes from './src/routes/postRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
+import userRoutes from './src/routes/userRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,9 +21,11 @@ app.use(
     })
 );
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.use('/api/post', postRoutes);
 app.use('/api/product', productRoutes);
+app.use('/api/user', userRoutes);
 
 app.use((err, req, res, next) => {
     console.error('🔥 Server Error:', err);

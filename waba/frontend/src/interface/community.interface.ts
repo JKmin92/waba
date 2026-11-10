@@ -138,6 +138,8 @@ export interface Comment {
   content: string;
   /** 질문/고민(Q&A) 게시판에서 질문자가 채택한 답변 여부 */
   is_accepted: boolean | number;
+  /** 익명 댓글 여부 */
+  is_anonymous?: boolean | number;
   /** 댓글 공감(좋아요) 수 */
   like_count: number;
   /** 댓글 상태 ('ACTIVE' | 'DELETED' | 'BLINDED') */
@@ -209,4 +211,8 @@ export interface PostDetail {
 
   /** 8) 게시글 댓글 목록 (상세 조회 시 포함) */
   comments?: Comment[];
+
+  /** 9) 현재 로그인한 회원의 인터랙션 상태 */
+  is_liked?: boolean;
+  is_bookmarked?: boolean;
 }

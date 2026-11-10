@@ -1,4 +1,6 @@
 import db from '../../config/db.js';
+import { generateCommentId, generatePostId } from '../../utils/simpleUtils.js';
+import { deletePostFolder } from '../../utils/imageUtils.js';
 
 export const getMainPostList = async () => {
     const sql = `
@@ -144,7 +146,7 @@ export const getMainPostList = async () => {
     return rows;
 };
 
-export const getPostDetail = async (postId) => {
+export const getPostDetail = async (postId, userId = null) => {
     const sql = `
         SELECT 
             -- 1) post : 게시글 기본 테이블 (posts)
@@ -258,13 +260,15 @@ export const getPostDetail = async (postId) => {
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
                         'id', c.id,
+                        'user_id', c.user_id,
                         'content', c.content,
                         'like_count', c.like_count,
+                        'is_anonymous', (c.is_anonymous = 1),
                         'created_at', c.created_at,
                         'author', JSON_OBJECT(
                             'id', cu.id,
-                            'nickname', cu.nickname,
-                            'profile_image_url', cu.profile_image_url
+                            'nickname', IF(c.is_anonymous = 1, '익명 집사', cu.nickname),
+                            'profile_image_url', IF(c.is_anonymous = 1, NULL, cu.profile_image_url)
                         )
                     )
                 )
@@ -272,15 +276,214 @@ export const getPostDetail = async (postId) => {
                 JOIN users cu ON c.user_id = cu.id
                 WHERE c.post_id = p.id AND c.status = 'ACTIVE'
                 ORDER BY c.created_at ASC
-            ), JSON_ARRAY()) AS comments
+            ), JSON_ARRAY()) AS comments,
+            -- 9) 로그인 사용자의 인터랙션 여부
+            COALESCE((
+                SELECT 1 
+                FROM post_interactions 
+                WHERE post_id = p.id AND user_id = ? AND interaction_type = 'LIKE'
+                LIMIT 1
+            ), 0) = 1 AS is_liked,
+            COALESCE((
+                SELECT 1 
+                FROM post_interactions 
+                WHERE post_id = p.id AND user_id = ? AND interaction_type = 'BOOKMARK'
+                LIMIT 1
+            ), 0) = 1 AS is_bookmarked
         FROM posts p
         JOIN users u ON p.user_id = u.id
         JOIN boards b ON p.board_id = b.id
         WHERE p.id = ? AND p.status = 'PUBLISHED'
         LIMIT 1`;
 
-    const [rows] = await db.query(sql, [postId]);
-    return rows[0] || null;
+    const [rows] = await db.query(sql, [userId || '', userId || '', postId]);
+    if (!rows[0]) return null;
+    return {
+        ...rows[0],
+        is_liked: Boolean(rows[0].is_liked),
+        is_bookmarked: Boolean(rows[0].is_bookmarked)
+    };
+}
+
+export const togglePostLike = async (postId, userId) => {
+    // 1. 기존 좋아요 여부 확인
+    const checkSql = `
+        SELECT id FROM post_interactions 
+        WHERE post_id = ? AND user_id = ? AND interaction_type = 'LIKE'
+    `;
+    const [existing] = await db.query(checkSql, [postId, userId]);
+
+    let isLiked = false;
+
+    if (existing.length > 0) {
+        // 이미 좋아요 한 상태 -> 취소
+        await db.query(
+            `DELETE FROM post_interactions WHERE id = ?`,
+            [existing[0].id]
+        );
+        await db.query(
+            `UPDATE posts SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?`,
+            [postId]
+        );
+        isLiked = false;
+    } else {
+        // 좋아요 등록
+        await db.query(
+            `INSERT INTO post_interactions (post_id, user_id, interaction_type, created_at) VALUES (?, ?, 'LIKE', NOW())`,
+            [postId, userId]
+        );
+        await db.query(
+            `UPDATE posts SET like_count = like_count + 1 WHERE id = ?`,
+            [postId]
+        );
+        isLiked = true;
+    }
+
+    // 최신 like_count 조회
+    const [postRows] = await db.query(
+        `SELECT like_count FROM posts WHERE id = ?`,
+        [postId]
+    );
+
+    return {
+        is_liked: isLiked,
+        like_count: postRows[0]?.like_count ?? 0
+    };
+}
+
+export const togglePostBookmark = async (postId, userId) => {
+    // 1. 기존 북마크 여부 확인
+    const checkSql = `
+        SELECT id FROM post_interactions 
+        WHERE post_id = ? AND user_id = ? AND interaction_type = 'BOOKMARK'
+    `;
+    const [existing] = await db.query(checkSql, [postId, userId]);
+
+    let isBookmarked = false;
+
+    if (existing.length > 0) {
+        // 이미 북마크 한 상태 -> 취소
+        await db.query(
+            `DELETE FROM post_interactions WHERE id = ?`,
+            [existing[0].id]
+        );
+        await db.query(
+            `UPDATE posts SET bookmark_count = GREATEST(bookmark_count - 1, 0) WHERE id = ?`,
+            [postId]
+        );
+        isBookmarked = false;
+    } else {
+        // 북마크 등록
+        await db.query(
+            `INSERT INTO post_interactions (post_id, user_id, interaction_type, created_at) VALUES (?, ?, 'BOOKMARK', NOW())`,
+            [postId, userId]
+        );
+        await db.query(
+            `UPDATE posts SET bookmark_count = bookmark_count + 1 WHERE id = ?`,
+            [postId]
+        );
+        isBookmarked = true;
+    }
+
+    // 최신 bookmark_count 조회
+    const [postRows] = await db.query(
+        `SELECT bookmark_count FROM posts WHERE id = ?`,
+        [postId]
+    );
+
+    return {
+        is_bookmarked: isBookmarked,
+        bookmark_count: postRows[0]?.bookmark_count ?? 0
+    };
+}
+
+export const createComment = async (postId, userId, { content, parent_id = null, is_anonymous = false }) => {
+    const commentId = generateCommentId();
+    const isAnon = is_anonymous ? 1 : 0;
+
+    // 1. 댓글 INSERT
+    const insertSql = `
+        INSERT INTO comments (
+            id, post_id, user_id, parent_id, content, is_anonymous, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', NOW(), NOW())
+    `;
+    await db.query(insertSql, [commentId, postId, userId, parent_id || null, content, isAnon]);
+
+    // 2. 게시글 comment_count + 1
+    await db.query(
+        `UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?`,
+        [postId]
+    );
+
+    // 3. 작성된 댓글 상세 & 작성자 정보 조회
+    const [rows] = await db.query(`
+        SELECT 
+            c.id, c.content, c.like_count, c.created_at, (c.is_anonymous = 1) AS is_anonymous,
+            cu.id AS author_id, cu.nickname, cu.profile_image_url
+        FROM comments c
+        JOIN users cu ON c.user_id = cu.id
+        WHERE c.id = ?
+    `, [commentId]);
+
+    const created = rows[0];
+
+    // 4. 최신 게시글 comment_count 조회
+    const [postRows] = await db.query(
+        `SELECT comment_count FROM posts WHERE id = ?`,
+        [postId]
+    );
+
+    return {
+        comment: {
+            id: created.id,
+            user_id: userId,
+            content: created.content,
+            like_count: created.like_count || 0,
+            created_at: created.created_at,
+            is_anonymous: Boolean(created.is_anonymous),
+            author: {
+                id: created.is_anonymous ? null : created.author_id,
+                nickname: created.is_anonymous ? '익명 집사' : created.nickname,
+                profile_image_url: created.is_anonymous ? null : created.profile_image_url
+            }
+        },
+        comment_count: postRows[0]?.comment_count ?? 0
+    };
+};
+
+export const deleteComment = async (commentId, userId) => {
+    const [rows] = await db.query(
+        `SELECT id, post_id, user_id FROM comments WHERE id = ? AND status = 'ACTIVE'`,
+        [commentId]
+    );
+
+    if (rows.length === 0) {
+        const error = new Error('COMMENT_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+
+    const comment = rows[0];
+    if (comment.user_id !== userId) {
+        const error = new Error('FORBIDDEN');
+        error.status = 403;
+        throw error;
+    }
+
+    // 소프트 삭제
+    await db.query(`UPDATE comments SET status = 'DELETED' WHERE id = ?`, [commentId]);
+    await db.query(`UPDATE posts SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = ?`, [comment.post_id]);
+
+    const [postRows] = await db.query(
+        `SELECT comment_count FROM posts WHERE id = ?`,
+        [comment.post_id]
+    );
+
+    return {
+        comment_id: commentId,
+        post_id: comment.post_id,
+        comment_count: postRows[0]?.comment_count ?? 0
+    };
 }
 
 export const getBoardList = async () => {
@@ -391,4 +594,322 @@ export const getPostList = async (boardId) => {
     `;
     const [rows] = await db.query(sql, [boardId]);
     return rows;
+};
+
+export const createOrUpdatePost = async (userId, {
+    postId: inputPostId,
+    board_id = 'SNAP',
+    title = '',
+    content = [],
+    selected_pets = [],
+    tags = [],
+    status = 'PUBLISHED'
+}) => {
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        let postId = inputPostId;
+        let isExisting = false;
+        let existingStatus = null;
+
+        if (postId) {
+            const [existing] = await connection.query(
+                `SELECT id, status, created_at FROM posts WHERE id = ? AND user_id = ?`,
+                [postId, userId]
+            );
+            if (existing.length > 0) {
+                isExisting = true;
+                existingStatus = existing[0].status;
+            }
+        }
+
+        if (!postId || !isExisting) {
+            postId = postId || generatePostId();
+        }
+
+        // 1. If existing, clear previous post_images, post_pets, post_tags
+        if (isExisting) {
+            await connection.query(`DELETE FROM post_images WHERE post_id = ?`, [postId]);
+            await connection.query(`DELETE FROM post_pets WHERE post_id = ?`, [postId]);
+            await connection.query(`DELETE FROM post_tags WHERE post_id = ?`, [postId]);
+        }
+
+        // 2. Process blocks and save images + pins
+        const finalContent = [];
+        let imageOrder = 1;
+
+        for (const block of content) {
+            if (block.type === 'text') {
+                finalContent.push({
+                    type: 'text',
+                    content: block.content || '',
+                    format: block.format || 'p'
+                });
+            } else if (block.type === 'image') {
+                const imageUrl = block.image_url || block.previewUrl || '';
+                const isThumbnail = imageOrder === 1 ? 1 : 0;
+
+                const [imgResult] = await connection.query(
+                    `INSERT INTO post_images (post_id, image_url, is_thumbnail, is_ai_generated, sort_order, created_at)
+                     VALUES (?, ?, ?, 0, ?, NOW())`,
+                    [postId, imageUrl, isThumbnail, imageOrder]
+                );
+                const postImageId = imgResult.insertId;
+                imageOrder++;
+
+                finalContent.push({
+                    type: 'image',
+                    image_id: postImageId,
+                    caption: block.caption || '',
+                    image_url: imageUrl
+                });
+
+                // Insert pins if any
+                if (Array.isArray(block.pins)) {
+                    for (const pin of block.pins) {
+                        const pinId = `PIN${Math.floor(100 + Math.random() * 900)}${Date.now()}`.slice(0, 25);
+                        await connection.query(
+                            `INSERT INTO product_pins (
+                                id, post_image_id, pin_type, pos_x, pos_y, 
+                                product_id, external_url, external_product_name, 
+                                external_brand_name, external_price, pet_id, pin_option_memo, created_at
+                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                            [
+                                pinId,
+                                postImageId,
+                                pin.pin_type || 'INTERNAL_PRODUCT',
+                                pin.pos_x || 50,
+                                pin.pos_y || 50,
+                                pin.is_official && pin.product_id ? pin.product_id : null,
+                                pin.product_url || null,
+                                pin.product_name || null,
+                                pin.brand_name || null,
+                                pin.price || null,
+                                pin.pet_id || null,
+                                pin.pin_option_memo || null
+                            ]
+                        );
+                    }
+                }
+            }
+        }
+
+        // 3. Save post_pets
+        if (Array.isArray(selected_pets)) {
+            for (const petId of selected_pets) {
+                if (petId) {
+                    await connection.query(
+                        `INSERT IGNORE INTO post_pets (post_id, pet_id) VALUES (?, ?)`,
+                        [postId, petId]
+                    );
+                }
+            }
+        }
+
+        // 4. Save post_tags
+        if (Array.isArray(tags)) {
+            for (const tag of tags) {
+                const cleanedTag = String(tag).replace(/^#/, '').trim();
+                if (cleanedTag) {
+                    await connection.query(
+                        `INSERT IGNORE INTO post_tags (post_id, tag_name) VALUES (?, ?)`,
+                        [postId, cleanedTag]
+                    );
+                }
+            }
+        }
+
+        // 5. Insert or Update posts table
+        if (isExisting) {
+            await connection.query(
+                `UPDATE posts 
+                 SET board_id = ?, title = ?, content = ?, status = ?, updated_at = NOW()
+                 WHERE id = ?`,
+                [board_id, title, JSON.stringify(finalContent), status, postId]
+            );
+        } else {
+            await connection.query(
+                `INSERT INTO posts (
+                    id, board_id, user_id, curation_grade, title, content, 
+                    is_anonymous, related_disease_id, is_vet_verified, 
+                    view_count, like_count, bookmark_count, comment_count, 
+                    status, created_at, updated_at
+                ) VALUES (?, ?, ?, 'NORMAL_FEED', ?, ?, 0, NULL, 0, 0, 0, 0, 0, ?, NOW(), NOW())`,
+                [postId, board_id, userId, title, JSON.stringify(finalContent), status]
+            );
+        }
+
+        // 6. User reward points: only if newly published!
+        if (status === 'PUBLISHED' && existingStatus !== 'PUBLISHED') {
+            await connection.query(
+                `UPDATE users SET reward_points = reward_points + 500 WHERE id = ?`,
+                [userId]
+            );
+        }
+
+        await connection.commit();
+        return { postId, success: true, status };
+    } catch (e) {
+        await connection.rollback();
+        throw e;
+    } finally {
+        connection.release();
+    }
+};
+
+export const createPost = createOrUpdatePost;
+
+export const getUserDraft = async (userId) => {
+    const [rows] = await db.query(
+        `SELECT p.id, p.board_id, p.title, p.content, p.created_at, p.updated_at
+         FROM posts p
+         WHERE p.user_id = ? AND p.status = 'DRAFT'
+         ORDER BY p.updated_at DESC
+         LIMIT 1`,
+        [userId]
+    );
+    if (rows.length === 0) return null;
+    const draft = rows[0];
+
+    // Parse content blocks
+    let blocks = [];
+    try {
+        blocks = typeof draft.content === 'string' ? JSON.parse(draft.content) : draft.content;
+    } catch (e) {
+        blocks = [];
+    }
+
+    // Fetch images and pins for the draft
+    const [images] = await db.query(
+        `SELECT id, image_url, is_thumbnail, sort_order FROM post_images WHERE post_id = ? ORDER BY sort_order ASC`,
+        [draft.id]
+    );
+
+    const [pins] = await db.query(
+        `SELECT pp.* FROM product_pins pp
+         JOIN post_images pi ON pp.post_image_id = pi.id
+         WHERE pi.post_id = ?`,
+        [draft.id]
+    );
+
+    // Fetch selected pets
+    const [pets] = await db.query(
+        `SELECT pet_id FROM post_pets WHERE post_id = ?`,
+        [draft.id]
+    );
+
+    // Fetch tags
+    const [tags] = await db.query(
+        `SELECT tag_name FROM post_tags WHERE post_id = ?`,
+        [draft.id]
+    );
+
+    // Reconstruct blocks with full image previewUrl and pins
+    const resolvedBlocks = blocks.map(block => {
+        if (block.type === 'image') {
+            const matchedImg = images.find(img => img.id === block.image_id);
+            const blockPins = pins
+                .filter(pin => pin.post_image_id === block.image_id)
+                .map(pin => ({
+                    pin_id: pin.id,
+                    pin_type: pin.pin_type,
+                    product_id: pin.product_id,
+                    is_official: Boolean(pin.product_id),
+                    product_url: pin.external_url,
+                    product_name: pin.external_product_name,
+                    brand_name: pin.external_brand_name,
+                    price: pin.external_price,
+                    pet_id: pin.pet_id,
+                    pos_x: Number(pin.pos_x),
+                    pos_y: Number(pin.pos_y),
+                    pin_option_memo: pin.pin_option_memo
+                }));
+
+            return {
+                id: `block-image-${block.image_id || Date.now()}`,
+                type: 'image',
+                image_id: block.image_id,
+                previewUrl: matchedImg?.image_url || block.image_url || block.previewUrl || '',
+                image_url: matchedImg?.image_url || block.image_url || '',
+                caption: block.caption || '',
+                pins: blockPins
+            };
+        }
+        return {
+            id: `block-text-${Math.random()}`,
+            type: 'text',
+            content: block.content || '',
+            format: block.format || 'p'
+        };
+    });
+
+    return {
+        postId: draft.id,
+        board_id: draft.board_id,
+        title: draft.title,
+        blocks: resolvedBlocks,
+        selectedPets: pets.map(p => p.pet_id),
+        tags: tags.map(t => t.tag_name),
+        createdAt: draft.created_at,
+        updatedAt: draft.updated_at
+    };
+};
+
+export const deleteDraft = async (userId, postId) => {
+    let targetPostId = postId;
+    let createdAt = null;
+
+    if (targetPostId) {
+        const [rows] = await db.query(
+            `SELECT id, created_at FROM posts WHERE id = ? AND user_id = ? AND status = 'DRAFT'`,
+            [targetPostId, userId]
+        );
+        if (rows.length === 0) {
+            throw new Error('삭제할 임시 저장본을 찾을 수 없습니다.');
+        }
+        createdAt = rows[0].created_at;
+    } else {
+        const [rows] = await db.query(
+            `SELECT id, created_at FROM posts WHERE user_id = ? AND status = 'DRAFT' ORDER BY updated_at DESC LIMIT 1`,
+            [userId]
+        );
+        if (rows.length === 0) {
+            return { success: true, message: '삭제할 임시저장이 없습니다.' };
+        }
+        targetPostId = rows[0].id;
+        createdAt = rows[0].created_at;
+    }
+
+    // Delete post row (cascades to post_images, product_pins, post_pets, post_tags)
+    await db.query(`DELETE FROM posts WHERE id = ?`, [targetPostId]);
+
+    // Clean up folder from disk using created_at
+    await deletePostFolder(targetPostId, createdAt);
+
+    return { success: true, deletedPostId: targetPostId };
+};
+
+export const deletePost = async (userId, postId, userRole = 'USER') => {
+    const [rows] = await db.query(
+        `SELECT id, user_id, created_at, status FROM posts WHERE id = ?`,
+        [postId]
+    );
+    if (rows.length === 0) {
+        throw new Error('게시글을 찾을 수 없습니다.');
+    }
+    const post = rows[0];
+    if (post.user_id !== userId && userRole !== 'ADMIN') {
+        const error = new Error('게시글 삭제 권한이 없습니다.');
+        error.status = 403;
+        throw error;
+    }
+
+    // Soft delete or delete post
+    await db.query(`UPDATE posts SET status = 'DELETED' WHERE id = ?`, [postId]);
+
+    // Delete folder from disk
+    await deletePostFolder(postId, post.created_at);
+
+    return { success: true, deletedPostId: postId };
 };

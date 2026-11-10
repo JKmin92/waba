@@ -1,46 +1,170 @@
 'use client'
 
-import { Avatar, Box, Button, CloseButton, Container, FormatNumber, Heading, HStack, Icon, IconButton, Image, Separator, Stack, StackSeparator, Text, Textarea } from "@chakra-ui/react"
+import { Avatar, Box, Button, CloseButton, Container, FormatNumber, Heading, HStack, IconButton, Image, Separator, Stack, StackSeparator, Text } from "@chakra-ui/react"
 import Header from "../../common/Header"
 import { useEffect, useState } from "react"
 import axiosInstance from "@/utils/api";
-import { PostDetail as PostDetailType } from "@/interface";
-import { formatDate, formatRelativeTime } from "@/utils/simpleUtils";
-import { ArrowUpRight, Eye, Heart, Share2, ShoppingCart, UserRound } from "lucide-react";
+import { PostDetail as PostDetailType, User } from "@/interface";
+import { formatDate } from "@/utils/simpleUtils";
+import { ArrowUpRight, Bookmark, Eye, Heart, Share2, ShoppingCart } from "lucide-react";
 import { toaster } from "@/components/ui/toaster";
+import { isAuthenticated, getUserInfo } from "@/utils/authUtils";
+import MemberModal from "../../member/MemberModal";
+import ShareModal from "../../common/ShareModal";
+import Comment from "./comment";
 
 export default function PostDetail({ postId }: { postId: string }) {
 
     const [postDetail, setPostDetail] = useState<PostDetailType>();
     const [activePinId, setActivePinId] = useState<string>();
+    const [isLiked, setIsLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(0);
+    const [isLikeLoading, setIsLikeLoading] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [bookmarkCount, setBookmarkCount] = useState(0);
+    const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+    const [loginModalOpen, setLoginModalOpen] = useState(false);
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     useEffect(() => {
         getPostDetail();
-    }, []);
+        setCurrentUser(getUserInfo());
+
+        // 로그인 / 로그아웃 상태 변경 시 인터랙션 및 유저 정보 재동기화
+        const handleAuthChange = () => {
+            getPostDetail();
+            setCurrentUser(getUserInfo());
+        };
+
+        window.addEventListener('auth-change', handleAuthChange);
+        return () => window.removeEventListener('auth-change', handleAuthChange);
+    }, [postId]);
 
     const getPostDetail = async () => {
         try {
             const res = await axiosInstance.get(`/post/${postId}`);
             setPostDetail(res.data);
+            setIsLiked(Boolean(res.data?.is_liked));
+            setLikeCount(res.data?.post?.like_count || 0);
+            setIsBookmarked(Boolean(res.data?.is_bookmarked));
+            setBookmarkCount(res.data?.post?.bookmark_count || 0);
         } catch {
             toaster.create({ title: '오류가 발생했습니다.', type: 'error' });
         }
     }
 
     const toggleLike = async () => {
+        // 1. 비회원인 경우: 로그인 모달 오픈
+        if (!isAuthenticated()) {
+            setLoginModalOpen(true);
+            return;
+        }
+
+        if (isLikeLoading) return;
+
+        // 2. 회원인 경우: 낙관적 UI 업데이트 (즉각 반영)
+        const prevLiked = isLiked;
+        const prevCount = likeCount;
+        const nextLiked = !prevLiked;
+        const nextCount = nextLiked ? prevCount + 1 : Math.max(prevCount - 1, 0);
+
+        setIsLiked(nextLiked);
+        setLikeCount(nextCount);
+        setIsLikeLoading(true);
+
         try {
-            const likeCount = (postDetail?.post.like_count || 0) + 1;
-            setPostDetail(prev => prev && ({ ...prev, post: { ...prev.post, like_count: likeCount } }));
+            const res = await axiosInstance.post(`/post/${postId}/like`);
+            if (res.data?.success) {
+                setIsLiked(res.data.is_liked);
+                setLikeCount(res.data.like_count);
+                setPostDetail(prev => prev && ({
+                    ...prev,
+                    post: { ...prev.post, like_count: res.data.like_count }
+                }));
+            }
         } catch {
-            toaster.create({ title: '오류가 발생했습니다.', type: 'error' });
+            // 실패 시 롤백
+            setIsLiked(prevLiked);
+            setLikeCount(prevCount);
+            toaster.create({ title: '좋아요 처리에 실패했습니다.', type: 'error' });
+        } finally {
+            setIsLikeLoading(false);
         }
     }
 
-    const contentCountStyle = { w: '92px', border: '1px solid #000', borderColor: 'waba.border', rounded: 'full', py: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2', boxShadow: 'lg' };
+    const toggleBookmark = async () => {
+        // 1. 비회원인 경우: 로그인 모달 오픈
+        if (!isAuthenticated()) {
+            setLoginModalOpen(true);
+            return;
+        }
+
+        if (isBookmarkLoading) return;
+
+        // 2. 회원인 경우: 낙관적 UI 업데이트
+        const prevBookmarked = isBookmarked;
+        const prevCount = bookmarkCount;
+        const nextBookmarked = !prevBookmarked;
+        const nextCount = nextBookmarked ? prevCount + 1 : Math.max(prevCount - 1, 0);
+
+        setIsBookmarked(nextBookmarked);
+        setBookmarkCount(nextCount);
+        setIsBookmarkLoading(true);
+
+        try {
+            const res = await axiosInstance.post(`/post/${postId}/bookmark`);
+            if (res.data?.success) {
+                setIsBookmarked(res.data.is_bookmarked);
+                setBookmarkCount(res.data.bookmark_count);
+                setPostDetail(prev => prev && ({
+                    ...prev,
+                    post: { ...prev.post, bookmark_count: res.data.bookmark_count }
+                }));
+                toaster.create({
+                    title: res.data.is_bookmarked ? '북마크에 저장되었습니다.' : '북마크 저장이 취소되었습니다.',
+                    type: res.data.is_bookmarked ? 'success' : 'info'
+                });
+            }
+        } catch {
+            // 실패 시 롤백
+            setIsBookmarked(prevBookmarked);
+            setBookmarkCount(prevCount);
+            toaster.create({ title: '북마크 처리에 실패했습니다.', type: 'error' });
+        } finally {
+            setIsBookmarkLoading(false);
+        }
+    }
+
+    const contentCountStyle = {
+        w: '92px',
+        border: '1px solid',
+        borderColor: 'waba.border',
+        rounded: 'full',
+        py: '1.5',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '2',
+        boxShadow: 'sm',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+    };
 
     return (
         <Container minH="100vh" bg="waba.canvas" pb={24}>
             <Header />
+
+            {/* 비회원 좋아요 클릭 시 띄울 로그인 모달 */}
+            <MemberModal open={loginModalOpen} onOpenChange={setLoginModalOpen} showTrigger={false} />
+
+            {/* 공유 모달 (카카오톡, 링크 복사) */}
+            <ShareModal
+                open={shareModalOpen}
+                onOpenChange={setShareModalOpen}
+                title={postDetail?.post.title}
+                thumbnailUrl={postDetail?.post_images?.[0]?.image_url}
+            />
 
             <Container maxW="1080px" pt={32} px={6}>
                 <Stack separator={<StackSeparator />} gap="10">
@@ -58,23 +182,102 @@ export default function PostDetail({ postId }: { postId: string }) {
                                 )}
                             </Avatar.Root>
                             <Stack gap="0">
-                                <Heading fontSize="md">@{postDetail?.user.nickname}</Heading>
+                                <HStack gap={2} align="center">
+                                    <Heading fontSize="md">@{postDetail?.user.nickname}</Heading>
+                                    {currentUser && (currentUser.id === postDetail?.user?.id || currentUser.id === postDetail?.post?.user_id) && (
+                                        <Box
+                                            bg="waba.charcoal"
+                                            color="white"
+                                            fontSize="10px"
+                                            fontWeight="800"
+                                            px={2}
+                                            py={0.5}
+                                            borderRadius="full"
+                                        >
+                                            내 글
+                                        </Box>
+                                    )}
+                                </HStack>
                                 <Text fontSize="xs" letterSpacing="0.08em" color="gray.500">{formatDate(postDetail?.post.created_at || '')}</Text>
                             </Stack>
                         </Stack>
                         <Stack direction="row" alignItems="center" gap="4">
                             <Box {...contentCountStyle}>
-                                <Icon size="sm"><Eye /></Icon>
+                                <Eye size={16} />
                                 <Text fontSize="sm"><FormatNumber value={postDetail?.post.view_count || 0} /></Text>
                             </Box>
 
-                            <Box {...contentCountStyle} cursor="pointer" onClick={toggleLike}>
-                                <Icon size="sm"><Heart /></Icon>
-                                <Text fontSize="sm"><FormatNumber value={postDetail?.post.like_count || 0} /></Text>
+                            {/* ❤️ 좋아요 버튼 (회원 토글 / 비회원 로그인 다이얼로그) */}
+                            <Box
+                                {...contentCountStyle}
+                                cursor="pointer"
+                                onClick={toggleLike}
+                                borderColor={isLiked ? "red.200" : "waba.border"}
+                                bg={isLiked ? "red.50" : "transparent"}
+                                color={isLiked ? "red.500" : "waba.charcoal"}
+                                _hover={{
+                                    borderColor: isLiked ? "red.300" : "blackAlpha.400",
+                                    transform: "translateY(-1px)",
+                                    boxShadow: "md"
+                                }}
+                                _active={{ transform: "scale(0.96)" }}
+                            >
+                                <Heart
+                                    size={16}
+                                    fill={isLiked ? "#EF4444" : "none"}
+                                    color={isLiked ? "#EF4444" : "currentColor"}
+                                    style={{
+                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                        transform: isLiked ? "scale(1.15)" : "scale(1)"
+                                    }}
+                                />
+                                <Text fontSize="sm" fontWeight={isLiked ? "700" : "500"}>
+                                    <FormatNumber value={likeCount} />
+                                </Text>
                             </Box>
 
-                            <Box {...contentCountStyle} cursor="pointer">
-                                <Icon size="sm"><Share2 /></Icon>
+                            {/* 🔖 북마크 버튼 (회원 토글 / 비회원 로그인 다이얼로그) */}
+                            <Box
+                                {...contentCountStyle}
+                                cursor="pointer"
+                                onClick={toggleBookmark}
+                                borderColor={isBookmarked ? "purple.200" : "waba.border"}
+                                bg={isBookmarked ? "purple.50" : "white"}
+                                color={isBookmarked ? "waba.purple" : "waba.charcoal"}
+                                _hover={{
+                                    borderColor: isBookmarked ? "purple.300" : "blackAlpha.400",
+                                    transform: "translateY(-1px)",
+                                    boxShadow: "md"
+                                }}
+                                _active={{ transform: "scale(0.96)" }}
+                            >
+                                <Bookmark
+                                    size={16}
+                                    fill={isBookmarked ? "currentColor" : "none"}
+                                    color={isBookmarked ? "currentColor" : "currentColor"}
+                                    style={{
+                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                        transform: isBookmarked ? "scale(1.15)" : "scale(1)"
+                                    }}
+                                />
+                                <Text fontSize="sm" fontWeight={isBookmarked ? "700" : "500"}>
+                                    <FormatNumber value={bookmarkCount} />
+                                </Text>
+                            </Box>
+
+                            {/* 🔗 공유 버튼 (카카오톡, 링크 복사 모달 오픈) */}
+                            <Box
+                                {...contentCountStyle}
+                                cursor="pointer"
+                                onClick={() => setShareModalOpen(true)}
+                                _hover={{
+                                    borderColor: "blackAlpha.400",
+                                    transform: "translateY(-1px)",
+                                    boxShadow: "md"
+                                }}
+                                _active={{ transform: "scale(0.96)" }}
+                            >
+                                <Share2 size={16} />
                                 <Text fontSize="sm">공유</Text>
                             </Box>
                         </Stack>
@@ -235,57 +438,22 @@ export default function PostDetail({ postId }: { postId: string }) {
                         </Stack>
                     )}
 
-                    <Stack gap="5">
-                        <HStack justifyContent="space-between">
-                            <Heading>댓글 {postDetail?.comments?.length}</Heading>
-                            <HStack>
-                                <Button size="xs" variant="ghost" fontWeight="bold">최신순</Button>
-                                <Text>·</Text>
-                                <Button size="xs" variant="ghost" fontWeight="light">추천순</Button>
-                            </HStack>
-                        </HStack>
-                        <Stack direction="row" rounded="xl" borderWidth="1px" borderColor="border" bg="bg" p="4">
-                            <Avatar.Root>
-                                <UserRound />
-                            </Avatar.Root>
-                            <Stack separator={<StackSeparator />} w='full' gap="4">
-                                <Textarea border="none" h="28" resize="none" w="full" placeholder="반려동물과 함께하는 공간에 대해 따뜻한 이야기를 남겨주세요." />
-                                <HStack justifyContent="end">
-                                    <IconButton size="sm" px="6" rounded="full">등록</IconButton>
-                                </HStack>
-                            </Stack>
-                        </Stack>
-                        <Stack>
-                            {postDetail?.comments?.map((comment) => (
-                                <Stack key={comment.id} bg="bg" borderWidth="1px" borderColor="border" p="4" gap="4" rounded="xl">
-                                    <HStack justifyContent="space-between">
-                                        <HStack alignItems="center" gap="4">
-                                            <Avatar.Root>
-                                                {comment.author?.profile_image_url ? (
-                                                    <Avatar.Image src={comment.author.profile_image_url} />
-                                                ) : (
-                                                    <Avatar.Fallback>
-                                                        <UserRound />
-                                                    </Avatar.Fallback>
-                                                )}
-                                            </Avatar.Root>
-                                            <Stack gap="0">
-                                                <Heading fontSize="sm">@{comment.author?.nickname}</Heading>
-                                                <Text fontSize="xs">{formatRelativeTime(comment.created_at)}</Text>
-                                            </Stack>
-                                        </HStack>
-                                        <HStack gap="0">
-                                            <IconButton size="xs" rounded="full" variant="ghost">
-                                                <Heart />
-                                            </IconButton>
-                                            <Text fontSize="xs"><FormatNumber value={comment.like_count || 0} /></Text>
-                                        </HStack>
-                                    </HStack>
-                                    <Text>{comment.content}</Text>
-                                </Stack>
-                            ))}
-                        </Stack>
-                    </Stack>
+                    {/* 💬 댓글 섹션 (comment.tsx 컴포넌트로 분리) */}
+                    <Comment
+                        postId={postId}
+                        postAuthorId={postDetail?.user?.id || postDetail?.post?.user_id}
+                        comments={postDetail?.comments}
+                        commentCount={postDetail?.post?.comment_count}
+                        currentUser={currentUser}
+                        onCommentsUpdate={(updatedComments, updatedCount) => {
+                            setPostDetail(prev => prev ? ({
+                                ...prev,
+                                comments: updatedComments,
+                                post: { ...prev.post, comment_count: updatedCount }
+                            }) : prev);
+                        }}
+                        onRequireLogin={() => setLoginModalOpen(true)}
+                    />
                 </Stack>
             </Container>
 
