@@ -31,6 +31,10 @@ const nextConfig = {
         source: '/public/:path*',
         destination: 'http://127.0.0.1:5000/public/:path*',
       },
+      {
+        source: '/public/:path*',
+        destination: 'http://localhost:5000/public/:path*',
+      },
     ];
   },
 };

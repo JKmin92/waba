@@ -34,6 +34,24 @@ export default function HeaderClient() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    const [isLogin, setIsLogin] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
+
+    useEffect(() => {
+        // 첫 마운트 시 로그인 여부 및 회원 정보 확인
+        setIsLogin(isAuthenticated());
+        setCurrentUser(getUserInfo());
+
+        // auth-change 이벤트 수신 시 실시간으로 isLogin 및 회원정보 갱신
+        const handleAuthChange = () => {
+            setIsLogin(isAuthenticated());
+            setCurrentUser(getUserInfo());
+        };
+
+        window.addEventListener('auth-change', handleAuthChange);
+        return () => window.removeEventListener('auth-change', handleAuthChange);
+    }, []);
+
     useEffect(() => {
         // 첫 마운트 시 로그인 여부 및 회원 정보 확인
         setIsLogin(isAuthenticated());
