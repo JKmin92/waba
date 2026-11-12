@@ -248,13 +248,16 @@ export default function PostDetail({ postId }: { postId: string }) {
             </Dialog.Root>
 
             <Container maxW="1080px" pt={32} px={6}>
-                <Stack separator={<StackSeparator />} gap="10">
+                <Stack gap="10">
                     <Stack gap="4">
                         <HStack justifyContent="center">
                             <Box rounded="full" bg="bg.inverted" color="fg.inverted" px="5" fontSize="md" py="1">{postDetail?.board.name}</Box>
                         </HStack>
                         <Heading textAlign="center" fontSize="3xl">{postDetail?.post.title}</Heading>
                     </Stack>
+
+                    <Separator borderColor="waba.border" />
+
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
                         <Stack direction="row" alignItems="center" gap="6">
                             <Avatar.Root size="2xl">
@@ -416,6 +419,8 @@ export default function PostDetail({ postId }: { postId: string }) {
                             </Box>
                         </Stack>
                     </Stack>
+                    <Separator borderColor="waba.border" />
+
                     <Stack>
                         {postDetail?.post.content.map((content, index) => {
                             if (content.type === 'text') {
@@ -452,51 +457,58 @@ export default function PostDetail({ postId }: { postId: string }) {
                             </Box>
                         )}
                     </Stack>
-                    {postDetail?.post_pets && postDetail?.post_pets.length > 0 && (
+                    {postDetail?.post_pets && postDetail.post_pets.length > 0 && (
                         <Stack gap="5">
+                            <Separator borderColor="waba.border" />
                             <Stack gap="0">
                                 <Text color="fg.subtle">COMPANIONS</Text>
                                 <Heading>이 게시글에 태그된 반려동물</Heading>
                             </Stack>
                             <HStack gap="10">
-                                {postDetail?.post_pets.map((pet) => {
+                                {postDetail.post_pets.map((pet) => {
                                     return (
-                                        <Stack key={pet.pet_id} separator={<StackSeparator />}>
-                                            <HStack gap="4">
-                                                <Avatar.Root>
-                                                    {pet.avatar_url && (
-                                                        <Avatar.Image src={pet.avatar_url} />
-                                                    )}
-                                                    <Avatar.Fallback>{pet.name.charAt(0).toUpperCase()}</Avatar.Fallback>
-                                                </Avatar.Root>
-                                                <Heading fontSize="xl">{pet.name}</Heading>
-                                            </HStack>
-                                        </Stack>
+                                        <HStack key={pet.pet_id} gap="4">
+                                            <Avatar.Root>
+                                                {pet.avatar_url && (
+                                                    <Avatar.Image src={pet.avatar_url} />
+                                                )}
+                                                <Avatar.Fallback>{pet.name.charAt(0).toUpperCase()}</Avatar.Fallback>
+                                            </Avatar.Root>
+                                            <Heading fontSize="xl">{pet.name}</Heading>
+                                        </HStack>
                                     )
                                 })}
                             </HStack>
                         </Stack>
                     )}
 
-                    {/* 🏷️ 태그된 제품 목록 (PostProductPinList 컴포넌트로 분리) */}
-                    <PostProductPinList pins={postDetail?.product_pins} />
+                    {/* 🏷️ 태그된 제품 목록 (실제 노출할 제품 핀이 있을 때만 Separator 및 목록 렌더링) */}
+                    {postDetail?.product_pins && postDetail.product_pins.filter((p) => p.pin_type !== 'PET').length > 0 && (
+                        <Stack gap="5">
+                            <Separator borderColor="waba.border" />
+                            <PostProductPinList pins={postDetail.product_pins} />
+                        </Stack>
+                    )}
 
-                    {/* 💬 댓글 섹션 (comment.tsx 컴포넌트로 분리) */}
-                    <Comment
-                        postId={postId}
-                        postAuthorId={postDetail?.user?.id || postDetail?.post?.user_id}
-                        comments={postDetail?.comments}
-                        commentCount={postDetail?.post?.comment_count}
-                        currentUser={currentUser}
-                        onCommentsUpdate={(updatedComments, updatedCount) => {
-                            setPostDetail(prev => prev ? ({
-                                ...prev,
-                                comments: updatedComments,
-                                post: { ...prev.post, comment_count: updatedCount }
-                            }) : prev);
-                        }}
-                        onRequireLogin={() => setLoginModalOpen(true)}
-                    />
+                    {/* 💬 댓글 섹션 (상단 구분선 포함) */}
+                    <Stack gap="5">
+                        <Separator borderColor="waba.border" />
+                        <Comment
+                            postId={postId}
+                            postAuthorId={postDetail?.user?.id || postDetail?.post?.user_id}
+                            comments={postDetail?.comments}
+                            commentCount={postDetail?.post?.comment_count}
+                            currentUser={currentUser}
+                            onCommentsUpdate={(updatedComments, updatedCount) => {
+                                setPostDetail(prev => prev ? ({
+                                    ...prev,
+                                    comments: updatedComments,
+                                    post: { ...prev.post, comment_count: updatedCount }
+                                }) : prev);
+                            }}
+                            onRequireLogin={() => setLoginModalOpen(true)}
+                        />
+                    </Stack>
                 </Stack>
             </Container>
 

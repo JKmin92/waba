@@ -35,6 +35,7 @@ export default function MypageClient() {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [petModalOpen, setPetModalOpen] = useState(false);
     const [editingPet, setEditingPet] = useState<Pet | null>(null);
+    const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
 
     const openLoginModal = () => {
         if (typeof window !== 'undefined') {
@@ -139,21 +140,35 @@ export default function MypageClient() {
         }
     };
 
-    const handleDeletePet = async (petId: string) => {
+    const handleDeletePet = async (petId: string, authData?: { password?: string; confirm_name?: string }) => {
         try {
-            const res = await axiosInstance.delete(`/user/pets/${petId}`);
+            const res = await axiosInstance.delete(`/user/pets/${petId}`, {
+                data: authData || {}
+            });
             if (res.data?.success) {
                 setPets(res.data.pets || []);
                 if (res.data.profile) {
                     setProfile(res.data.profile);
                 }
-                toaster.create({ title: '반려동물 프로필이 삭제되었습니다.', type: 'info' });
+                toaster.create({
+                    title: '반려동물 프로필이 보관 처리되었습니다.',
+                    description: '6개월(180일)간 안전하게 보존되며, 고객센터 문의 시 언제든 복구할 수 있습니다.',
+                    type: 'info',
+                });
             }
         } catch (err: any) {
-            toaster.create({
-                title: err.response?.data?.message || '반려동물 삭제 중 오류가 발생했습니다.',
-                type: 'error',
-            });
+            const code = err.response?.data?.code;
+            if (code === 'INVALID_PASSWORD') {
+                toaster.create({ title: '비밀번호가 일치하지 않습니다.', type: 'error' });
+            } else if (code === 'INVALID_CONFIRM_NAME') {
+                toaster.create({ title: '반려동물 이름이 일치하지 않습니다.', type: 'error' });
+            } else {
+                toaster.create({
+                    title: err.response?.data?.message || '반려동물 삭제 처리 중 오류가 발생했습니다.',
+                    type: 'error',
+                });
+            }
+            throw err;
         }
     };
 
@@ -189,6 +204,11 @@ export default function MypageClient() {
                     {/* 2. 내 반려동물 카드 섹션 (My Pets) */}
                     <PetSection
                         pets={pets}
+                        selectedPetId={selectedPetId}
+                        onSelectPet={(petId) => {
+                            setSelectedPetId(petId);
+                            setActiveTab('post');
+                        }}
                         onAddPet={() => {
                             setEditingPet(null);
                             setPetModalOpen(true);
@@ -214,6 +234,9 @@ export default function MypageClient() {
                         bookmarkCount={profile?.bookmark_count ?? bookmarkList.length}
                         likeCount={profile?.like_count ?? likeList.length}
                         draftCount={profile?.draft_count ?? draftList.length}
+                        pets={pets}
+                        selectedPetId={selectedPetId}
+                        onSelectPetId={setSelectedPetId}
                     />
                 </Stack>
             </Container>

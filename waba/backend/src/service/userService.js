@@ -14,13 +14,23 @@ export const checkEmail = async (email) => {
 
 export const joinUser = async (userData, clientIp = null) => {
     const { email, password, nickname, agreeMarketing } = userData;
+    const normalizedEmail = String(email || '').toLowerCase().trim();
 
-    // 1. 이메일 중복 체크
-    const emailExists = await userModel.checkEmail(email);
-    if (emailExists) {
-        const error = new Error('ALREADY_EXIST_EMAIL');
-        error.status = 409;
-        throw error;
+    // 1. 이메일 중복 및 연동 여부 정밀 검사
+    const existingUser = await userModel.findUserByEmail(normalizedEmail);
+    if (existingUser) {
+        const identities = await userModel.getUserIdentitiesByUserId(existingUser.id);
+        const hasLocal = identities.some(i => i.provider === 'LOCAL');
+        if (hasLocal) {
+            const error = new Error('ALREADY_EXIST_EMAIL');
+            error.status = 409;
+            throw error;
+        } else {
+            // 소셜 계정으로만 등록되어 있는 경우
+            const error = new Error('EMAIL_REGISTERED_WITH_SOCIAL');
+            error.status = 409;
+            throw error;
+        }
     }
 
     // 2. 닉네임 중복 체크
@@ -35,17 +45,17 @@ export const joinUser = async (userData, clientIp = null) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // 4. 고유 ID 생성 규칙 적용
-    const userId = generateUserId(email);
+    const userId = generateUserId(normalizedEmail);
     const identityId = generateIdentityId();
 
     // 5. 가입 즉시 자동 로그인을 위한 JWT 토큰 발급
     const refreshToken = jwt.sign(
-        { userId, email },
+        { userId, email: normalizedEmail },
         process.env.REFRESH_TOKEN_SECRET || 'wabami_refresh_key',
         { expiresIn: process.env.REFRESH_TOKEN_EXPIRE || '7d' }
     );
     const accessToken = jwt.sign(
-        { userId, email, nickname, role: 'USER' },
+        { userId, email: normalizedEmail, nickname, role: 'USER' },
         process.env.ACCESS_TOKEN_SECRET || 'wabami_access_key',
         { expiresIn: process.env.ACCESS_TOKEN_EXPIRE || '15m' }
     );
@@ -53,7 +63,7 @@ export const joinUser = async (userData, clientIp = null) => {
     // 6. Model을 통한 순차 INSERT
     await userModel.insertUser({
         id: userId,
-        email,
+        email: normalizedEmail,
         nickname,
         role: 'USER',
         mentor_badge: 'NONE',
@@ -69,28 +79,132 @@ export const joinUser = async (userData, clientIp = null) => {
         id: identityId,
         user_id: userId,
         provider: 'LOCAL',
-        provider_uid: email,
+        provider_uid: normalizedEmail,
         password_hash: passwordHash,
-        provider_email: email
+        provider_email: normalizedEmail
     });
 
-    // 7. 클라이언트에 로그인 세션 유지용 데이터 반환
     return {
-        user: {
-            id: userId,
-            email,
-            nickname,
-            role: 'USER',
-            mentor_badge: 'NONE',
-            profile_image_url: null,
-            reward_points: 0,
-            // 하위 호환용 카멜케이스 병행
-            mentorBadge: 'NONE',
-            profileImageUrl: null,
-            rewardPoints: 0
-        },
+        user: { id: userId, email: normalizedEmail, nickname, role: 'USER', mentor_badge: 'NONE', reward_points: 0 },
         accessToken,
         refreshToken
+    };
+};
+
+/**
+ * 소셜 로그인 / 이메일 기반 단일 계정 통합(Account Linking) 코어 로직
+ * (구글, 애플, 카카오, 네이버 등 소셜 제공자 공통 처리)
+ */
+export const handleSocialLoginOrLink = async ({
+    provider,
+    providerUid,
+    email,
+    nickname,
+    profileImageUrl = null,
+    clientIp = null
+}) => {
+    if (!provider || !providerUid || !email) {
+        const error = new Error('INVALID_SOCIAL_PARAMS');
+        error.status = 400;
+        throw error;
+    }
+
+    const normalizedProvider = String(provider).toUpperCase().trim();
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const trimmedProviderUid = String(providerUid).trim();
+
+    // 1. 이메일 기준 기존 users 조회
+    const existingUser = await userModel.findUserByEmail(normalizedEmail);
+
+    let targetUser = null;
+    let isNewUser = false;
+
+    if (existingUser) {
+        // 케이스 A: 기존 유저 존재 -> 자동 계정 연동(Account Linking)
+        targetUser = existingUser;
+        const existingIdentity = await userModel.findUserIdentity(existingUser.id, normalizedProvider);
+
+        if (!existingIdentity) {
+            // 해당 provider의 연동 정보가 없으면 신규 identity 추가
+            const identityId = generateIdentityId();
+            await userModel.insertUserIdentity({
+                id: identityId,
+                user_id: existingUser.id,
+                provider: normalizedProvider,
+                provider_uid: trimmedProviderUid,
+                password_hash: null,
+                provider_email: normalizedEmail
+            });
+        }
+    } else {
+        // 케이스 B: 신규 유저 생성
+        isNewUser = true;
+        const userId = generateUserId(normalizedEmail);
+        const identityId = generateIdentityId();
+
+        // 닉네임 중복 처리: 닉네임이 없거나 이미 사용 중이면 유니크한 닉네임 자동 생성
+        let finalNickname = nickname ? String(nickname).trim() : '';
+        if (!finalNickname) {
+            finalNickname = `집사_${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+        const nicknameCount = await userModel.checkNickname(finalNickname);
+        if (nicknameCount > 0) {
+            finalNickname = `${finalNickname.slice(0, 30)}_${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+
+        await userModel.insertUser({
+            id: userId,
+            email: normalizedEmail,
+            nickname: finalNickname,
+            profile_image_url: profileImageUrl || null,
+            role: 'USER',
+            mentor_badge: 'NONE',
+            reward_points: 0,
+            refresh_token: null,
+            last_ip: clientIp,
+            terms_agreed: 1,
+            marketing_agreed: 0,
+            status: 'ACTIVE'
+        });
+
+        await userModel.insertUserIdentity({
+            id: identityId,
+            user_id: userId,
+            provider: normalizedProvider,
+            provider_uid: trimmedProviderUid,
+            password_hash: null,
+            provider_email: normalizedEmail
+        });
+
+        targetUser = await userModel.findUserByEmail(normalizedEmail);
+    }
+
+    // 2. JWT 토큰 발급
+    const refreshToken = jwt.sign(
+        { userId: targetUser.id, email: targetUser.email },
+        process.env.REFRESH_TOKEN_SECRET || 'wabami_refresh_key',
+        { expiresIn: process.env.REFRESH_TOKEN_EXPIRE || '7d' }
+    );
+    const accessToken = jwt.sign(
+        { userId: targetUser.id, email: targetUser.email, nickname: targetUser.nickname, role: targetUser.role || 'USER' },
+        process.env.ACCESS_TOKEN_SECRET || 'wabami_access_key',
+        { expiresIn: process.env.ACCESS_TOKEN_EXPIRE || '15m' }
+    );
+
+    // 3. 최근 로그인 일시 및 리프레시 토큰 갱신
+    await userModel.updateLastLogin(targetUser.id, refreshToken, clientIp);
+
+    return {
+        user: {
+            id: targetUser.id,
+            email: targetUser.email,
+            nickname: targetUser.nickname,
+            role: targetUser.role,
+            profile_image_url: targetUser.profile_image_url
+        },
+        accessToken,
+        refreshToken,
+        isNewUser
     };
 };
 
@@ -280,6 +394,7 @@ export const createUserPet = async (userId, data, file = null) => {
         custom_species,
         breed,
         birth_date,
+        is_birth_estimated,
         gender = 'UNKNOWN',
         is_neutered,
         latest_weight_kg,
@@ -330,6 +445,7 @@ export const createUserPet = async (userId, data, file = null) => {
         custom_species: finalSpecies === 'OTHER' ? trimmedCustomSpecies : null,
         breed: trimmedBreed,
         birth_date: birth_date && String(birth_date).trim() ? String(birth_date).trim() : null,
+        is_birth_estimated: is_birth_estimated === 'true' || is_birth_estimated === true || is_birth_estimated === 1 || is_birth_estimated === '1',
         gender: finalGender,
         is_neutered: is_neutered === 'true' || is_neutered === true || is_neutered === 1 || is_neutered === '1',
         latest_weight_kg: parsedWeight,
@@ -355,6 +471,7 @@ export const updateUserPet = async (userId, petId, data, file = null) => {
         custom_species,
         breed,
         birth_date,
+        is_birth_estimated,
         gender = existingPet.gender,
         is_neutered,
         latest_weight_kg,
@@ -414,6 +531,9 @@ export const updateUserPet = async (userId, petId, data, file = null) => {
         custom_species: finalSpecies === 'OTHER' ? trimmedCustomSpecies : null,
         breed: trimmedBreed,
         birth_date: birth_date && String(birth_date).trim() ? String(birth_date).trim() : null,
+        is_birth_estimated: is_birth_estimated !== undefined
+            ? (is_birth_estimated === 'true' || is_birth_estimated === true || is_birth_estimated === 1 || is_birth_estimated === '1')
+            : Boolean(existingPet.is_birth_estimated),
         gender: finalGender,
         is_neutered: is_neutered === 'true' || is_neutered === true || is_neutered === 1 || is_neutered === '1',
         latest_weight_kg: parsedWeight,
@@ -430,14 +550,192 @@ export const updateUserPet = async (userId, petId, data, file = null) => {
     };
 };
 
-export const deleteUserPet = async (userId, petId) => {
-    const result = await userModel.deleteUserPet(userId, petId);
-    for (const url of result.avatarUrlsToDelete || []) {
-        await deleteProfileImageFile(url);
+export const deleteUserPet = async (userId, petId, authData = {}) => {
+    const { password, confirm_name } = authData;
+
+    // 1. 대상 펫 존재 여부 확인
+    const pet = await userModel.getUserPetById(userId, petId);
+    if (!pet) {
+        const error = new Error('PET_NOT_FOUND');
+        error.status = 404;
+        throw error;
     }
+
+    // 2. 본인 인증 검증
+    const passwordHash = await userModel.getUserPasswordHash(userId);
+    if (passwordHash) {
+        // 로컬 가입 유저: 비밀번호 검증
+        if (!password) {
+            const error = new Error('INVALID_PASSWORD');
+            error.status = 401;
+            throw error;
+        }
+        const isValid = await bcrypt.compare(password, passwordHash);
+        if (!isValid) {
+            const error = new Error('INVALID_PASSWORD');
+            error.status = 401;
+            throw error;
+        }
+    } else {
+        // 소셜 로그인 유저: confirm_name === pet.name 검증
+        if (!confirm_name || String(confirm_name).trim() !== String(pet.name).trim()) {
+            const error = new Error('INVALID_CONFIRM_NAME');
+            error.status = 400;
+            throw error;
+        }
+    }
+
+    // 3. 소프트 삭제 수행 (이미지 파일 삭제 및 연관 자식 데이터 하드 삭제 중단, 6개월간 보존)
+    const result = await userModel.softDeleteUserPet(userId, petId);
+
     return {
+        message: '반려동물이 삭제되었습니다. 6개월(180일) 동안 데이터가 안전하게 보관되며 언제든지 복구할 수 있습니다.',
+        retention_days: 180,
         deletedPetId: result.deletedPetId,
         pets: result.pets,
         profile: result.profile
     };
+};
+
+export const restoreUserPet = async (userId, petId) => {
+    const result = await userModel.restoreUserPet(userId, petId);
+    return {
+        message: '반려동물이 성공적으로 복구되었습니다.',
+        pet: result.pet,
+        pets: result.pets,
+        profile: result.profile
+    };
+};
+
+export const getPetHistories = async (userId, petId) => {
+    return await userModel.getPetHistories(userId, petId);
+};
+
+export const createPetHistory = async (userId, petId, data) => {
+    const rawDate = data?.event_date || data?.date;
+    const rawDescription = data?.description !== undefined ? data?.description : data?.notes;
+    const { title, category, hospital_name, weight_kg, journey_id, post_ids } = data || {};
+    
+    if (!rawDate || !String(rawDate).trim()) {
+        const error = new Error('EVENT_DATE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+
+    if (!title || !String(title).trim()) {
+        const error = new Error('TITLE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+
+    return await userModel.createPetHistory(userId, petId, {
+        event_date: String(rawDate).trim(),
+        title: String(title).trim(),
+        category,
+        description: rawDescription ? String(rawDescription).trim() : null,
+        hospital_name: hospital_name ? String(hospital_name).trim() : null,
+        weight_kg,
+        journey_id,
+        post_ids
+    });
+};
+
+export const updatePetHistory = async (userId, petId, historyId, data) => {
+    const rawDate = data?.event_date !== undefined ? data.event_date : data?.date;
+    const rawDescription = data?.description !== undefined ? data.description : data?.notes;
+    const { title, category, hospital_name, weight_kg, journey_id, post_ids } = data || {};
+    
+    if (rawDate !== undefined && (!rawDate || !String(rawDate).trim())) {
+        const error = new Error('EVENT_DATE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+
+    if (title !== undefined && (!title || !String(title).trim())) {
+        const error = new Error('TITLE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+
+    return await userModel.updatePetHistory(userId, petId, historyId, {
+        event_date: rawDate ? String(rawDate).trim() : undefined,
+        title: title ? String(title).trim() : undefined,
+        category,
+        description: rawDescription !== undefined ? (rawDescription ? String(rawDescription).trim() : null) : undefined,
+        hospital_name: hospital_name !== undefined ? (hospital_name ? String(hospital_name).trim() : null) : undefined,
+        weight_kg,
+        journey_id,
+        post_ids
+    });
+};
+
+export const deletePetHistory = async (userId, petId, historyId) => {
+    return await userModel.deletePetHistory(userId, petId, historyId);
+};
+
+export const getPetJourneys = async (userId, petId) => {
+    return await userModel.getPetJourneys(userId, petId);
+};
+
+export const createPetJourney = async (userId, petId, data) => {
+    const { title, description, start_date, end_date, is_ongoing, share_scope } = data || {};
+    if (!title || !String(title).trim()) {
+        const error = new Error('TITLE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    // share_scope는 'LINK_ONLY', 'PUBLIC', 'PRIVATE' 지원 (기본값: 'LINK_ONLY')
+    const validScope = ['LINK_ONLY', 'PUBLIC', 'PRIVATE'].includes(share_scope) ? share_scope : 'LINK_ONLY';
+    return await userModel.createPetJourney(userId, petId, {
+        title: String(title).trim(),
+        description: description ? String(description).trim() : null,
+        start_date: start_date ? String(start_date).trim() : null,
+        end_date: end_date ? String(end_date).trim() : null,
+        is_ongoing: is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1',
+        share_scope: validScope
+    });
+};
+
+export const updatePetJourney = async (userId, petId, journeyId, data) => {
+    const { title, description, start_date, end_date, is_ongoing, share_scope } = data || {};
+    if (title !== undefined && (!title || !String(title).trim())) {
+        const error = new Error('TITLE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    const validScope = share_scope !== undefined
+        ? (['LINK_ONLY', 'PUBLIC', 'PRIVATE'].includes(share_scope) ? share_scope : 'LINK_ONLY')
+        : undefined;
+
+    return await userModel.updatePetJourney(userId, petId, journeyId, {
+        title: title ? String(title).trim() : undefined,
+        description: description !== undefined ? (description ? String(description).trim() : null) : undefined,
+        start_date: start_date !== undefined ? (start_date ? String(start_date).trim() : null) : undefined,
+        end_date: end_date !== undefined ? (end_date ? String(end_date).trim() : null) : undefined,
+        is_ongoing: is_ongoing !== undefined ? (is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1') : undefined,
+        share_scope: validScope
+    });
+};
+
+export const deletePetJourney = async (userId, petId, journeyId) => {
+    return await userModel.deletePetJourney(userId, petId, journeyId);
+};
+
+export const getUserSimplePosts = async (userId) => {
+    return await userModel.getUserSimplePosts(userId);
+};
+
+export const getPublicJourneyBySlug = async (slug) => {
+    if (!slug || !String(slug).trim()) {
+        const error = new Error('SLUG_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    const data = await userModel.getPublicJourneyBySlug(String(slug).trim());
+    if (!data) {
+        const error = new Error('JOURNEY_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+    return data;
 };

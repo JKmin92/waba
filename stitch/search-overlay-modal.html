@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WABA 헤더 검색 오버레이 모달 (Stitch 시안)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            waba: {
+              purple: '#7B5CFA',
+              purpleLight: '#F3EFFF',
+              purpleHover: '#6845E8',
+              charcoal: '#1A1A1E',
+              muted: '#6E6E78',
+              faint: '#9E9EA8',
+              subtle: '#F4F4F6',
+              border: '#E8E8EE',
+              canvas: '#FAFAFC',
+            }
+          },
+          boxShadow: {
+            'spotlight': '0 25px 60px -15px rgba(26, 26, 30, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.8) inset',
+            'mobile-sheet': '0 -10px 40px -10px rgba(26, 26, 30, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E2E2E8; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #C8C8D0; }
+
+    /* Pulse animation for Live indicator */
+    @keyframes livePulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.6; }
+    }
+    .live-pulse { animation: livePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body class="bg-[#0B0C10] text-[#1A1A1E] min-h-screen p-6 antialiased selection:bg-[#7B5CFA]/20 selection:text-[#7B5CFA]">
+
+  <!-- Top Controller Toolbar -->
+  <header class="max-w-7xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 bg-[#14151B] border border-white/10 rounded-2xl px-6 py-4 shadow-xl">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-[#7B5CFA] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#7B5CFA]/30">
+        W
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-white text-base font-bold tracking-tight">WABA 스포트라이트 검색 모달 시안</h1>
+          <span class="text-[10px] font-bold bg-[#7B5CFA]/20 text-[#A78BFA] px-2 py-0.5 rounded-full border border-[#7B5CFA]/30">Stitch v1.0</span>
+        </div>
+        <p class="text-xs text-white/50">헤더 돋보기 클릭 시 스포트라이트 오버레이 인터랙션 (데스크톱 & 모바일 듀얼 뷰)</p>
+      </div>
+    </div>
+
+    <!-- View Mode Switcher -->
+    <div class="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10">
+      <button onclick="switchView('dual')" id="btn-dual" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#7B5CFA] text-white shadow-sm">
+        전체 비교 보기 (Dual View)
+      </button>
+      <button onclick="switchView('desktop')" id="btn-desktop" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5">
+        🖥️ 데스크톱 중심 (Desktop)
+      </button>
+      <button onclick="switchView('mobile')" id="btn-mobile" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5">
+        📱 모바일 중심 (Mobile)
+      </button>
+    </div>
+  </header>
+
+  <!-- Showcase Canvas Wrapper -->
+  <main class="max-w-7xl mx-auto">
+    <div id="container-grid" class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+      
+      <!-- ========================================== -->
+      <!-- 1. 데스크톱 스포트라이트 모달 (Desktop View) -->
+      <!-- ========================================== -->
+      <section id="col-desktop" class="xl:col-span-8 flex flex-col gap-4">
+        <div class="flex items-center justify-between text-xs font-semibold text-white/60 px-2">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            데스크톱 뷰포트 (1440px 해상도 기준 모달 플로팅)
+          </span>
+          <span class="font-mono text-white/40">Width: 680px Spotlight</span>
+        </div>
+
+        <!-- Simulated Desktop Screen Container -->
+        <div class="relative w-full h-[760px] rounded-3xl overflow-hidden border border-white/10 bg-[#FAFAFC] shadow-2xl flex flex-col">
+          
+          <!-- Simulated Background (WABA Main Header & Content) -->
+          <div class="absolute inset-0 z-0 pointer-events-none filter blur-[6px] opacity-40 scale-[0.99] transition-all">
+            <!-- Simulated Header -->
+            <div class="max-w-5xl mx-auto mt-6 px-6 py-4 bg-white/80 rounded-full border border-slate-200/80 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="font-black text-xl text-slate-900">WABA</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#7B5CFA]"></span>
+                <span class="text-xs text-slate-400 font-semibold">by WABAMI</span>
+              </div>
+              <div class="flex gap-6 text-sm font-semibold text-slate-600">
+                <span class="text-[#7B5CFA]">홈</span>
+                <span>커뮤니티</span>
+                <span>스냅·룩북</span>
+                <span>스토어</span>
+              </div>
+              <div class="flex gap-2">
+                <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">🔍</div>
+                <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">🛍️</div>
+              </div>
+            </div>
+            
+            <!-- Simulated Feed Content Cards -->
+            <div class="max-w-5xl mx-auto mt-8 px-6 grid grid-cols-3 gap-6">
+              <div class="h-64 rounded-3xl bg-slate-200 border border-slate-300"></div>
+              <div class="h-64 rounded-3xl bg-slate-200 border border-slate-300"></div>
+              <div class="h-64 rounded-3xl bg-slate-200 border border-slate-300"></div>
+            </div>
+          </div>
+
+          <!-- Spotlight Dim Backdrop Overlay -->
+          <div class="absolute inset-0 z-10 bg-slate-950/45 backdrop-blur-[10px] transition-all flex items-start justify-center pt-16 px-4">
+            
+            <!-- SPOTLIGHT MODAL CARD -->
+            <div class="relative w-full max-w-[680px] bg-white/95 backdrop-blur-2xl rounded-3xl shadow-spotlight border border-white/90 overflow-hidden transform transition-all duration-300 hover:scale-[1.002]">
+              
+              <!-- 1. Search Bar Input Area -->
+              <div class="relative px-6 py-5 border-b border-[#F0F0F4] flex items-center gap-3.5">
+                <!-- Search Icon -->
+                <div class="text-[#7B5CFA] shrink-0">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"></path>
+                  </svg>
+                </div>
+
+                <!-- Input -->
+                <input 
+                  type="text" 
+                  id="desktop-search-input"
+                  placeholder="반려동물 용품, 인테리어 꿀팁, 공간을 검색해보세요"
+                  value=""
+                  class="w-full bg-transparent text-[#1A1A1E] placeholder:text-[#9E9EA8] text-[16px] font-medium tracking-tight outline-none"
+                  autocomplete="off"
+                />
+
+                <!-- Right Action Buttons: Clear & ESC Badge -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <button 
+                    onclick="clearDesktopInput()"
+                    id="desktop-clear-btn"
+                    title="입력 내용 지우기"
+                    class="w-6 h-6 rounded-full bg-[#F4F4F6] hover:bg-[#E8E8EE] text-[#6E6E78] flex items-center justify-center text-xs transition-colors"
+                  >
+                    ✕
+                  </button>
+                  <div class="flex items-center gap-1 bg-[#F4F4F6] text-[#6E6E78] px-2 py-1 rounded-md text-[11px] font-mono font-semibold border border-[#E8E8EE]">
+                    <span>ESC</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Pet Quick Filter Row -->
+              <div class="px-6 py-3.5 bg-[#FAFAFC] border-b border-[#F0F0F4] flex items-center justify-between">
+                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+                  <span class="text-xs font-bold text-[#6E6E78] mr-1 shrink-0">종별 퀵 필터</span>
+                  <button onclick="setPetFilter(this, 'all')" class="pet-filter-btn active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#7B5CFA] text-white shadow-sm transition-all hover:opacity-95">
+                    전체
+                  </button>
+                  <button onclick="setPetFilter(this, 'dog')" class="pet-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6] transition-all flex items-center gap-1">
+                    <span>강아지</span> <span>🐶</span>
+                  </button>
+                  <button onclick="setPetFilter(this, 'cat')" class="pet-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6] transition-all flex items-center gap-1">
+                    <span>고양이</span> <span>🐱</span>
+                  </button>
+                  <button onclick="setPetFilter(this, 'etc')" class="pet-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6] transition-all flex items-center gap-1">
+                    <span>소동물·기타</span> <span>🦎</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 3. Modal Body: Recent & Trending Sections -->
+              <div class="p-6 space-y-6 max-h-[460px] overflow-y-auto">
+                
+                <!-- Section A: Recent Searches -->
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-[#1A1A1E] tracking-tight">최근 검색어</span>
+                      <span class="text-[11px] font-semibold text-[#7B5CFA] bg-[#F3EFFF] px-2 py-0.5 rounded-full">4개</span>
+                    </div>
+                    <button onclick="clearRecentSearches()" class="text-xs font-semibold text-[#9E9EA8] hover:text-[#6E6E78] transition-colors">
+                      전체 삭제
+                    </button>
+                  </div>
+
+                  <!-- Chips Grid -->
+                  <div id="recent-chips-container" class="flex flex-wrap gap-2">
+                    <div class="recent-chip inline-flex items-center gap-1.5 bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] text-xs font-semibold px-3.5 py-2 rounded-full transition-all group cursor-pointer" onclick="fillSearch('원목 캣타워')">
+                      <span>원목 캣타워</span>
+                      <button onclick="removeChip(event, this)" class="text-[#9E9EA8] hover:text-[#1A1A1E] text-xs transition-colors ml-0.5">✕</button>
+                    </div>
+
+                    <div class="recent-chip inline-flex items-center gap-1.5 bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] text-xs font-semibold px-3.5 py-2 rounded-full transition-all group cursor-pointer" onclick="fillSearch('골든리트리버')">
+                      <span>골든리트리버</span>
+                      <button onclick="removeChip(event, this)" class="text-[#9E9EA8] hover:text-[#1A1A1E] text-xs transition-colors ml-0.5">✕</button>
+                    </div>
+
+                    <div class="recent-chip inline-flex items-center gap-1.5 bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] text-xs font-semibold px-3.5 py-2 rounded-full transition-all group cursor-pointer" onclick="fillSearch('방석')">
+                      <span>방석</span>
+                      <button onclick="removeChip(event, this)" class="text-[#9E9EA8] hover:text-[#1A1A1E] text-xs transition-colors ml-0.5">✕</button>
+                    </div>
+
+                    <div class="recent-chip inline-flex items-center gap-1.5 bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] text-xs font-semibold px-3.5 py-2 rounded-full transition-all group cursor-pointer" onclick="fillSearch('슬개골 매트')">
+                      <span>슬개골 매트</span>
+                      <button onclick="removeChip(event, this)" class="text-[#9E9EA8] hover:text-[#1A1A1E] text-xs transition-colors ml-0.5">✕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <hr class="border-[#F0F0F4]" />
+
+                <!-- Section B: Trending Real-time Keywords (1~5 Ranking) -->
+                <div>
+                  <div class="flex items-center justify-between mb-3.5">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-[#1A1A1E] tracking-tight">실시간 인기 검색어</span>
+                      <div class="flex items-center gap-1 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-100">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 live-pulse"></span>
+                        LIVE
+                      </div>
+                    </div>
+                    <span class="text-[11px] font-medium text-[#9E9EA8]">11:00 갱신</span>
+                  </div>
+
+                  <!-- Ranking 2-Column Grid -->
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <!-- Rank 1 -->
+                    <div onclick="fillSearch('감성 원목 식기')" class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-[#F4F4F6] transition-colors cursor-pointer group">
+                      <div class="flex items-center gap-3">
+                        <span class="w-5 h-5 rounded-lg bg-[#7B5CFA] text-white font-extrabold text-[11px] flex items-center justify-center shadow-xs">1</span>
+                        <span class="text-xs font-bold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors">감성 원목 식기</span>
+                      </div>
+                      <span class="text-[11px] font-bold text-red-500 flex items-center gap-0.5">▲ 2</span>
+                    </div>
+
+                    <!-- Rank 2 -->
+                    <div onclick="fillSearch('강아지 계단 논슬립')" class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-[#F4F4F6] transition-colors cursor-pointer group">
+                      <div class="flex items-center gap-3">
+                        <span class="w-5 h-5 rounded-lg bg-[#7B5CFA]/15 text-[#7B5CFA] font-extrabold text-[11px] flex items-center justify-center">2</span>
+                        <span class="text-xs font-bold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors">강아지 계단 논슬립</span>
+                      </div>
+                      <span class="text-[11px] font-bold text-red-500 flex items-center gap-0.5">▲ 1</span>
+                    </div>
+
+                    <!-- Rank 3 -->
+                    <div onclick="fillSearch('고양이 숨숨집 터널')" class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-[#F4F4F6] transition-colors cursor-pointer group">
+                      <div class="flex items-center gap-3">
+                        <span class="w-5 h-5 rounded-lg bg-[#7B5CFA]/15 text-[#7B5CFA] font-extrabold text-[11px] flex items-center justify-center">3</span>
+                        <span class="text-xs font-bold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors">고양이 숨숨집 터널</span>
+                      </div>
+                      <span class="text-[10px] font-extrabold bg-[#F3EFFF] text-[#7B5CFA] px-1.5 py-0.5 rounded">NEW</span>
+                    </div>
+
+                    <!-- Rank 4 -->
+                    <div onclick="fillSearch('노견 맞춤 영양제')" class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-[#F4F4F6] transition-colors cursor-pointer group">
+                      <div class="flex items-center gap-3">
+                        <span class="w-5 h-5 rounded-lg bg-[#F4F4F6] text-[#6E6E78] font-bold text-[11px] flex items-center justify-center">4</span>
+                        <span class="text-xs font-semibold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors">노견 맞춤 영양제</span>
+                      </div>
+                      <span class="text-[11px] font-bold text-[#9E9EA8]">—</span>
+                    </div>
+
+                    <!-- Rank 5 -->
+                    <div onclick="fillSearch('친환경 배변패드')" class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-[#F4F4F6] transition-colors cursor-pointer group">
+                      <div class="flex items-center gap-3">
+                        <span class="w-5 h-5 rounded-lg bg-[#F4F4F6] text-[#6E6E78] font-bold text-[11px] flex items-center justify-center">5</span>
+                        <span class="text-xs font-semibold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors">친환경 배변패드</span>
+                      </div>
+                      <span class="text-[11px] font-bold text-red-500 flex items-center gap-0.5">▲ 3</span>
+                    </div>
+
+                    <!-- Rank 6 -->
+                    <div onclick="fillSearch('인테리어 캣폴')" class="flex items-center justify-between p-2.5 rounded-2xl hover:bg-[#F4F4F6] transition-colors cursor-pointer group">
+                      <div class="flex items-center gap-3">
+                        <span class="w-5 h-5 rounded-lg bg-[#F4F4F6] text-[#6E6E78] font-bold text-[11px] flex items-center justify-center">6</span>
+                        <span class="text-xs font-semibold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors">인테리어 캣폴</span>
+                      </div>
+                      <span class="text-[10px] font-extrabold bg-[#F3EFFF] text-[#7B5CFA] px-1.5 py-0.5 rounded">NEW</span>
+                    </div>
+                  </div>
+                </div>
+
+                <hr class="border-[#F0F0F4]" />
+
+                <!-- Section C: Recommended Space Tags -->
+                <div>
+                  <div class="text-[11px] font-bold text-[#9E9EA8] uppercase tracking-wider mb-2">추천 공간 컬렉션</div>
+                  <div class="flex flex-wrap gap-2 text-xs">
+                    <span onclick="fillSearch('#성수동냥이집')" class="cursor-pointer text-[#7B5CFA] bg-[#F3EFFF] hover:bg-[#ECE5FF] px-3 py-1.5 rounded-full font-semibold transition-all">#성수동냥이집</span>
+                    <span onclick="fillSearch('#소형견거실인테리어')" class="cursor-pointer text-[#6E6E78] bg-[#F4F4F6] hover:bg-[#EAEAEF] px-3 py-1.5 rounded-full font-semibold transition-all">#소형견거실인테리어</span>
+                    <span onclick="fillSearch('#합사하우스_꿀팁')" class="cursor-pointer text-[#6E6E78] bg-[#F4F4F6] hover:bg-[#EAEAEF] px-3 py-1.5 rounded-full font-semibold transition-all">#합사하우스_꿀팁</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- 4. Modal Footer: Navigation Helper Guide -->
+              <div class="px-6 py-3.5 bg-[#F9F9FB] border-t border-[#F0F0F4] flex items-center justify-between text-xs text-[#9E9EA8]">
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-1.5">
+                    <kbd class="px-1.5 py-0.5 bg-white border border-[#E2E2E8] rounded shadow-xs text-[10px] font-mono text-[#6E6E78]">↑</kbd>
+                    <kbd class="px-1.5 py-0.5 bg-white border border-[#E2E2E8] rounded shadow-xs text-[10px] font-mono text-[#6E6E78]">↓</kbd>
+                    <span>이동</span>
+                  </span>
+                  <span class="flex items-center gap-1.5">
+                    <kbd class="px-1.5 py-0.5 bg-white border border-[#E2E2E8] rounded shadow-xs text-[10px] font-mono text-[#6E6E78]">↵</kbd>
+                    <span>선택</span>
+                  </span>
+                  <span class="flex items-center gap-1.5">
+                    <kbd class="px-1.5 py-0.5 bg-white border border-[#E2E2E8] rounded shadow-xs text-[10px] font-mono text-[#6E6E78]">ESC</kbd>
+                    <span>닫기</span>
+                  </span>
+                </div>
+                <div class="text-[11px] font-semibold text-[#7B5CFA] flex items-center gap-1">
+                  <span>WABA Spotlight Search</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 2. 모바일 반응형 시안 (Mobile Viewport)    -->
+      <!-- ========================================== -->
+      <section id="col-mobile" class="xl:col-span-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between text-xs font-semibold text-white/60 px-2">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-violet-400"></span>
+            모바일 뷰포트 (iPhone 16 / 393px 모달 시안)
+          </span>
+          <span class="font-mono text-white/40">Full Sheet UI</span>
+        </div>
+
+        <!-- Phone Shell Container -->
+        <div class="relative w-full max-w-[393px] mx-auto h-[760px] rounded-[44px] overflow-hidden border-[8px] border-[#22242D] bg-[#FAFAFC] shadow-2xl flex flex-col">
+          
+          <!-- Dynamic Island / Speaker notch -->
+          <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-30 flex items-center justify-center">
+            <div class="w-3 h-3 rounded-full bg-[#1A1A1E] ml-auto mr-2"></div>
+          </div>
+
+          <!-- Mobile Screen Backdrop Blur (Top Search Mode) -->
+          <div class="relative flex-1 bg-white flex flex-col pt-10 z-20">
+            
+            <!-- Mobile Header Bar -->
+            <div class="px-4 py-3 flex items-center gap-2 border-b border-[#F0F0F4]">
+              <!-- Search Bar Shell -->
+              <div class="flex-1 flex items-center gap-2 bg-[#F4F4F6] rounded-2xl px-3 py-2.5 border border-[#E8E8EE]">
+                <svg class="w-4 h-4 text-[#7B5CFA] shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <input 
+                  type="text" 
+                  placeholder="반려동물 용품, 공간 검색"
+                  class="w-full bg-transparent text-xs text-[#1A1A1E] placeholder:text-[#9E9EA8] font-medium outline-none"
+                />
+                <button class="text-[#9E9EA8] text-xs">✕</button>
+              </div>
+              <button class="text-xs font-bold text-[#1A1A1E] px-2 py-1">취소</button>
+            </div>
+
+            <!-- Mobile Quick Pet Category Pills -->
+            <div class="px-4 py-3 bg-[#FAFAFC] border-b border-[#F0F0F4] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <span class="px-3 py-1 rounded-full text-[11px] font-bold bg-[#7B5CFA] text-white">전체</span>
+              <span class="px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] whitespace-nowrap">강아지 🐶</span>
+              <span class="px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] whitespace-nowrap">고양이 🐱</span>
+              <span class="px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] whitespace-nowrap">소동물 🦎</span>
+            </div>
+
+            <!-- Mobile Body Scroll -->
+            <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+              
+              <!-- Mobile Recent Searches -->
+              <div>
+                <div class="flex items-center justify-between mb-2.5">
+                  <span class="text-xs font-bold text-[#1A1A1E]">최근 검색어</span>
+                  <span class="text-[11px] font-medium text-[#9E9EA8]">전체 삭제</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="inline-flex items-center gap-1 bg-[#F4F4F6] text-[#1A1A1E] text-[11px] font-medium px-2.5 py-1.5 rounded-full">
+                    원목 캣타워 <span class="text-[#9E9EA8]">✕</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-[#F4F4F6] text-[#1A1A1E] text-[11px] font-medium px-2.5 py-1.5 rounded-full">
+                    골든리트리버 <span class="text-[#9E9EA8]">✕</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-[#F4F4F6] text-[#1A1A1E] text-[11px] font-medium px-2.5 py-1.5 rounded-full">
+                    슬개골 매트 <span class="text-[#9E9EA8]">✕</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Mobile Trending List (1~5) -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-[#1A1A1E]">인기 검색어 순위</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 live-pulse"></span>
+                  </div>
+                  <span class="text-[10px] text-[#9E9EA8]">실시간</span>
+                </div>
+
+                <div class="divide-y divide-[#F4F4F6]">
+                  <div class="py-2.5 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <span class="w-4 font-black text-xs text-[#7B5CFA]">1</span>
+                      <span class="text-xs font-bold text-[#1A1A1E]">감성 원목 식기</span>
+                    </div>
+                    <span class="text-[10px] text-red-500 font-bold">▲ 2</span>
+                  </div>
+                  <div class="py-2.5 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <span class="w-4 font-black text-xs text-[#7B5CFA]">2</span>
+                      <span class="text-xs font-bold text-[#1A1A1E]">강아지 계단 논슬립</span>
+                    </div>
+                    <span class="text-[10px] text-red-500 font-bold">▲ 1</span>
+                  </div>
+                  <div class="py-2.5 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <span class="w-4 font-black text-xs text-[#7B5CFA]">3</span>
+                      <span class="text-xs font-bold text-[#1A1A1E]">고양이 숨숨집 터널</span>
+                    </div>
+                    <span class="text-[9px] bg-[#F3EFFF] text-[#7B5CFA] font-black px-1 rounded">NEW</span>
+                  </div>
+                  <div class="py-2.5 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <span class="w-4 font-bold text-xs text-[#9E9EA8]">4</span>
+                      <span class="text-xs font-semibold text-[#1A1A1E]">노견 맞춤 영양제</span>
+                    </div>
+                    <span class="text-[10px] text-[#9E9EA8]">—</span>
+                  </div>
+                  <div class="py-2.5 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <span class="w-4 font-bold text-xs text-[#9E9EA8]">5</span>
+                      <span class="text-xs font-semibold text-[#1A1A1E]">친환경 배변패드</span>
+                    </div>
+                    <span class="text-[10px] text-red-500 font-bold">▲ 3</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mobile Recommendation Banner -->
+              <div class="p-3.5 rounded-2xl bg-gradient-to-r from-[#7B5CFA]/10 to-[#F3EFFF] border border-[#7B5CFA]/20 flex items-center justify-between">
+                <div>
+                  <div class="text-[11px] font-bold text-[#7B5CFA]">와바미 맞춤 룩북</div>
+                  <div class="text-[12px] font-bold text-[#1A1A1E] mt-0.5">내 아이 체형에 딱 맞는 방석 찾기</div>
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#7B5CFA] text-white flex items-center justify-center text-xs">
+                  →
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Home indicator bar -->
+            <div class="py-2 flex justify-center">
+              <div class="w-32 h-1 bg-slate-300 rounded-full"></div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Interactive JavaScript logic -->
+  <script>
+    function clearDesktopInput() {
+      const input = document.getElementById('desktop-search-input');
+      input.value = '';
+      input.focus();
+    }
+
+    function clearRecentSearches() {
+      const container = document.getElementById('recent-chips-container');
+      container.innerHTML = '<span class="text-xs text-[#9E9EA8] py-1">최근 검색어 내역이 없습니다.</span>';
+    }
+
+    function removeChip(event, btn) {
+      event.stopPropagation();
+      const chip = btn.closest('.recent-chip');
+      if (chip) chip.remove();
+    }
+
+    function fillSearch(keyword) {
+      const input = document.getElementById('desktop-search-input');
+      input.value = keyword;
+      input.focus();
+    }
+
+    function setPetFilter(btn, type) {
+      document.querySelectorAll('.pet-filter-btn').forEach(b => {
+        b.className = 'pet-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6] transition-all flex items-center gap-1';
+      });
+      btn.className = 'pet-filter-btn active px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#7B5CFA] text-white shadow-sm transition-all hover:opacity-95 flex items-center gap-1';
+    }
+
+    function switchView(mode) {
+      const colDesktop = document.getElementById('col-desktop');
+      const colMobile = document.getElementById('col-mobile');
+      const btnDual = document.getElementById('btn-dual');
+      const btnDesktop = document.getElementById('btn-desktop');
+      const btnMobile = document.getElementById('btn-mobile');
+
+      const activeClass = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#7B5CFA] text-white shadow-sm';
+      const inactiveClass = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5';
+
+      btnDual.className = inactiveClass;
+      btnDesktop.className = inactiveClass;
+      btnMobile.className = inactiveClass;
+
+      if (mode === 'dual') {
+        colDesktop.className = 'xl:col-span-8 flex flex-col gap-4';
+        colMobile.className = 'xl:col-span-4 flex flex-col gap-4';
+        colDesktop.style.display = 'flex';
+        colMobile.style.display = 'flex';
+        btnDual.className = activeClass;
+      } else if (mode === 'desktop') {
+        colDesktop.className = 'col-span-12 flex flex-col gap-4 max-w-4xl mx-auto w-full';
+        colDesktop.style.display = 'flex';
+        colMobile.style.display = 'none';
+        btnDesktop.className = activeClass;
+      } else if (mode === 'mobile') {
+        colDesktop.style.display = 'none';
+        colMobile.className = 'col-span-12 flex flex-col gap-4 max-w-md mx-auto w-full';
+        colMobile.style.display = 'flex';
+        btnMobile.className = activeClass;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'desktop' || hash === 'mobile' || hash === 'dual') {
+        switchView(hash);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -59,7 +59,7 @@ export const getMainPostList = async () => {
                 WHERE pi.post_id = p.id
             ), JSON_ARRAY()) AS post_images,
 
-            -- 4) item.post_pets : post_pets + pets 테이블 연결된 반려동물 배열
+            -- 4) item.post_pets : post_pets + pets 테이블 연결된 반려동물 배열 (이미지 핀 포함)
             COALESCE((
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
@@ -72,9 +72,18 @@ export const getMainPostList = async () => {
                         'age_months', pp.age_months_at_post
                     )
                 )
-                FROM post_pets pp
-                JOIN pets pt ON pp.pet_id = pt.id
-                WHERE pp.post_id = p.id
+                FROM pets pt
+                LEFT JOIN post_pets pp ON pp.post_id = p.id AND pp.pet_id = pt.id
+                WHERE pt.id IN (
+                    SELECT pet_id FROM post_pets WHERE post_id = p.id
+                    UNION
+                    SELECT pin.pet_id 
+                    FROM product_pins pin
+                    JOIN post_images pi_pin ON pin.post_image_id = pi_pin.id
+                    WHERE pi_pin.post_id = p.id 
+                      AND pin.pin_type = 'PET' 
+                      AND pin.pet_id IS NOT NULL
+                )
             ), JSON_ARRAY()) AS post_pets,
 
             -- 5) item.product_pins : 사진 위 통합 핀(+) 배열 (자사몰 + 외부몰 + 펫 태그 자동 통합)
@@ -286,7 +295,7 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                 LEFT JOIN pets pt_pin ON pin.pet_id = pt_pin.id
                 WHERE pi2.post_id = p.id
             ), JSON_ARRAY()) AS product_pins,
-            -- 5) post_pets : 하단 '이 게시글에 태그된 반려동물' 요약용 펫 정보 (post_pets + pets)
+            -- 5) post_pets : 하단 '이 게시글에 태그된 반려동물' 요약용 펫 정보 (post_pets + pets + 이미지 핀 태그 반려동물 통합)
             COALESCE((
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
@@ -300,9 +309,18 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                         'avatar_url', pt.current_avatar_url
                     )
                 )
-                FROM post_pets pp
-                JOIN pets pt ON pp.pet_id = pt.id
-                WHERE pp.post_id = p.id
+                FROM pets pt
+                LEFT JOIN post_pets pp ON pp.post_id = p.id AND pp.pet_id = pt.id
+                WHERE pt.id IN (
+                    SELECT pet_id FROM post_pets WHERE post_id = p.id
+                    UNION
+                    SELECT pin.pet_id 
+                    FROM product_pins pin
+                    JOIN post_images pi_pin ON pin.post_image_id = pi_pin.id
+                    WHERE pi_pin.post_id = p.id 
+                      AND pin.pin_type = 'PET' 
+                      AND pin.pet_id IS NOT NULL
+                )
             ), JSON_ARRAY()) AS post_pets,
             -- 6) tags : 해시태그 목록 (post_tags)
             COALESCE((
@@ -573,6 +591,10 @@ export const getBoardList = async () => {
 }
 
 export const getPostList = async (boardId) => {
+    const isAll = !boardId || String(boardId).toUpperCase() === 'ALL';
+    const whereClause = isAll ? `WHERE p.status = 'PUBLISHED'` : `WHERE p.board_id = UPPER(?) AND p.status = 'PUBLISHED'`;
+    const params = isAll ? [] : [boardId];
+
     const sql = `
         SELECT 
             JSON_OBJECT(
@@ -634,9 +656,16 @@ export const getPostList = async (boardId) => {
                         'age_months', pp.age_months_at_post
                     )
                 )
-                FROM post_pets pp
-                JOIN pets pt ON pp.pet_id = pt.id
-                WHERE pp.post_id = p.id
+                FROM pets pt
+                LEFT JOIN post_pets pp ON pp.post_id = p.id AND pp.pet_id = pt.id
+                WHERE pt.id IN (
+                    SELECT pet_id FROM post_pets WHERE post_id = p.id
+                    UNION
+                    SELECT pin.pet_id 
+                    FROM product_pins pin 
+                    JOIN post_images pi_pin ON pin.post_image_id = pi_pin.id 
+                    WHERE pi_pin.post_id = p.id AND pin.pin_type = 'PET' AND pin.pet_id IS NOT NULL
+                )
             ), JSON_ARRAY()) AS post_pets,
             COALESCE((
                 SELECT JSON_ARRAYAGG(
@@ -695,10 +724,10 @@ export const getPostList = async (boardId) => {
         FROM posts p
         JOIN users u ON p.user_id = u.id
         JOIN boards b ON p.board_id = b.id
-        WHERE p.board_id = UPPER(?) AND p.status = 'PUBLISHED'
+        ${whereClause}
         ORDER BY p.created_at DESC
     `;
-    const [rows] = await db.query(sql, [boardId]);
+    const [rows] = await db.query(sql, params);
     return rows;
 };
 
@@ -762,9 +791,18 @@ const getPostListBaseQuery = (whereClause, orderBy = 'p.created_at DESC') => `
                     'age_months', pp.age_months_at_post
                 )
             )
-            FROM post_pets pp
-            JOIN pets pt ON pp.pet_id = pt.id
-            WHERE pp.post_id = p.id
+            FROM pets pt
+            LEFT JOIN post_pets pp ON pp.post_id = p.id AND pp.pet_id = pt.id
+            WHERE pt.id IN (
+                SELECT pet_id FROM post_pets WHERE post_id = p.id
+                UNION
+                SELECT pin.pet_id 
+                FROM product_pins pin
+                JOIN post_images pi_pin ON pin.post_image_id = pi_pin.id
+                WHERE pi_pin.post_id = p.id 
+                  AND pin.pin_type = 'PET' 
+                  AND pin.pet_id IS NOT NULL
+            )
         ), JSON_ARRAY()) AS post_pets,
         COALESCE((
             SELECT JSON_ARRAYAGG(
@@ -951,6 +989,14 @@ export const createOrUpdatePost = async (userId, {
                             pin.pin_option_memo || null
                         ]
                     );
+
+                    // 핀 타입이 PET이고 pet_id가 있는 경우 post_pets에도 함께 자동 동기화
+                    if (pin.pin_type === 'PET' && pin.pet_id) {
+                        await db.query(
+                            `INSERT IGNORE INTO post_pets (post_id, pet_id) VALUES (?, ?)`,
+                            [postId, pin.pet_id]
+                        );
+                    }
                 }
             }
         }
@@ -1001,6 +1047,7 @@ export const createOrUpdatePost = async (userId, {
 };
 
 export const createPost = createOrUpdatePost;
+export const getPostDetailById = getPostDetail;
 
 export const getUserDraft = async (userId) => {
     const [rows] = await db.query(
@@ -1077,10 +1124,17 @@ const buildEditablePost = async (draft) => {
         [draft.id]
     );
 
-    // Fetch selected pets
+    // Fetch selected pets (동반 반려동물 + 이미지 핀 등록 반려동물 통합)
     const [pets] = await db.query(
-        `SELECT pet_id FROM post_pets WHERE post_id = ?`,
-        [draft.id]
+        `SELECT DISTINCT pet_id FROM (
+            SELECT pet_id FROM post_pets WHERE post_id = ?
+            UNION
+            SELECT pp.pet_id 
+            FROM product_pins pp
+            JOIN post_images pi ON pp.post_image_id = pi.id
+            WHERE pi.post_id = ? AND pp.pin_type = 'PET' AND pp.pet_id IS NOT NULL
+        ) all_pets`,
+        [draft.id, draft.id]
     );
 
     // Fetch tags

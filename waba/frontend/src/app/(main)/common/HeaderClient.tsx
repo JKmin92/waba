@@ -1,8 +1,6 @@
 "use client"
 
 import { toaster } from "@/components/ui/toaster";
-import { Board } from "@/interface";
-import axiosInstance from "@/utils/api";
 import {
     Badge,
     Box,
@@ -12,36 +10,29 @@ import {
     Flex,
     HStack,
     IconButton,
-    Input,
     Link,
     Portal,
+    Separator,
     Text,
     useDisclosure,
     VStack,
 } from "@chakra-ui/react"
-import { Plus, Search, ShoppingBag } from "lucide-react"
+import { Plus, Search, ShoppingBag, Menu as MenuIcon, Home, MessageSquare, ShoppingCart, User as UserIconLucide } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation";
-import LoginClient from "../member/login/LoginClient";
+import { useRouter, usePathname } from "next/navigation";
 import MemberModal from "../member/MemberModal";
+import SearchModal from "./SearchModal";
 import { isAuthenticated, getUserInfo } from "@/utils/authUtils";
 import UserIcon from "./UserIcon";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
 export default function HeaderClient() {
     const router = useRouter();
-    const [data, setData] = useState<any>(null);
-    const { open, onOpen, onClose, setOpen } = useDisclosure();
-    const [uploadSourceType, setUploadSourceType] = useState<'OFFICIAL_AI' | 'USER_COMMUNITY'>('OFFICIAL_AI');
-    const [externalUrl, setExternalUrl] = useState('https://smartstore.naver.com/petliving/products/99281');
-    const [parsedProduct, setParsedProduct] = useState<any>(null);
-    const [newSnapTitle, setNewSnapTitle] = useState('');
-    const [isParsing, setIsParsing] = useState(false);
-    const [boardList, setBoardList] = useState<Board[]>([]);
+    const pathname = usePathname();
 
     const [isLogin, setIsLogin] = useState(false);
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         // 첫 마운트 시 로그인 여부 및 회원 정보 확인
@@ -58,280 +49,448 @@ export default function HeaderClient() {
         return () => window.removeEventListener('auth-change', handleAuthChange);
     }, []);
 
-    useEffect(() => {
-        getBoardList();
-    }, []);
+    // GNB 활성 상태 판별
+    const isHomeActive = pathname === '/';
+    const isCommunityActive = pathname.startsWith('/board') || pathname.startsWith('/post');
+    const isStoreActive = pathname.startsWith('/shop') || pathname.startsWith('/product');
 
-    const getBoardList = async () => {
-        try {
-            const res = await axiosInstance.get(`/post/boards`);
-            setBoardList(res.data);
-        } catch (error) {
-            console.error('Error fetching board list:', error);
-        }
-    };
-
-    const handleCreateLookbook = async () => {
-        try {
-            const res = await fetch(`${API_BASE}/api/lookbook`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sourceType: uploadSourceType,
-                    petBadge: '🐱 랙돌 4.8kg · 🐰 롭이어 2.1kg 합사',
-                    petTypes: ['cat', 'rabbit'],
-                    spaceCategory: '거실',
-                    authorHandle: uploadSourceType === 'OFFICIAL_AI' ? 'WABA OFFICIAL LOOKBOOK' : '@waba_member · 성수동 하우스',
-                    title: newSnapTitle || '감각적인 합사 거실 패브릭 소파 & 매트 스타일링',
-                    taggedProduct: parsedProduct?.productName || '와바미 헤어볼 케어 스틱 (28,900원)',
-                }),
-            });
-            const created = await res.json();
-            if (created.success && data) {
-                setData({
-                    ...data,
-                    curatedSpaces: [created.snap, ...data.curatedSpaces],
-                });
-                toaster.create({
-                    title: uploadSourceType === 'OFFICIAL_AI' ? '공식 AI 룩북이 등록되었습니다.' : '커뮤니티 스냅이 등록되었습니다.',
-                    type: 'success',
-                });
-                onClose();
-                setNewSnapTitle('');
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const handleParseUrl = async () => {
-        setIsParsing(true);
-        try {
-            const res = await axiosInstance.post('/post/parse-url', { url: externalUrl });
-            const result = res.data;
-            setParsedProduct(result);
-            toaster.create({
-                title: '상품 정보 추출 완료',
-                description: result.product_name || result.productName,
-                type: 'success',
-            });
-        } catch (e) {
-            toaster.create({
-                title: '추출 실패',
-                type: 'error',
-            });
-        } finally {
-            setIsParsing(false);
-        }
+    const handleStoreClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        // 아직 스토어 전용 페이지가 오픈 전인 경우 안내 토스트 후 상품 검색 뷰로 연결
+        toaster.create({
+            title: 'WABA 스토어(Shop) 준비 중입니다.',
+            description: '현재 룩북 및 검색 페이지에서 큐레이션 상품을 만나보실 수 있습니다.',
+            type: 'info',
+        });
+        router.push('/search?type=product');
     };
 
     return (
         <>
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* 1. 데스크톱 & 모바일 상단 Sticky 플로팅 헤더                   */}
+            {/* ───────────────────────────────────────────────────────────── */}
             <Box
                 as="header"
                 position="fixed"
-                top={4}
+                top={{ base: 2, md: 4 }}
                 left="50%"
                 transform="translateX(-50%)"
-                w="calc(100% - 2rem)"
+                w="calc(100% - 1.5rem)"
                 maxW="1280px"
                 zIndex={50}
-                bg="rgba(255, 255, 255, 0.85)"
+                bg="rgba(255, 255, 255, 0.92)"
                 backdropFilter="blur(20px)"
                 borderRadius="full"
                 border="1px solid"
                 borderColor="waba.border"
-                boxShadow="0 12px 36px -6px rgba(26, 28, 30, 0.06)"
-                px={6}
-                py={3}
+                boxShadow="0 12px 36px -6px rgba(26, 28, 30, 0.08), 0 0 0 1px rgba(232, 232, 238, 0.8)"
+                px={{ base: 4, md: 7 }}
+                py={{ base: 2.5, md: 3 }}
+                transition="all 0.2s"
             >
                 <Flex align="center" justify="space-between">
-                    <Link href="/" _hover={{ textDecoration: 'none' }}>
-                        <HStack gap={2}>
-                            <Text fontSize="22px" fontWeight="800" letterSpacing="-0.03em" color="waba.charcoal">WABA</Text>
-                            <Box w="6px" h="6px" borderRadius="full" bg="waba.purple" />
-                            <Text fontSize="11px" fontWeight="600" color="waba.faint" display={{ base: 'none', sm: 'inline' }}>by WABAMI</Text>
+                    {/* Left: Brand Logo (Clean WABA + Signature Purple Dot) */}
+                    <Link
+                        href="/"
+                        _hover={{ textDecoration: 'none' }}
+                        cursor="pointer"
+                    >
+                        <HStack gap={1.5} align="center">
+                            <Text
+                                fontSize={{ base: '20px', md: '24px' }}
+                                fontWeight="900"
+                                letterSpacing="-0.04em"
+                                color="waba.charcoal"
+                                _hover={{ color: 'waba.purple' }}
+                                transition="color 0.15s"
+                            >
+                                WABA
+                            </Text>
+                            <Box
+                                w={{ base: '6px', md: '7px' }}
+                                h={{ base: '6px', md: '7px' }}
+                                borderRadius="full"
+                                bg="waba.purple"
+                            />
                         </HStack>
                     </Link>
 
-                    <HStack gap={8} display={{ base: 'none', md: 'flex' }} fontSize="13px" fontWeight="600">
-                        <Link href="/" color="waba.purple" fontWeight="700">홈</Link>
-                        {boardList.map((board) => (
-                            <Link key={board.id} href={`/board/${board.id.toLowerCase()}`} color="waba.muted" _hover={{ color: 'waba.charcoal' }}>
-                                {board.name}
-                            </Link>
-                        ))}
+                    {/* Center: 3대 핵심 메인 GNB (홈 | 커뮤니티 | 스토어) */}
+                    <HStack
+                        as="nav"
+                        gap={8}
+                        display={{ base: 'none', md: 'flex' }}
+                        fontSize="14px"
+                        fontWeight="700"
+                    >
+                        {/* 1) 홈 */}
+                        <Box
+                            as="button"
+                            onClick={() => router.push('/')}
+                            position="relative"
+                            py={1}
+                            color={isHomeActive ? 'waba.purple' : 'waba.muted'}
+                            _hover={{ color: 'waba.charcoal' }}
+                            transition="color 0.15s"
+                            cursor="pointer"
+                        >
+                            <Text fontWeight={isHomeActive ? '800' : '600'}>홈</Text>
+                            {isHomeActive && (
+                                <Box
+                                    position="absolute"
+                                    bottom="-4px"
+                                    left={0}
+                                    right={0}
+                                    h="2px"
+                                    bg="waba.purple"
+                                    borderRadius="full"
+                                />
+                            )}
+                        </Box>
+
+                        {/* 2) 커뮤니티 */}
+                        <Box
+                            as="button"
+                            onClick={() => router.push('/board/all')}
+                            position="relative"
+                            py={1}
+                            color={isCommunityActive ? 'waba.purple' : 'waba.muted'}
+                            _hover={{ color: 'waba.charcoal' }}
+                            transition="color 0.15s"
+                            cursor="pointer"
+                        >
+                            <HStack gap={1.5}>
+                                <Text fontWeight={isCommunityActive ? '800' : '600'}>커뮤니티</Text>
+                            </HStack>
+                            {isCommunityActive && (
+                                <Box
+                                    position="absolute"
+                                    bottom="-4px"
+                                    left={0}
+                                    right={0}
+                                    h="2px"
+                                    bg="waba.purple"
+                                    borderRadius="full"
+                                />
+                            )}
+                        </Box>
+
+                        {/* 3) 스토어 (Shop) */}
+                        <Box
+                            as="button"
+                            onClick={handleStoreClick}
+                            position="relative"
+                            py={1}
+                            color={isStoreActive ? 'waba.purple' : 'waba.muted'}
+                            _hover={{ color: 'waba.charcoal' }}
+                            transition="color 0.15s"
+                            cursor="pointer"
+                        >
+                            <HStack gap={1.5}>
+                                <Text fontWeight={isStoreActive ? '800' : '600'}>스토어</Text>
+                            </HStack>
+                            {isStoreActive && (
+                                <Box
+                                    position="absolute"
+                                    bottom="-4px"
+                                    left={0}
+                                    right={0}
+                                    h="2px"
+                                    bg="waba.purple"
+                                    borderRadius="full"
+                                />
+                            )}
+                        </Box>
                     </HStack>
 
-                    <HStack gap={2.5}>
+                    {/* Right: 유틸리티 & 액션 버튼 */}
+                    <HStack gap={{ base: 1.5, md: 2.5 }}>
+                        {/* 검색 버튼 (스포트라이트 모달 오픈) */}
                         <IconButton
                             aria-label="검색"
                             borderRadius="full"
                             bg="waba.subtle"
                             color="waba.charcoal"
-                            size="md"
-                            _hover={{ bg: '#E8E8EC' }}
+                            size={{ base: 'sm', md: 'md' }}
+                            _hover={{ bg: '#E8E8EC', color: 'waba.purple' }}
+                            onClick={() => setIsSearchOpen(true)}
                         >
                             <Search size={18} />
                         </IconButton>
+
+                        {/* 장바구니 버튼 */}
                         <Box position="relative">
                             <IconButton
                                 aria-label="장바구니"
                                 borderRadius="full"
                                 bg="waba.subtle"
                                 color="waba.charcoal"
-                                size="md"
+                                size={{ base: 'sm', md: 'md' }}
                                 _hover={{ bg: '#E8E8EC' }}
+                                onClick={() => {
+                                    toaster.create({ title: '장바구니 보관함이 열립니다.', type: 'info' });
+                                }}
                             >
                                 <ShoppingBag size={18} />
                             </IconButton>
                             <Box
                                 position="absolute"
-                                top="9px"
-                                right="9px"
+                                top="8px"
+                                right="8px"
                                 w="6px"
                                 h="6px"
                                 borderRadius="full"
                                 bg="waba.purple"
+                                ring="2px"
+                                ringColor="white"
                             />
                         </Box>
 
-                        {isLogin ? (
-                            <>
+                        {/* 데스크톱 CTA 버튼: 공간·룩북 올리기 */}
+                        <Box display={{ base: 'none', md: 'block' }}>
+                            {isLogin ? (
                                 <Button
                                     onClick={() => router.push('/post/register')}
                                     bg="waba.charcoal"
                                     color="white"
                                     borderRadius="full"
-                                    px={5}
-                                    h="40px"
-                                    fontSize="13px"
+                                    px={4}
+                                    h="38px"
+                                    fontSize="12px"
+                                    fontWeight="700"
                                     _hover={{ bg: 'waba.purple' }}
+                                    transition="all 0.15s"
+                                    boxShadow="sm"
                                 >
-                                    <Plus size={15} />
+                                    <Plus size={14} />
                                     공간·룩북 올리기
                                 </Button>
-                                <UserIcon />
-                            </>
-                        ) : (<MemberModal />)}
+                            ) : null}
+                        </Box>
 
+                        {/* 프로필 아바타 / 로그인 버튼 */}
+                        {isLogin ? (
+                            <UserIcon />
+                        ) : (
+                            <MemberModal />
+                        )}
 
-
-
+                        {/* 모바일 햄버거 메뉴 토글 버튼 */}
+                        <IconButton
+                            aria-label="메뉴"
+                            display={{ base: 'flex', md: 'none' }}
+                            borderRadius="full"
+                            bg="waba.subtle"
+                            color="waba.charcoal"
+                            size="sm"
+                            _hover={{ bg: '#E8E8EC' }}
+                            onClick={() => setMobileMenuOpen(true)}
+                        >
+                            <MenuIcon size={18} />
+                        </IconButton>
                     </HStack>
                 </Flex>
             </Box>
 
-            <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)} placement="center" size="lg">
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* 2. 모바일 바텀 내비게이션 바 (Bottom GNB: 5-Button Bar)        */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            <Box
+                display={{ base: 'block', md: 'none' }}
+                position="fixed"
+                bottom={0}
+                left={0}
+                right={0}
+                zIndex={40}
+                bg="rgba(255, 255, 255, 0.95)"
+                backdropFilter="blur(16px)"
+                borderTop="1px solid"
+                borderColor="waba.border"
+                px={4}
+                py={2}
+                boxShadow="0 -4px 20px rgba(0, 0, 0, 0.05)"
+            >
+                <Flex align="center" justify="space-around">
+                    {/* 1) 홈 */}
+                    <Box
+                        as="button"
+                        onClick={() => router.push('/')}
+                        display="flex"
+                        flexDirection="column"
+                        alignItems="center"
+                        gap={0.5}
+                        color={isHomeActive ? 'waba.purple' : 'waba.muted'}
+                        flex="1"
+                    >
+                        <Home size={19} />
+                        <Text fontSize="10px" fontWeight={isHomeActive ? '800' : '600'}>
+                            홈
+                        </Text>
+                    </Box>
+
+                    {/* 2) 커뮤니티 */}
+                    <Box
+                        as="button"
+                        onClick={() => router.push('/board/all')}
+                        display="flex"
+                        flexDirection="column"
+                        alignItems="center"
+                        gap={0.5}
+                        color={isCommunityActive ? 'waba.purple' : 'waba.muted'}
+                        flex="1"
+                    >
+                        <MessageSquare size={19} />
+                        <Text fontSize="10px" fontWeight={isCommunityActive ? '800' : '600'}>
+                            커뮤니티
+                        </Text>
+                    </Box>
+
+                    {/* 3) 중앙 글쓰기 FAB */}
+                    <Box
+                        as="button"
+                        onClick={() => {
+                            if (!isLogin) {
+                                toaster.create({ title: '로그인이 필요한 서비스입니다.', type: 'error' });
+                            } else {
+                                router.push('/post/register');
+                            }
+                        }}
+                        w="38px"
+                        h="38px"
+                        borderRadius="full"
+                        bg="waba.charcoal"
+                        color="white"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        boxShadow="0 4px 14px rgba(26, 28, 30, 0.3)"
+                        _hover={{ bg: 'waba.purple' }}
+                        mx={1}
+                        flexShrink={0}
+                    >
+                        <Plus size={20} strokeWidth={2.5} />
+                    </Box>
+
+                    {/* 4) 스토어 */}
+                    <Box
+                        as="button"
+                        onClick={handleStoreClick}
+                        display="flex"
+                        flexDirection="column"
+                        alignItems="center"
+                        gap={0.5}
+                        color={isStoreActive ? 'waba.purple' : 'waba.muted'}
+                        flex="1"
+                    >
+                        <ShoppingCart size={19} />
+                        <Text fontSize="10px" fontWeight={isStoreActive ? '800' : '600'}>
+                            스토어
+                        </Text>
+                    </Box>
+
+                    {/* 5) 마이 */}
+                    <Box
+                        as="button"
+                        onClick={() => {
+                            if (isLogin) {
+                                router.push('/member/mypage');
+                            } else {
+                                toaster.create({ title: '로그인이 필요합니다.', type: 'info' });
+                            }
+                        }}
+                        display="flex"
+                        flexDirection="column"
+                        alignItems="center"
+                        gap={0.5}
+                        color={pathname.startsWith('/member') ? 'waba.purple' : 'waba.muted'}
+                        flex="1"
+                    >
+                        <UserIconLucide size={19} />
+                        <Text fontSize="10px" fontWeight={pathname.startsWith('/member') ? '800' : '600'}>
+                            마이
+                        </Text>
+                    </Box>
+                </Flex>
+            </Box>
+
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* 3. 모바일 사이드 드로어 / 메뉴 다이얼로그                       */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            <Dialog.Root open={mobileMenuOpen} onOpenChange={(e) => setMobileMenuOpen(e.open)}>
                 <Portal>
-                    <Dialog.Backdrop backdropFilter="blur(8px)" bg="blackAlpha.400" />
-                    <Dialog.Positioner>
-                        <Dialog.Content borderRadius="28px" p={2}>
-                            <Dialog.Header>
-                                <Dialog.Title fontSize="18px" fontWeight="800">
-                                    📌 WABA 룩북 &amp; 상품 핀 등록하기
-                                </Dialog.Title>
-                            </Dialog.Header>
-                            <Dialog.CloseTrigger asChild position="absolute" top={4} right={4}>
-                                <CloseButton size="sm" borderRadius="full" />
-                            </Dialog.CloseTrigger>
-                            <Dialog.Body pb={6}>
-                                <VStack gap={4} align="stretch">
-                                    <Box>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
-                                            1. 업로드 유형 선택 (하이브리드 룩북 시스템)
-                                        </Text>
-                                        <HStack gap={2}>
-                                            <Button
-                                                flex="1"
-                                                size="sm"
-                                                borderRadius="full"
-                                                bg={uploadSourceType === 'OFFICIAL_AI' ? 'waba.purple' : 'waba.subtle'}
-                                                color={uploadSourceType === 'OFFICIAL_AI' ? 'white' : 'waba.charcoal'}
-                                                onClick={() => setUploadSourceType('OFFICIAL_AI')}
-                                            >
-                                                ✨ 와바미 공식 AI/촬영 룩북
-                                            </Button>
-                                            <Button
-                                                flex="1"
-                                                size="sm"
-                                                borderRadius="full"
-                                                bg={uploadSourceType === 'USER_COMMUNITY' ? 'waba.charcoal' : 'waba.subtle'}
-                                                color={uploadSourceType === 'USER_COMMUNITY' ? 'white' : 'waba.charcoal'}
-                                                onClick={() => setUploadSourceType('USER_COMMUNITY')}
-                                            >
-                                                🏡 일반 유저 커뮤니티 스냅
-                                            </Button>
-                                        </HStack>
-                                    </Box>
+                    <Dialog.Backdrop bg="blackAlpha.400" backdropFilter="blur(6px)" />
+                    <Dialog.Positioner p={4}>
+                        <Dialog.Content borderRadius="28px" p={5} maxW="340px">
+                            <Flex justify="space-between" align="center" mb={4}>
+                                <HStack gap={1.5}>
+                                    <Text fontSize="18px" fontWeight="900" color="waba.charcoal">
+                                        WABA
+                                    </Text>
+                                    <Box w="6px" h="6px" borderRadius="full" bg="waba.purple" />
+                                </HStack>
+                                <Dialog.CloseTrigger asChild>
+                                    <CloseButton size="sm" borderRadius="full" />
+                                </Dialog.CloseTrigger>
+                            </Flex>
 
-                                    <Box>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1.5}>
-                                            2. 공간 룩북 한줄 제목
-                                        </Text>
-                                        <Input
-                                            placeholder="예: 고양이와 토끼가 함께 지내는 거실 안 뜯기는 소파 & 매트 세팅"
-                                            borderRadius="full"
-                                            fontSize="13px"
-                                            value={newSnapTitle}
-                                            onChange={(e) => setNewSnapTitle(e.target.value)}
-                                        />
-                                    </Box>
-
-                                    <Box p={4} bg="waba.canvas" borderRadius="20px" border="1px solid" borderColor="waba.border">
-                                        <Text fontSize="12px" fontWeight="700" color="waba.charcoal" mb={1.5}>
-                                            3. 사진 속 상품 핀(Pin) 연동 (스마트스토어 · 쿠팡 · 와바미 URL)
-                                        </Text>
-                                        <HStack gap={2}>
-                                            <Input
-                                                bg="white"
-                                                borderRadius="full"
-                                                fontSize="12px"
-                                                value={externalUrl}
-                                                onChange={(e) => setExternalUrl(e.target.value)}
-                                            />
-                                            <Button
-                                                size="sm"
-                                                px={5}
-                                                borderRadius="full"
-                                                bg="waba.charcoal"
-                                                color="white"
-                                                loading={isParsing}
-                                                onClick={handleParseUrl}
-                                            >
-                                                상품명 자동추출
-                                            </Button>
-                                        </HStack>
-                                        {parsedProduct && (
-                                            <HStack mt={3} p={2.5} bg="white" borderRadius="16px" border="1px solid" borderColor="waba.purple">
-                                                <Badge bg="waba.purpleLight" color="waba.purple">
-                                                    추출성공
-                                                </Badge>
-                                                <Text fontSize="12px" fontWeight="700" truncate>
-                                                    {parsedProduct.productName}
-                                                </Text>
-                                            </HStack>
-                                        )}
-                                    </Box>
-
-                                    <Button
-                                        mt={2}
-                                        w="100%"
-                                        h="46px"
-                                        borderRadius="full"
-                                        bg="waba.purple"
-                                        color="white"
-                                        _hover={{ bg: 'waba.purpleHover' }}
-                                        onClick={handleCreateLookbook}
-                                    >
-                                        WABA 룩북 피드에 등록하기
-                                    </Button>
-                                </VStack>
-                            </Dialog.Body>
+                            <VStack align="stretch" gap={3}>
+                                <Button
+                                    variant="ghost"
+                                    justifyContent="flex-start"
+                                    onClick={() => {
+                                        router.push('/');
+                                        setMobileMenuOpen(false);
+                                    }}
+                                >
+                                    🏠 홈
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    justifyContent="flex-start"
+                                    onClick={() => {
+                                        router.push('/board/all');
+                                        setMobileMenuOpen(false);
+                                    }}
+                                >
+                                    💬 커뮤니티 (전체 피드)
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    justifyContent="flex-start"
+                                    onClick={(e) => {
+                                        setMobileMenuOpen(false);
+                                        handleStoreClick(e);
+                                    }}
+                                >
+                                    🛍️ 스토어 (큐레이션 샵)
+                                </Button>
+                                <Separator borderColor="waba.border" my={1} />
+                                <Button
+                                    bg="waba.charcoal"
+                                    color="white"
+                                    borderRadius="full"
+                                    _hover={{ bg: 'waba.purple' }}
+                                    onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        router.push('/post/register');
+                                    }}
+                                >
+                                    <Plus size={16} /> 공간·룩북 올리기
+                                </Button>
+                            </VStack>
                         </Dialog.Content>
                     </Dialog.Positioner>
                 </Portal>
             </Dialog.Root>
+
+            {/* ───────────────────────────────────────────────────────────── */}
+            {/* 4. 스포트라이트 검색 오버레이 모달                             */}
+            {/* ───────────────────────────────────────────────────────────── */}
+            <SearchModal
+                open={isSearchOpen}
+                onOpenChange={setIsSearchOpen}
+            />
         </>
-    )
+    );
 }

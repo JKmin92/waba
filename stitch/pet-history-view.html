@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WABA 마이페이지 펫 전용 히스토리 & 룩북 아카이브 UI 시안 (Stitch)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            waba: {
+              purple: '#7B5CFA',
+              purpleLight: '#F3EFFF',
+              purpleHover: '#6845E8',
+              charcoal: '#1A1A1E',
+              muted: '#6E6E78',
+              faint: '#9E9EA8',
+              subtle: '#F4F4F6',
+              border: '#E8E8EE',
+              canvas: '#FAFAFC',
+            }
+          },
+          boxShadow: {
+            'card': '0 4px 20px -2px rgba(26, 26, 30, 0.05)',
+            'card-hover': '0 12px 32px -4px rgba(123, 92, 250, 0.12), 0 4px 12px -2px rgba(26, 26, 30, 0.06)',
+            'spotlight': '0 20px 40px -10px rgba(123, 92, 250, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #E2E2E8; border-radius: 9999px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-[#0B0C10] text-[#1A1A1E] min-h-screen p-6 antialiased selection:bg-[#7B5CFA]/20 selection:text-[#7B5CFA]">
+
+  <!-- Top Controller Bar -->
+  <header class="max-w-7xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 bg-[#14151B] border border-white/10 rounded-2xl px-6 py-4 shadow-xl">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-[#7B5CFA] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#7B5CFA]/30">
+        W
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-white text-base font-bold tracking-tight">WABA 펫 전용 히스토리 &amp; 룩북 아카이브 시안</h1>
+          <span class="text-[10px] font-bold bg-[#7B5CFA]/20 text-[#A78BFA] px-2 py-0.5 rounded-full border border-[#7B5CFA]/30">Stitch v2.1</span>
+        </div>
+        <p class="text-xs text-white/50">마이페이지에서 특정 반려동물 선택 시 공간 룩북 + 성장/건강 라이프 타임라인 통합 UX</p>
+      </div>
+    </div>
+
+    <!-- Quick Controller Switches -->
+    <div class="flex flex-wrap items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10">
+      <!-- View mode -->
+      <button onclick="switchView('dual')" id="btn-dual" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#7B5CFA] text-white shadow-sm">
+        전체 비교 보기 (Dual View)
+      </button>
+      <button onclick="switchView('desktop')" id="btn-desktop" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5">
+        🖥️ 데스크톱 중심
+      </button>
+      <button onclick="switchView('mobile')" id="btn-mobile" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5">
+        📱 모바일 중심
+      </button>
+
+      <span class="w-[1px] h-4 bg-white/20 mx-1"></span>
+
+      <!-- State switcher: Normal (Moa) vs Empty (Choco) -->
+      <button onclick="selectPetState('moa')" id="btn-pet-moa" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-[#A78BFA] bg-[#7B5CFA]/20 border border-[#7B5CFA]/40">
+        🐱 모아 기록 (정상 피드)
+      </button>
+      <button onclick="selectPetState('choco')" id="btn-pet-choco" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20">
+        🐹 초코 (Empty State)
+      </button>
+    </div>
+  </header>
+
+  <!-- Showcase Canvas Wrapper -->
+  <main class="max-w-7xl mx-auto space-y-6">
+
+    <!-- ============================================================== -->
+    <!-- SECTION A: 진입 경로 (Entry Points) 시각적 안내 카드            -->
+    <!-- ============================================================== -->
+    <div class="bg-[#14151B] border border-white/10 rounded-3xl p-6 shadow-xl">
+      <h2 class="text-white text-sm font-bold flex items-center gap-2 mb-4">
+        <span>🐾 펫 히스토리 진입 경로 (Two Entry Points)</span>
+        <span class="text-[11px] font-normal text-white/50">사용자가 직관적으로 특정 펫의 아카이브로 진입하는 2가지 경로</span>
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        
+        <!-- Entry Point A -->
+        <div class="bg-[#1E2029] rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-lg bg-[#7B5CFA]/20 text-[#A78BFA] flex items-center justify-center font-bold text-xs">A</span>
+              <span class="text-xs font-bold text-white">함께하는 가족 카드 우측 상단 `...` 메뉴</span>
+            </div>
+            <p class="text-xs text-white/60 mb-3">
+              펫 프로필 카드에서 수정/삭제 외에 <strong>[🐾 모아의 기록 모아보기]</strong>를 클릭하여 즉시 진입
+            </p>
+          </div>
+          <!-- Visual Mockup of Menu -->
+          <div class="bg-white rounded-xl p-3 border border-[#E8E8EE] flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2.5">
+              <img src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=100&q=80" class="w-8 h-8 rounded-full object-cover" />
+              <div>
+                <span class="font-bold text-[#1A1A1E]">모아</span>
+                <span class="text-[10px] text-[#9E9EA8] ml-1">랙돌 · 1살</span>
+              </div>
+            </div>
+            <div class="relative bg-[#FAFAFC] border border-[#7B5CFA] rounded-xl px-3 py-1.5 shadow-sm text-left">
+              <div class="text-[11px] font-bold text-[#7B5CFA] flex items-center gap-1.5">
+                <span>🐾</span> <span>모아의 기록 모아보기</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Entry Point B -->
+        <div class="bg-[#1E2029] rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-lg bg-[#7B5CFA]/20 text-[#A78BFA] flex items-center justify-center font-bold text-xs">B</span>
+              <span class="text-xs font-bold text-white">내 게시글 탭 상단 "반려동물 필터 칩"</span>
+            </div>
+            <p class="text-xs text-white/60 mb-3">
+              내 게시글 목록 상단에서 원하는 펫 칩을 원터치로 필터링하여 공간 이야기만 쏙쏙 조회
+            </p>
+          </div>
+          <!-- Visual Mockup of Filter Chips -->
+          <div class="bg-white rounded-xl p-3 border border-[#E8E8EE] flex items-center gap-2 text-xs overflow-x-auto">
+            <button class="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#6E6E78]">전체 (8)</button>
+            <button class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#7B5CFA] text-white shadow-xs flex items-center gap-1">
+              <span>🐱 모아</span> <span class="text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full">5</span>
+            </button>
+            <button class="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#6E6E78]">🐶 두부 (3)</button>
+            <button class="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#9E9EA8]">🐹 초코 (0)</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SECTION B: 메인 캔버스 (데스크톱 및 모바일 뷰포트)             -->
+    <!-- ============================================================== -->
+    <div id="container-grid" class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+      
+      <!-- ========================================== -->
+      <!-- 1. 데스크톱 뷰포트 (Desktop View)          -->
+      <!-- ========================================== -->
+      <section id="col-desktop" class="xl:col-span-8 flex flex-col gap-4">
+        <div class="flex items-center justify-between text-xs font-semibold text-white/60 px-2">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            데스크톱 마이페이지 뷰포트 (1440px)
+          </span>
+          <span class="font-mono text-white/40">Active Pet: <strong id="desktop-pet-badge" class="text-[#A78BFA]">모아 (Moa)</strong></span>
+        </div>
+
+        <!-- Desktop Screen Window -->
+        <div class="relative w-full rounded-3xl overflow-hidden border border-white/10 bg-[#FAFAFC] shadow-2xl flex flex-col min-h-[780px]">
+          
+          <!-- Realistic WABA Header Snippet -->
+          <div class="bg-white/90 backdrop-blur-md border-b border-[#E8E8EE] px-8 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-8">
+              <div class="flex items-center gap-1.5">
+                <span class="font-black text-xl tracking-tight text-[#1A1A1E]">WABA</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#7B5CFA]"></span>
+              </div>
+              <div class="flex gap-6 text-xs font-bold text-[#6E6E78]">
+                <span>홈</span>
+                <span>커뮤니티</span>
+                <span>스토어</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-bold text-[#1A1A1E]">마이페이지</span>
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-[#7B5CFA] to-[#A78BFA] text-white flex items-center justify-center text-xs font-bold">
+                M
+              </div>
+            </div>
+          </div>
+
+          <!-- Page Body Content Area -->
+          <div class="p-8 max-w-4xl mx-auto w-full space-y-6">
+            
+            <!-- Family Section ( 함께하는 가족 요약 카드 ) -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-[#1A1A1E]">함께하는 가족</span>
+                  <span class="text-xs font-semibold text-[#7B5CFA] bg-[#F3EFFF] px-2 py-0.5 rounded-full">3마리</span>
+                </div>
+              </div>
+
+              <!-- Pet Cards Grid -->
+              <div class="grid grid-cols-3 gap-3">
+                <!-- Pet 1: Moa (Active) -->
+                <div onclick="selectPetState('moa')" class="pet-card-demo p-3.5 rounded-2xl bg-white border-2 border-[#7B5CFA] shadow-card cursor-pointer transition-all relative">
+                  <div class="flex items-center gap-3">
+                    <img src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=120&q=80" class="w-12 h-12 rounded-full object-cover ring-2 ring-[#7B5CFA]" />
+                    <div>
+                      <div class="flex items-center gap-1">
+                        <span class="text-sm font-extrabold text-[#1A1A1E]">모아</span>
+                        <span class="text-xs">🐱</span>
+                      </div>
+                      <div class="text-[11px] text-[#6E6E78]">랙돌 · 1살 2개월</div>
+                      <div class="text-[10px] font-bold text-[#7B5CFA] mt-0.5">기록 5개 아카이빙 중</div>
+                    </div>
+                  </div>
+                  <span class="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#7B5CFA] text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                </div>
+
+                <!-- Pet 2: Dubu -->
+                <div onclick="selectPetState('dubu')" class="pet-card-demo p-3.5 rounded-2xl bg-white border border-[#E8E8EE] hover:border-slate-300 shadow-xs cursor-pointer transition-all relative">
+                  <div class="flex items-center gap-3">
+                    <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=120&q=80" class="w-12 h-12 rounded-full object-cover" />
+                    <div>
+                      <div class="flex items-center gap-1">
+                        <span class="text-sm font-bold text-[#1A1A1E]">두부</span>
+                        <span class="text-xs">🐶</span>
+                      </div>
+                      <div class="text-[11px] text-[#6E6E78]">말티푸 · 2살</div>
+                      <div class="text-[10px] text-[#9E9EA8] mt-0.5">기록 3개</div>
+                    </div>
+                  </div>
+                  <span class="absolute top-2.5 right-2.5 text-[#9E9EA8] text-xs">···</span>
+                </div>
+
+                <!-- Pet 3: Choco (Empty Demo) -->
+                <div onclick="selectPetState('choco')" class="pet-card-demo p-3.5 rounded-2xl bg-white border border-[#E8E8EE] hover:border-slate-300 shadow-xs cursor-pointer transition-all relative">
+                  <div class="flex items-center gap-3">
+                    <img src="https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=120&q=80" class="w-12 h-12 rounded-full object-cover" />
+                    <div>
+                      <div class="flex items-center gap-1">
+                        <span class="text-sm font-bold text-[#1A1A1E]">초코</span>
+                        <span class="text-xs">🐹</span>
+                      </div>
+                      <div class="text-[11px] text-[#6E6E78]">골든햄스터 · 6개월</div>
+                      <div class="text-[10px] text-amber-500 font-semibold mt-0.5">기록 없음 (신규)</div>
+                    </div>
+                  </div>
+                  <span class="absolute top-2.5 right-2.5 text-[#9E9EA8] text-xs">···</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabs in Activity Section (내 게시글, 스크랩, 좋아요 등) -->
+            <div class="border-b border-[#E8E8EE] flex items-center justify-between pb-1">
+              <div class="flex items-center gap-6 text-sm font-bold">
+                <span class="text-[#7B5CFA] border-b-2 border-[#7B5CFA] pb-2.5 flex items-center gap-1.5">
+                  📄 내 게시글 <span id="desktop-tab-count" class="text-xs text-[#7B5CFA]">5</span>
+                </span>
+                <span class="text-[#9E9EA8] pb-2.5 hover:text-[#1A1A1E] cursor-pointer">🔖 스크랩한 공간 12</span>
+                <span class="text-[#9E9EA8] pb-2.5 hover:text-[#1A1A1E] cursor-pointer">❤️ 좋아요한 글 34</span>
+              </div>
+
+              <!-- Quick Pet Chips Filter Row -->
+              <div class="flex items-center gap-1.5 pb-2">
+                <button onclick="selectPetState('all')" class="chip-filter px-3 py-1 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#6E6E78] hover:bg-[#EAEAEF]">
+                  전체 (8)
+                </button>
+                <button onclick="selectPetState('moa')" id="chip-moa" class="chip-filter active px-3 py-1 rounded-full text-xs font-bold bg-[#7B5CFA] text-white shadow-xs">
+                  🐱 모아 (5)
+                </button>
+                <button onclick="selectPetState('dubu')" id="chip-dubu" class="chip-filter px-3 py-1 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#6E6E78] hover:bg-[#EAEAEF]">
+                  🐶 두부 (3)
+                </button>
+                <button onclick="selectPetState('choco')" id="chip-choco" class="chip-filter px-3 py-1 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#6E6E78] hover:bg-[#EAEAEF]">
+                  🐹 초코 (0)
+                </button>
+              </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- 1) 펫 하이라이트 미니 프로필 바 (Pet Highlight Banner)     -->
+            <!-- ========================================================== -->
+            <div id="desktop-highlight-banner" class="bg-gradient-to-r from-[#F3EFFF] via-[#F8F6FF] to-white rounded-3xl p-5 border border-[#7B5CFA]/30 shadow-spotlight flex flex-wrap items-center justify-between gap-4">
+              <div class="flex items-center gap-4">
+                <div class="relative">
+                  <img id="banner-avatar" src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=140&q=80" class="w-14 h-14 rounded-full object-cover ring-4 ring-white shadow-sm" />
+                  <span class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-xs text-xs">🐱</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 id="banner-name" class="text-lg font-black text-[#1A1A1E]">모아의 공간 &amp; 성장 아카이브</h3>
+                    <span id="banner-species" class="text-[11px] font-bold bg-[#7B5CFA] text-white px-2 py-0.5 rounded-full">랙돌</span>
+                  </div>
+                  <div class="flex items-center gap-3 text-xs text-[#6E6E78] mt-1 font-medium">
+                    <span id="banner-age">1살 2개월 · 여아</span>
+                    <span class="w-1 h-1 rounded-full bg-[#9E9EA8]"></span>
+                    <span id="banner-weight">최신 체중 3.5kg</span>
+                    <span class="w-1 h-1 rounded-full bg-[#9E9EA8]"></span>
+                    <span id="banner-posts" class="text-[#7B5CFA] font-bold">함께한 공간 이야기 5개</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex items-center gap-2">
+                <!-- Mode Toggle -->
+                <div class="flex items-center bg-white p-1 rounded-xl border border-[#E8E8EE] shadow-xs text-xs">
+                  <button onclick="setFeedView('grid')" id="btn-mode-grid" class="px-2.5 py-1 rounded-lg font-bold bg-[#7B5CFA] text-white">룩북 피드</button>
+                  <button onclick="setFeedView('timeline')" id="btn-mode-time" class="px-2.5 py-1 rounded-lg font-semibold text-[#6E6E78] hover:text-[#1A1A1E]">타임라인</button>
+                </div>
+                <!-- Reset Button -->
+                <button onclick="selectPetState('all')" class="bg-white hover:bg-[#F4F4F6] text-[#6E6E78] border border-[#E8E8EE] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-xs">
+                  <span>전체 보기로 돌아가기</span>
+                  <span class="text-[#9E9EA8]">✕</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- 2) 펫 피드 콘텐츠 영역 (룩북 + 라이프 마일스톤)            -->
+            <!-- ========================================================== -->
+            <div id="desktop-feed-normal" class="space-y-6">
+
+              <!-- Grid View (Lookbook + Intertwined Milestones) -->
+              <div id="view-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                <!-- Card 1: Lookbook Snap with Pet -->
+                <div class="group bg-white rounded-3xl overflow-hidden border border-[#E8E8EE] shadow-card hover:shadow-card-hover transition-all flex flex-col">
+                  <div class="relative w-full h-52 overflow-hidden bg-slate-100">
+                    <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <!-- Pin Tagged Product Badge -->
+                    <div class="absolute bottom-3 left-3 bg-[#1A1A1E]/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/20">
+                      <span class="text-[#7B5CFA]">📌</span> 자작나무 풀세트 캣폴
+                    </div>
+                    <!-- Date badge -->
+                    <span class="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-[#1A1A1E] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs">
+                      2026.11.08 기록
+                    </span>
+                  </div>
+                  <div class="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h4 class="text-sm font-bold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors leading-snug">
+                        모아가 가장 좋아하는 햇살 거실 캣폴 공간 세팅 완료 ☀️
+                      </h4>
+                      <p class="text-xs text-[#6E6E78] mt-1 line-clamp-2">
+                        창가로 들어오는 가을 햇살 맞으며 낮잠자는 모아. 바닥에는 스크래치 방지 러그를 깔았어요.
+                      </p>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-[#F0F0F4] flex items-center justify-between text-xs text-[#9E9EA8]">
+                      <span>#성수동 #거실인테리어</span>
+                      <div class="flex items-center gap-3">
+                        <span>❤️ 64</span>
+                        <span>🔖 32</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 2: Life & Health Milestone Event Card (자연스럽게 결합된 건강/성장 카드) -->
+                <div class="bg-gradient-to-br from-[#FFF9F2] to-white rounded-3xl p-5 border border-amber-200 shadow-card flex flex-col justify-between relative overflow-hidden">
+                  <div class="absolute top-0 right-0 w-24 h-24 bg-amber-200/20 rounded-full blur-2xl pointer-events-none"></div>
+                  <div>
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-sm font-bold shadow-xs">
+                          🏥
+                        </span>
+                        <div>
+                          <span class="text-xs font-black text-amber-700">라이프 마일스톤</span>
+                          <div class="text-[10px] text-amber-600/80">건강 &amp; 성장 기록</div>
+                        </div>
+                      </div>
+                      <span class="text-[11px] font-bold text-amber-600 bg-amber-100/60 px-2 py-0.5 rounded-full">2026.11.02</span>
+                    </div>
+
+                    <h4 class="text-sm font-black text-[#1A1A1E] leading-snug mt-2">
+                      중성화 수술 무사히 완료하고 회복 중이에요 🤍
+                    </h4>
+                    <p class="text-xs text-[#6E6E78] mt-1.5 leading-relaxed">
+                      체중 3.5kg 건강하게 달성 후 수술을 잘 마쳤습니다. 안락한 넥카라와 전용 푹신 방석에서 푹 쉬고 있어요.
+                    </p>
+                  </div>
+
+                  <div class="mt-4 pt-3 border-t border-amber-200/60 flex items-center justify-between text-xs">
+                    <span class="font-bold text-amber-800">닥터펫 동물병원 · 넥카라 케어</span>
+                    <span class="text-[11px] font-bold text-[#7B5CFA] hover:underline cursor-pointer">진료수첩 보기 ></span>
+                  </div>
+                </div>
+
+                <!-- Card 3: Lookbook Snap -->
+                <div class="group bg-white rounded-3xl overflow-hidden border border-[#E8E8EE] shadow-card hover:shadow-card-hover transition-all flex flex-col">
+                  <div class="relative w-full h-52 overflow-hidden bg-slate-100">
+                    <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <div class="absolute bottom-3 left-3 bg-[#1A1A1E]/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/20">
+                      <span class="text-[#7B5CFA]">📌</span> 투명 아크릴 우주선 해먹
+                    </div>
+                    <span class="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-[#1A1A1E] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs">
+                      2026.10.15 기록
+                    </span>
+                  </div>
+                  <div class="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h4 class="text-sm font-bold text-[#1A1A1E] group-hover:text-[#7B5CFA] transition-colors leading-snug">
+                        모아의 핑크 젤리가 훤히 보이는 투명 해먹 설치기 🐾
+                      </h4>
+                      <p class="text-xs text-[#6E6E78] mt-1 line-clamp-2">
+                        처음엔 낯설어하더니 이제는 해먹 안에서 꾹꾹이까지 하네요. 인테리어 포인트로도 최고입니다.
+                      </p>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-[#F0F0F4] flex items-center justify-between text-xs text-[#9E9EA8]">
+                      <span>#해먹 #냥젤리</span>
+                      <div class="flex items-center gap-3">
+                        <span>❤️ 118</span>
+                        <span>🔖 55</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 4: Vaccination Milestone Card -->
+                <div class="bg-gradient-to-br from-[#F0FDF4] to-white rounded-3xl p-5 border border-emerald-200 shadow-card flex flex-col justify-between relative overflow-hidden">
+                  <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-200/20 rounded-full blur-2xl pointer-events-none"></div>
+                  <div>
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-sm font-bold shadow-xs">
+                          💉
+                        </span>
+                        <div>
+                          <span class="text-xs font-black text-emerald-800">예방 접종 완료</span>
+                          <div class="text-[10px] text-emerald-600">생후 6개월 정기 검진</div>
+                        </div>
+                      </div>
+                      <span class="text-[11px] font-bold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-full">2026.08.15</span>
+                    </div>
+
+                    <h4 class="text-sm font-black text-[#1A1A1E] leading-snug mt-2">
+                      종합백신 3차 &amp; 광견병 접종 완료 (몸무게 2.8kg)
+                    </h4>
+                    <p class="text-xs text-[#6E6E78] mt-1.5 leading-relaxed">
+                      의사 선생님께서 털 결도 좋고 골격도 튼튼하다고 칭찬해주셨어요. 병원 다녀와서 츄르 한포 뚝딱!
+                    </p>
+                  </div>
+
+                  <div class="mt-4 pt-3 border-t border-emerald-200/60 flex items-center justify-between text-xs">
+                    <span class="font-bold text-emerald-800">청담 바른동물의료센터</span>
+                    <span class="text-[11px] font-bold text-[#7B5CFA] hover:underline cursor-pointer">접종 증명서 확인 ></span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Timeline View (Alternative Linear Mode) -->
+              <div id="view-timeline" class="hidden relative border-l-2 border-[#E8E8EE] ml-4 pl-6 space-y-6">
+                
+                <!-- Timeline Item 1 -->
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-[#7B5CFA] ring-4 ring-white shadow-xs"></div>
+                  <div class="text-xs font-bold text-[#7B5CFA]">2026.11.08 · 공간 룩북</div>
+                  <div class="mt-1 bg-white p-4 rounded-2xl border border-[#E8E8EE] shadow-xs flex items-center gap-4">
+                    <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=120&q=80" class="w-16 h-16 rounded-xl object-cover" />
+                    <div>
+                      <div class="text-xs font-bold text-[#1A1A1E]">모아가 가장 좋아하는 햇살 거실 캣폴 공간 세팅</div>
+                      <div class="text-[11px] text-[#9E9EA8] mt-0.5">📌 자작나무 풀세트 캣폴 태그됨</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Timeline Item 2 -->
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-amber-500 ring-4 ring-white shadow-xs"></div>
+                  <div class="text-xs font-bold text-amber-600">2026.11.02 · 건강 이벤트</div>
+                  <div class="mt-1 bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
+                    <div class="text-xs font-bold text-[#1A1A1E]">🏥 중성화 수술 무사히 완료 및 안정 회복</div>
+                    <div class="text-[11px] text-[#6E6E78] mt-0.5">체중 3.5kg 달성 후 수술 완료 (닥터펫 동물병원)</div>
+                  </div>
+                </div>
+
+                <!-- Timeline Item 3 -->
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-[#7B5CFA] ring-4 ring-white shadow-xs"></div>
+                  <div class="text-xs font-bold text-[#7B5CFA]">2026.10.15 · 공간 룩북</div>
+                  <div class="mt-1 bg-white p-4 rounded-2xl border border-[#E8E8EE] shadow-xs flex items-center gap-4">
+                    <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=120&q=80" class="w-16 h-16 rounded-xl object-cover" />
+                    <div>
+                      <div class="text-xs font-bold text-[#1A1A1E]">모아의 핑크 젤리가 훤히 보이는 투명 해먹 설치기</div>
+                      <div class="text-[11px] text-[#9E9EA8] mt-0.5">📌 투명 아크릴 우주선 해먹 태그됨</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- 3) 감성적인 빈 상태(Empty State - 초코 선택 시 노출)       -->
+            <!-- ========================================================== -->
+            <div id="desktop-feed-empty" class="hidden py-14 px-6 bg-white rounded-3xl border border-[#E8E8EE] text-center space-y-5 shadow-card">
+              <div class="w-20 h-20 rounded-full bg-[#F3EFFF] text-[#7B5CFA] flex items-center justify-center text-3xl mx-auto shadow-inner">
+                🐾
+              </div>
+              <div class="space-y-1.5">
+                <h3 class="text-lg font-black text-[#1A1A1E]">
+                  아직 <span class="text-[#7B5CFA]">초코</span>가 태그된 공간 사진이 없어요
+                </h3>
+                <p class="text-xs text-[#6E6E78] max-w-sm mx-auto leading-relaxed">
+                  사진을 올릴 때 함께하는 반려동물로 <strong>'초코'</strong>를 선택해보세요!<br>
+                  초코만을 위한 소중한 공간 이야기와 성장 앨범이 차곡차곡 기록됩니다.
+                </p>
+              </div>
+
+              <div class="pt-2 flex justify-center gap-3">
+                <button class="px-5 py-2.5 rounded-full bg-[#7B5CFA] text-white text-xs font-bold hover:bg-[#6845E8] transition-colors shadow-xs flex items-center gap-1.5">
+                  <span>+ 초코와 함께한 첫 공간 올리기</span>
+                </button>
+                <button onclick="selectPetState('moa')" class="px-4 py-2.5 rounded-full bg-[#F4F4F6] text-[#6E6E78] text-xs font-bold hover:bg-[#EAEAEF] transition-colors">
+                  모아 기록 보러가기
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 2. 모바일 뷰포트 (Mobile View)            -->
+      <!-- ========================================== -->
+      <section id="col-mobile" class="xl:col-span-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between text-xs font-semibold text-white/60 px-2">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-violet-400"></span>
+            모바일 뷰포트 (393px iPhone)
+          </span>
+          <span class="font-mono text-white/40">Compact Archive</span>
+        </div>
+
+        <!-- Phone Shell Container -->
+        <div class="relative w-full max-w-[393px] mx-auto h-[780px] rounded-[44px] overflow-hidden border-[8px] border-[#22242D] bg-[#FAFAFC] shadow-2xl flex flex-col justify-between">
+          
+          <!-- Dynamic Island Notch -->
+          <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-40 flex items-center justify-center">
+            <div class="w-3 h-3 rounded-full bg-[#1A1A1E] ml-auto mr-2"></div>
+          </div>
+
+          <!-- Mobile Top Header -->
+          <div class="bg-white/90 backdrop-blur-md pt-10 px-4 pb-2.5 border-b border-[#E8E8EE] sticky top-0 z-30 flex items-center justify-between">
+            <span class="font-bold text-xs text-[#1A1A1E]">마이페이지</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-[#7B5CFA]">🐱 모아의 기록</span>
+              <button onclick="selectPetState('all')" class="text-xs text-[#9E9EA8]">✕</button>
+            </div>
+          </div>
+
+          <!-- Mobile Scrollable Body -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            
+            <!-- Mobile Pet Highlight Card -->
+            <div class="p-3.5 rounded-2xl bg-gradient-to-r from-[#F3EFFF] to-white border border-[#7B5CFA]/30 shadow-xs flex items-center gap-3">
+              <img src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=100&q=80" class="w-12 h-12 rounded-full object-cover ring-2 ring-[#7B5CFA]" />
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs font-black text-[#1A1A1E]">모아 <span class="font-normal text-[10px] text-[#7B5CFA]">랙돌 3.5kg</span></div>
+                  <span class="text-[10px] bg-[#7B5CFA] text-white px-1.5 py-0.2 rounded-full font-bold">5개 기록</span>
+                </div>
+                <div class="text-[11px] text-[#6E6E78] mt-0.5">함께한 지 420일째 🤍</div>
+              </div>
+            </div>
+
+            <!-- Mobile Pet Filter Horizontal Scroller -->
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+              <button class="px-3 py-1 rounded-full font-bold bg-[#7B5CFA] text-white shrink-0">🐱 모아 (5)</button>
+              <button class="px-3 py-1 rounded-full font-semibold bg-white border border-[#E8E8EE] text-[#6E6E78] shrink-0">🐶 두부 (3)</button>
+              <button class="px-3 py-1 rounded-full font-semibold bg-white border border-[#E8E8EE] text-[#6E6E78] shrink-0">🐹 초코 (0)</button>
+            </div>
+
+            <!-- Mobile Milestone Event Banner -->
+            <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200">
+              <div class="flex items-center justify-between text-[11px] font-bold text-amber-800">
+                <span>🏥 최근 건강: 중성화 수술 완료</span>
+                <span class="text-[10px] text-amber-600">11.02</span>
+              </div>
+              <div class="text-[11px] text-amber-900/80 mt-1">체중 3.5kg 달성 후 안정적으로 회복 중</div>
+            </div>
+
+            <!-- Mobile Post Card 1 -->
+            <div class="bg-white rounded-2xl overflow-hidden border border-[#E8E8EE] shadow-xs">
+              <div class="relative w-full h-40">
+                <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover" />
+                <span class="absolute bottom-2 left-2 bg-[#1A1A1E]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">📌 자작나무 풀세트 캣폴</span>
+                <span class="absolute top-2 left-2 bg-white/90 text-[#1A1A1E] text-[10px] font-bold px-2 py-0.5 rounded-full">2026.11.08</span>
+              </div>
+              <div class="p-3">
+                <div class="text-xs font-bold text-[#1A1A1E]">모아가 가장 좋아하는 햇살 거실 캣폴 세팅 ☀️</div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-[#9E9EA8]">
+                  <span>#거실인테리어</span>
+                  <span>❤️ 64 · 🔖 32</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile Post Card 2 -->
+            <div class="bg-white rounded-2xl overflow-hidden border border-[#E8E8EE] shadow-xs">
+              <div class="relative w-full h-40">
+                <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover" />
+                <span class="absolute bottom-2 left-2 bg-[#1A1A1E]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">📌 투명 아크릴 해먹</span>
+                <span class="absolute top-2 left-2 bg-white/90 text-[#1A1A1E] text-[10px] font-bold px-2 py-0.5 rounded-full">2026.10.15</span>
+              </div>
+              <div class="p-3">
+                <div class="text-xs font-bold text-[#1A1A1E]">모아의 핑크 젤리가 훤히 보이는 투명 해먹 설치기 🐾</div>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-[#9E9EA8]">
+                  <span>#해먹 #냥젤리</span>
+                  <span>❤️ 118 · 🔖 55</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Mobile Bottom Navigation Bar -->
+          <div class="bg-white/95 backdrop-blur-md border-t border-[#E8E8EE] px-6 py-2 z-30">
+            <div class="flex items-center justify-between">
+              <button class="flex flex-col items-center gap-0.5 text-[#6E6E78]"><span class="text-sm">🏠</span><span class="text-[9px]">홈</span></button>
+              <button class="flex flex-col items-center gap-0.5 text-[#6E6E78]"><span class="text-sm">💬</span><span class="text-[9px]">커뮤니티</span></button>
+              <button class="w-8 h-8 -mt-2 rounded-full bg-[#7B5CFA] text-white flex items-center justify-center text-sm font-bold shadow-sm">+</button>
+              <button class="flex flex-col items-center gap-0.5 text-[#6E6E78]"><span class="text-sm">🛍️</span><span class="text-[9px]">스토어</span></button>
+              <button class="flex flex-col items-center gap-0.5 text-[#7B5CFA]"><span class="text-sm">👤</span><span class="text-[9px] font-bold">마이</span></button>
+            </div>
+            <div class="mt-1.5 flex justify-center"><div class="w-24 h-1 bg-slate-300 rounded-full"></div></div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Interactive JavaScript logic -->
+  <script>
+    let currentFeedView = 'grid';
+
+    function setFeedView(mode) {
+      currentFeedView = mode;
+      const vGrid = document.getElementById('view-grid');
+      const vTime = document.getElementById('view-timeline');
+      const bGrid = document.getElementById('btn-mode-grid');
+      const bTime = document.getElementById('btn-mode-time');
+
+      if (mode === 'grid') {
+        vGrid.classList.remove('hidden');
+        vTime.classList.add('hidden');
+        bGrid.className = 'px-2.5 py-1 rounded-lg font-bold bg-[#7B5CFA] text-white';
+        bTime.className = 'px-2.5 py-1 rounded-lg font-semibold text-[#6E6E78] hover:text-[#1A1A1E]';
+      } else {
+        vGrid.classList.add('hidden');
+        vTime.classList.remove('hidden');
+        bTime.className = 'px-2.5 py-1 rounded-lg font-bold bg-[#7B5CFA] text-white';
+        bGrid.className = 'px-2.5 py-1 rounded-lg font-semibold text-[#6E6E78] hover:text-[#1A1A1E]';
+      }
+    }
+
+    function selectPetState(petKey) {
+      const banner = document.getElementById('desktop-highlight-banner');
+      const feedNormal = document.getElementById('desktop-feed-normal');
+      const feedEmpty = document.getElementById('desktop-feed-empty');
+      const badge = document.getElementById('desktop-pet-badge');
+      const tabCount = document.getElementById('desktop-tab-count');
+
+      const btnMoa = document.getElementById('btn-pet-moa');
+      const btnChoco = document.getElementById('btn-pet-choco');
+
+      const chipMoa = document.getElementById('chip-moa');
+      const chipDubu = document.getElementById('chip-dubu');
+      const chipChoco = document.getElementById('chip-choco');
+
+      // reset chip classes
+      [chipMoa, chipDubu, chipChoco].forEach(c => {
+        if (c) c.className = 'chip-filter px-3 py-1 rounded-full text-xs font-semibold bg-[#F4F4F6] text-[#6E6E78] hover:bg-[#EAEAEF]';
+      });
+
+      if (petKey === 'choco') {
+        // Empty state
+        banner.classList.add('hidden');
+        feedNormal.classList.add('hidden');
+        feedEmpty.classList.remove('hidden');
+        badge.innerText = '초코 (Choco - Empty)';
+        tabCount.innerText = '0';
+        chipChoco.className = 'chip-filter active px-3 py-1 rounded-full text-xs font-bold bg-[#7B5CFA] text-white shadow-xs';
+        btnChoco.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-white bg-amber-500 shadow-sm';
+        btnMoa.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-white/60 hover:text-white';
+      } else {
+        // Moa or Dubu (Normal state)
+        banner.classList.remove('hidden');
+        feedNormal.classList.remove('hidden');
+        feedEmpty.classList.add('hidden');
+        badge.innerText = '모아 (Moa)';
+        tabCount.innerText = '5';
+        chipMoa.className = 'chip-filter active px-3 py-1 rounded-full text-xs font-bold bg-[#7B5CFA] text-white shadow-xs';
+        btnMoa.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-[#A78BFA] bg-[#7B5CFA]/20 border border-[#7B5CFA]/40';
+        btnChoco.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-amber-300 bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20';
+      }
+    }
+
+    function switchView(mode) {
+      const colDesktop = document.getElementById('col-desktop');
+      const colMobile = document.getElementById('col-mobile');
+      const btnDual = document.getElementById('btn-dual');
+      const btnDesktop = document.getElementById('btn-desktop');
+      const btnMobile = document.getElementById('btn-mobile');
+
+      const activeClass = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#7B5CFA] text-white shadow-sm';
+      const inactiveClass = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5';
+
+      btnDual.className = inactiveClass;
+      btnDesktop.className = inactiveClass;
+      btnMobile.className = inactiveClass;
+
+      if (mode === 'dual') {
+        colDesktop.className = 'xl:col-span-8 flex flex-col gap-4';
+        colMobile.className = 'xl:col-span-4 flex flex-col gap-4';
+        colDesktop.style.display = 'flex';
+        colMobile.style.display = 'flex';
+        btnDual.className = activeClass;
+      } else if (mode === 'desktop') {
+        colDesktop.className = 'col-span-12 flex flex-col gap-4 max-w-5xl mx-auto w-full';
+        colDesktop.style.display = 'flex';
+        colMobile.style.display = 'none';
+        btnDesktop.className = activeClass;
+      } else if (mode === 'mobile') {
+        colDesktop.style.display = 'none';
+        colMobile.className = 'col-span-12 flex flex-col gap-4 max-w-md mx-auto w-full';
+        colMobile.style.display = 'flex';
+        btnMobile.className = activeClass;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'desktop' || hash === 'mobile' || hash === 'dual') {
+        switchView(hash);
+      } else if (hash === 'empty') {
+        selectPetState('choco');
+      }
+    });
+  </script>
+</body>
+</html>

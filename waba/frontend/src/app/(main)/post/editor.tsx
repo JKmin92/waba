@@ -412,12 +412,20 @@ export default function Editor({
     };
 
     const handleSaveCurrentDraft = async () => {
+        // 이미지 블록에 등록된 모든 PET 핀의 pet_id 수집 및 selectedPets 병합 (중복 제거)
+        const petPinIds = blocks
+            .flatMap((b) => (b.type === 'image' ? b.pins : []))
+            .filter((p) => p.pin_type === 'PET' && p.pet_id)
+            .map((p) => String(p.pet_id));
+
+        const mergedSelectedPets = Array.from(new Set([...selectedPets, ...petPinIds]));
+
         const payload: PostEditorData = {
             postId: currentPostId || undefined,
             board_id: boardId,
             title: title.trim(),
             blocks,
-            selectedPets,
+            selectedPets: mergedSelectedPets,
             tags,
         };
         const draftObj = { data: payload, savedAt: new Date().toISOString() };
@@ -741,6 +749,13 @@ export default function Editor({
                 pos_y: pinCoords.y,
                 pin_option_memo: pinOptionMemo.trim(),
             };
+
+            // 선택된 펫이 상단 동반 반려동물 목록에 없으면 자동 추가
+            if (selectedPetForPin.id) {
+                setSelectedPets((prev) =>
+                    prev.includes(selectedPetForPin.id) ? prev : [...prev, selectedPetForPin.id]
+                );
+            }
         }
 
         if (!newPin) return;
@@ -841,12 +856,20 @@ export default function Editor({
             return;
         }
 
+        // 이미지 블록에 등록된 모든 PET 핀의 pet_id 수집 및 selectedPets 병합 (중복 제거)
+        const petPinIds = blocks
+            .flatMap((b) => (b.type === 'image' ? b.pins : []))
+            .filter((p) => p.pin_type === 'PET' && p.pet_id)
+            .map((p) => String(p.pet_id));
+
+        const mergedSelectedPets = Array.from(new Set([...selectedPets, ...petPinIds]));
+
         const payload: PostEditorData = {
             postId: currentPostId || undefined,
             board_id: boardId,
             title: title.trim(),
             blocks,
-            selectedPets,
+            selectedPets: mergedSelectedPets,
             tags,
         };
 

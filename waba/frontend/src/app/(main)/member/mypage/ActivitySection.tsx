@@ -1,12 +1,15 @@
 'use client'
 
 import {
+    Avatar,
     Badge,
     Box,
     Button,
+    Flex,
     Heading,
     HStack,
     IconButton,
+    Separator,
     Text,
     VStack,
 } from "@chakra-ui/react";
@@ -15,11 +18,14 @@ import {
     Edit3,
     FileText,
     Heart,
+    Home,
+    Plus,
     Trash2,
+    X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { PostDetail } from "@/interface";
-import { formatDate } from "@/utils/simpleUtils";
+import { Pet, PostDetail } from "@/interface";
+import { formatDate, petSpeciesLabel } from "@/utils/simpleUtils";
 import PostMasonryList from "../../board/[id]/PostMasonryList";
 
 interface ActivitySectionProps {
@@ -35,6 +41,9 @@ interface ActivitySectionProps {
     bookmarkCount?: number;
     likeCount?: number;
     draftCount?: number;
+    pets?: Pet[];
+    selectedPetId?: string | null;
+    onSelectPetId?: (petId: string | null) => void;
 }
 
 export default function ActivitySection({
@@ -50,11 +59,67 @@ export default function ActivitySection({
     bookmarkCount,
     likeCount,
     draftCount,
+    pets = [],
+    selectedPetId = null,
+    onSelectPetId,
 }: ActivitySectionProps) {
     const router = useRouter();
 
+    const isUnassignedSelected = selectedPetId === 'unassigned';
+    const selectedPet = !isUnassignedSelected ? pets.find((p) => String(p.id) === String(selectedPetId)) : null;
+
+    // 미분류 게시글 계산 (post_pets가 없고, PET 핀도 없는 글)
+    const unassignedCount = postList.filter((post) => {
+        const hasPostPets = post.post_pets && post.post_pets.length > 0;
+        const hasPetPins = post.product_pins && post.product_pins.some((pin) => pin.pin_type === 'PET');
+        return !hasPostPets && !hasPetPins;
+    }).length;
+
+    // 펫 필터링 적용 (내 게시글)
+    const displayedPostList = selectedPetId === 'unassigned'
+        ? postList.filter((post) => {
+            const hasPostPets = post.post_pets && post.post_pets.length > 0;
+            const hasPetPins = post.product_pins && post.product_pins.some((pin) => pin.pin_type === 'PET');
+            return !hasPostPets && !hasPetPins;
+        })
+        : selectedPetId
+            ? postList.filter((post) =>
+                post.post_pets?.some((p) => String(p.pet_id) === String(selectedPetId)) ||
+                post.product_pins?.some((pin) => pin.pin_type === 'PET' && String(pin.pet_id) === String(selectedPetId))
+            )
+            : postList;
+
+    const getSpeciesEmoji = (species: string) => {
+        switch (species) {
+            case 'DOG': return '🐶';
+            case 'CAT': return '🐱';
+            case 'RABBIT': return '🐰';
+            case 'HAMSTER': return '🐹';
+            case 'GUINEAPIG': return '🐹';
+            case 'CHINCHILA': return '🐭';
+            default: return '🐾';
+        }
+    };
+
+    const calculateAge = (birthDate: string | null) => {
+        if (!birthDate) return '';
+        try {
+            const birth = new Date(birthDate);
+            const now = new Date();
+            const diffMonths = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+            if (diffMonths < 12) {
+                return `생후 ${Math.max(diffMonths, 1)}개월`;
+            }
+            const years = Math.floor(diffMonths / 12);
+            const months = diffMonths % 12;
+            return months > 0 ? `${years}살 ${months}개월` : `${years}살`;
+        } catch {
+            return '';
+        }
+    };
+
     return (
-        <Box mt={2}>
+        <Box id="my-activity-section" mt={2}>
             {/* 탭 네비게이션 헤더 */}
             <HStack
                 borderBottom="1px solid"
@@ -78,10 +143,16 @@ export default function ActivitySection({
                     onClick={() => onTabChange('post')}
                 >
                     <FileText size={16} />
-                    <Text>내 게시글</Text>
-                    <Text fontSize="12px" color={activeTab === 'post' ? 'waba.purple' : 'waba.faint'}>
-                        {postCount ?? postList.length}
-                    </Text>
+                    <span>내 게시글</span>
+                    <Badge
+                        bg={activeTab === 'post' ? 'waba.purple' : 'waba.subtle'}
+                        color={activeTab === 'post' ? 'white' : 'waba.faint'}
+                        rounded="full"
+                        px={2}
+                        fontSize="11px"
+                    >
+                        {selectedPetId ? displayedPostList.length : (postCount ?? postList.length)}
+                    </Badge>
                 </Box>
 
                 <Box
@@ -99,10 +170,16 @@ export default function ActivitySection({
                     onClick={() => onTabChange('bookmark')}
                 >
                     <Bookmark size={16} />
-                    <Text>스크랩한 공간</Text>
-                    <Text fontSize="12px" color={activeTab === 'bookmark' ? 'waba.purple' : 'waba.faint'}>
+                    <span>스크랩한 공간</span>
+                    <Badge
+                        bg={activeTab === 'bookmark' ? 'waba.purple' : 'waba.subtle'}
+                        color={activeTab === 'bookmark' ? 'white' : 'waba.faint'}
+                        rounded="full"
+                        px={2}
+                        fontSize="11px"
+                    >
                         {bookmarkCount ?? bookmarkList.length}
-                    </Text>
+                    </Badge>
                 </Box>
 
                 <Box
@@ -120,10 +197,16 @@ export default function ActivitySection({
                     onClick={() => onTabChange('like')}
                 >
                     <Heart size={16} />
-                    <Text>좋아요한 글</Text>
-                    <Text fontSize="12px" color={activeTab === 'like' ? 'waba.purple' : 'waba.faint'}>
+                    <span>좋아요한 글</span>
+                    <Badge
+                        bg={activeTab === 'like' ? 'waba.purple' : 'waba.subtle'}
+                        color={activeTab === 'like' ? 'white' : 'waba.faint'}
+                        rounded="full"
+                        px={2}
+                        fontSize="11px"
+                    >
                         {likeCount ?? likeList.length}
-                    </Text>
+                    </Badge>
                 </Box>
 
                 <Box
@@ -141,9 +224,15 @@ export default function ActivitySection({
                     onClick={() => onTabChange('draft')}
                 >
                     <Edit3 size={16} />
-                    <Text>임시저장</Text>
+                    <span>임시저장</span>
                     {(draftCount ?? draftList.length) > 0 && (
-                        <Badge bg="orange.500" color="white" rounded="full" px={1.5} fontSize="11px">
+                        <Badge
+                            bg={activeTab === 'draft' ? 'waba.purple' : 'waba.subtle'}
+                            color={activeTab === 'draft' ? 'white' : 'waba.faint'}
+                            rounded="full"
+                            px={2}
+                            fontSize="11px"
+                        >
                             {draftCount ?? draftList.length}
                         </Badge>
                     )}
@@ -151,32 +240,285 @@ export default function ActivitySection({
             </HStack>
 
             {/* 탭 콘텐츠 영역 */}
-            <Box pt={8}>
+            <Box pt={6}>
                 {/* [탭 1: 내 게시글] */}
                 {activeTab === 'post' && (
-                    postList.length > 0 ? (
-                        <PostMasonryList postList={postList} />
-                    ) : (
-                        <VStack py={16} gap={4} textAlign="center">
-                            <Text fontSize="42px">📝</Text>
-                            <Heading fontSize="18px" fontWeight="700" color="waba.charcoal">
-                                아직 작성한 게시글이 없습니다
-                            </Heading>
-                            <Text fontSize="14px" color="waba.faint" maxW="380px">
-                                우리 아이들과 함께하는 감각적인 인테리어와 일상을 WABA에 기록해 보세요.
-                            </Text>
-                            <Button
-                                bg="waba.charcoal"
-                                color="white"
-                                rounded="full"
-                                px={6}
-                                fontWeight="600"
-                                onClick={() => router.push('/post/register')}
+                    <Box>
+                        {/* 1. 펫별 퀵 필터 칩 바 (반려동물이 1마리 이상일 때 노출) */}
+                        {pets.length > 0 && (
+                            <Flex align="center" gap={2} mb={5} overflowX="auto" pb={1}>
+                                <Text fontSize="12px" fontWeight="700" color="waba.muted" mr={1} flexShrink={0}>
+                                    가족별 모아보기
+                                </Text>
+                                {/* 전체 칩 */}
+                                <Box
+                                    as="button"
+                                    onClick={() => onSelectPetId?.(null)}
+                                    px={3.5}
+                                    py={1.5}
+                                    borderRadius="full"
+                                    fontSize="12px"
+                                    fontWeight={!selectedPetId ? '700' : '600'}
+                                    bg={!selectedPetId ? 'waba.charcoal' : 'white'}
+                                    color={!selectedPetId ? 'white' : 'waba.charcoal'}
+                                    border="1px solid"
+                                    borderColor={!selectedPetId ? 'waba.charcoal' : 'waba.border'}
+                                    _hover={{ opacity: 0.9 }}
+                                    transition="all 0.15s"
+                                    flexShrink={0}
+                                >
+                                    전체 ({postList.length})
+                                </Box>
+
+                                {/* 각 펫별 칩 */}
+                                {pets.map((pet) => {
+                                    const active = String(selectedPetId) === String(pet.id);
+                                    const count = postList.filter((p) =>
+                                        p.post_pets?.some((pt) => String(pt.pet_id) === String(pet.id)) ||
+                                        p.product_pins?.some((pin) => pin.pin_type === 'PET' && String(pin.pet_id) === String(pet.id))
+                                    ).length;
+
+                                    return (
+                                        <Box
+                                            key={pet.id}
+                                            as="button"
+                                            onClick={() => onSelectPetId?.(active ? null : pet.id)}
+                                            px={3.5}
+                                            py={1.5}
+                                            borderRadius="full"
+                                            fontSize="12px"
+                                            fontWeight={active ? '700' : '600'}
+                                            bg={active ? 'waba.purple' : 'white'}
+                                            color={active ? 'white' : 'waba.charcoal'}
+                                            border="1px solid"
+                                            borderColor={active ? 'waba.purple' : 'waba.border'}
+                                            boxShadow={active ? '0 2px 8px rgba(123, 92, 250, 0.25)' : 'none'}
+                                            _hover={{ opacity: 0.95 }}
+                                            transition="all 0.15s"
+                                            flexShrink={0}
+                                        >
+                                            {pet.name} ({count})
+                                        </Box>
+                                    );
+                                })}
+
+                                {/* 미분류 칩 */}
+                                <Box
+                                    as="button"
+                                    onClick={() => onSelectPetId?.(isUnassignedSelected ? null : 'unassigned')}
+                                    px={3.5}
+                                    py={1.5}
+                                    borderRadius="full"
+                                    fontSize="12px"
+                                    fontWeight={isUnassignedSelected ? '700' : '600'}
+                                    bg={isUnassignedSelected ? 'waba.charcoal' : 'white'}
+                                    color={isUnassignedSelected ? 'white' : 'waba.charcoal'}
+                                    border="1px solid"
+                                    borderColor={isUnassignedSelected ? 'waba.charcoal' : 'waba.border'}
+                                    boxShadow={isUnassignedSelected ? '0 2px 8px rgba(26, 28, 30, 0.2)' : 'none'}
+                                    _hover={{ opacity: 0.95 }}
+                                    transition="all 0.15s"
+                                    flexShrink={0}
+                                >
+                                    미분류 ({unassignedCount})
+                                </Box>
+                            </Flex>
+                        )}
+
+                        {/* 2-A. 선택된 펫 하이라이트 미니 배너 */}
+                        {selectedPet && (
+                            <Box
+                                mb={6}
+                                p={{ base: 4, md: 5 }}
+                                borderRadius="24px"
+                                bg="gradient-to-r"
+                                bgGradient="linear(to-r, #F3EFFF, #F8F6FF, white)"
+                                border="1px solid"
+                                borderColor="rgba(123, 92, 250, 0.25)"
+                                boxShadow="0 4px 20px -2px rgba(123, 92, 250, 0.08)"
                             >
-                                첫 이야기 작성하기
-                            </Button>
-                        </VStack>
-                    )
+                                <Flex direction={{ base: 'column', sm: 'row' }} justify="space-between" align={{ base: 'flex-start', sm: 'center' }} gap={3}>
+                                    <HStack gap={3.5}>
+                                        <Avatar.Root
+                                            size="lg"
+                                            borderRadius="full"
+                                            border="2px solid"
+                                            borderColor="waba.purple"
+                                            boxShadow="0 4px 12px rgba(123, 92, 250, 0.2)"
+                                        >
+                                            {selectedPet.current_avatar_url ? (
+                                                <Avatar.Image src={selectedPet.current_avatar_url} alt={selectedPet.name} />
+                                            ) : (
+                                                <Text fontSize="24px">{getSpeciesEmoji(selectedPet.species)}</Text>
+                                            )}
+                                        </Avatar.Root>
+                                        <Box>
+                                            <HStack gap={2} mb={0.5}>
+                                                <Heading fontSize="17px" fontWeight="800" color="waba.charcoal">
+                                                    {selectedPet.name}의 공간 &amp; 라이프 아카이브
+                                                </Heading>
+                                                {selectedPet.breed && (
+                                                    <Badge bg="white" color="waba.purple" border="1px solid" borderColor="waba.purpleLight" rounded="full" px={2} fontSize="11px" fontWeight="700">
+                                                        {selectedPet.breed}
+                                                    </Badge>
+                                                )}
+                                            </HStack>
+                                            <HStack gap={2} fontSize="12px" color="waba.muted" flexWrap="wrap">
+                                                {calculateAge(selectedPet.birth_date) && (
+                                                    <Text>
+                                                        {calculateAge(selectedPet.birth_date)}
+                                                        {selectedPet.is_birth_estimated ? ' (추정)' : ''}
+                                                    </Text>
+                                                )}
+                                                {selectedPet.gender && (
+                                                    <Text>· {selectedPet.gender === 'FEMALE' ? '여아' : selectedPet.gender === 'MALE' ? '남아' : ''}</Text>
+                                                )}
+                                                {selectedPet.latest_weight_kg && (
+                                                    <Text>· {Number(selectedPet.latest_weight_kg).toFixed(1)}kg</Text>
+                                                )}
+                                                <Text color="waba.purple" fontWeight="700">
+                                                    · 함께한 공간 이야기 {displayedPostList.length}개
+                                                </Text>
+                                            </HStack>
+                                        </Box>
+                                    </HStack>
+
+                                    <Button
+                                        size="xs"
+                                        variant="ghost"
+                                        color="waba.muted"
+                                        _hover={{ color: 'waba.charcoal', bg: 'white' }}
+                                        rounded="full"
+                                        onClick={() => onSelectPetId?.(null)}
+                                        fontWeight="700"
+                                    >
+                                        전체 보기로 돌아가기
+                                        <X size={13} style={{ marginLeft: '4px' }} />
+                                    </Button>
+                                </Flex>
+                            </Box>
+                        )}
+
+                        {/* 2-B. '미분류' 선택 시 하이라이트 배너 */}
+                        {isUnassignedSelected && (
+                            <Box
+                                mb={6}
+                                p={{ base: 4, md: 5 }}
+                                borderRadius="24px"
+                                bg="gradient-to-r"
+                                bgGradient="linear(to-r, #F4F4F6, #FAFAFC, white)"
+                                border="1px solid"
+                                borderColor="waba.border"
+                                boxShadow="0 4px 20px -2px rgba(26, 26, 30, 0.05)"
+                            >
+                                <Flex direction={{ base: 'column', sm: 'row' }} justify="space-between" align={{ base: 'flex-start', sm: 'center' }} gap={3}>
+                                    <HStack gap={3.5}>
+                                        <Box
+                                            w="48px"
+                                            h="48px"
+                                            borderRadius="full"
+                                            bg="waba.subtle"
+                                            display="flex"
+                                            alignItems="center"
+                                            justifyContent="center"
+                                            fontSize="22px"
+                                            border="1px solid"
+                                            borderColor="waba.border"
+                                        >
+                                            🏠
+                                        </Box>
+                                        <Box>
+                                            <HStack gap={2} mb={0.5}>
+                                                <Heading fontSize="17px" fontWeight="800" color="waba.charcoal">
+                                                    반려동물 미지정 이야기
+                                                </Heading>
+                                                <Badge bg="white" color="waba.muted" border="1px solid" borderColor="waba.border" rounded="full" px={2} fontSize="11px" fontWeight="700">
+                                                    미분류
+                                                </Badge>
+                                            </HStack>
+                                            <Text fontSize="12px" color="waba.muted">
+                                                특정 반려동물이 태그되지 않은 인테리어 꿀팁이나 일상 기록입니다. ({displayedPostList.length}개)
+                                            </Text>
+                                        </Box>
+                                    </HStack>
+
+                                    <Button
+                                        size="xs"
+                                        variant="ghost"
+                                        color="waba.muted"
+                                        _hover={{ color: 'waba.charcoal', bg: 'white' }}
+                                        rounded="full"
+                                        onClick={() => onSelectPetId?.(null)}
+                                        fontWeight="700"
+                                    >
+                                        전체 보기로 돌아가기
+                                        <X size={13} style={{ marginLeft: '4px' }} />
+                                    </Button>
+                                </Flex>
+                            </Box>
+                        )}
+
+                        {/* 3. 게시글 리스트 렌더링 */}
+                        {displayedPostList.length > 0 ? (
+                            <PostMasonryList postList={displayedPostList} />
+                        ) : isUnassignedSelected ? (
+                            /* 미분류 글이 없을 때의 Empty State */
+                            <VStack py={14} gap={4} textAlign="center" bg="white" borderRadius="24px" border="1px solid" borderColor="waba.border" p={8}>
+                                <Text fontSize="42px">🏠</Text>
+                                <Heading fontSize="18px" fontWeight="700" color="waba.charcoal">
+                                    미분류된 게시글이 없습니다
+                                </Heading>
+                                <Text fontSize="13px" color="waba.faint" maxW="400px" lineHeight="1.6">
+                                    모든 게시글에 반려동물이 등록되어 있습니다.
+                                </Text>
+                            </VStack>
+                        ) : selectedPet ? (
+                            /* 선택된 펫의 게시글이 0개일 때의 Empty State */
+                            <VStack py={14} gap={4} textAlign="center" bg="white" borderRadius="24px" border="1px solid" borderColor="waba.border" p={8}>
+                                <Text fontSize="42px">🐾</Text>
+                                <Heading fontSize="18px" fontWeight="700" color="waba.charcoal">
+                                    아직 {selectedPet.name}가 태그된 공간 사진이 없어요
+                                </Heading>
+                                <Text fontSize="13px" color="waba.faint" maxW="400px" lineHeight="1.6">
+                                    사진을 올릴 때 함께하는 반려동물로 &apos;{selectedPet.name}&apos;를 선택해보세요!<br />
+                                    소중한 공간 이야기와 성장 앨범이 차곡차곡 기록됩니다.
+                                </Text>
+                                <Button
+                                    bg="waba.purple"
+                                    color="white"
+                                    rounded="full"
+                                    px={6}
+                                    fontWeight="700"
+                                    _hover={{ bg: 'purple.600' }}
+                                    onClick={() => router.push('/post/register')}
+                                    mt={2}
+                                >
+                                    <Plus size={16} style={{ marginRight: '4px' }} />
+                                    {selectedPet.name}와 함께한 첫 공간 올리기
+                                </Button>
+                            </VStack>
+                        ) : (
+                            <VStack py={16} gap={4} textAlign="center">
+                                <Text fontSize="42px">📝</Text>
+                                <Heading fontSize="18px" fontWeight="700" color="waba.charcoal">
+                                    아직 작성한 게시글이 없습니다
+                                </Heading>
+                                <Text fontSize="14px" color="waba.faint" maxW="380px">
+                                    우리 아이들과 함께하는 감각적인 인테리어와 일상을 WABA에 기록해 보세요.
+                                </Text>
+                                <Button
+                                    bg="waba.charcoal"
+                                    color="white"
+                                    rounded="full"
+                                    px={6}
+                                    fontWeight="600"
+                                    onClick={() => router.push('/post/register')}
+                                >
+                                    첫 이야기 작성하기
+                                </Button>
+                            </VStack>
+                        )}
+                    </Box>
                 )}
 
                 {/* [탭 2: 스크랩한 공간] */}
@@ -225,7 +567,7 @@ export default function ActivitySection({
                                 fontWeight="600"
                                 onClick={() => router.push('/board/SNAP')}
                             >
-                                일상 스냅 보러가기
+                                일상 스냅 피드 둘러보기
                             </Button>
                         </VStack>
                     )
@@ -234,69 +576,53 @@ export default function ActivitySection({
                 {/* [탭 4: 임시저장 글] */}
                 {activeTab === 'draft' && (
                     draftList.length > 0 ? (
-                        <VStack gap={4} align="stretch">
+                        <VStack align="stretch" gap={3}>
                             {draftList.map((draft) => (
                                 <Box
-                                    key={draft.id || draft.post?.id}
+                                    key={draft.id}
+                                    p={5}
                                     bg="white"
-                                    borderRadius="20px"
-                                    p={6}
+                                    borderRadius="16px"
                                     border="1px solid"
                                     borderColor="waba.border"
-                                    display="flex"
-                                    alignItems="center"
-                                    justifyContent="space-between"
-                                    shadow="sm"
+                                    transition="all 0.2s"
+                                    _hover={{ borderColor: 'waba.purple', boxShadow: 'sm' }}
                                 >
-                                    <VStack align="start" gap={1.5}>
-                                        <HStack gap={2}>
-                                            <Badge bg="orange.50" color="orange.700" rounded="full" px={2.5} fontSize="11px" fontWeight="700">
-                                                임시저장
-                                            </Badge>
-                                            <Text fontSize="12px" color="waba.faint">
-                                                {formatDate(draft.updated_at || draft.created_at || new Date().toISOString())}
-                                            </Text>
-                                        </HStack>
-                                        <Heading fontSize="16px" fontWeight="700" color="waba.charcoal">
-                                            {draft.title || draft.post?.title || '제목 없는 임시저장 글'}
-                                        </Heading>
-                                    </VStack>
-
-                                    <HStack gap={2}>
-                                        <Button
-                                            bg="waba.charcoal"
-                                            color="white"
-                                            size="sm"
-                                            rounded="full"
-                                            px={4}
-                                            fontWeight="600"
-                                            onClick={() => router.push('/post/register')}
+                                    <Flex justify="space-between" align="center">
+                                        <Box
+                                            cursor="pointer"
+                                            flex={1}
+                                            onClick={() => router.push(`/post/register?draft=${draft.id}`)}
                                         >
-                                            이어서 쓰기
-                                        </Button>
+                                            <Heading fontSize="16px" fontWeight="700" color="waba.charcoal" mb={1}>
+                                                {draft.title || '제목 없음'}
+                                            </Heading>
+                                            <Text fontSize="12px" color="waba.faint">
+                                                {formatDate(draft.updated_at || draft.created_at)} 에 저장됨
+                                            </Text>
+                                        </Box>
                                         <IconButton
                                             aria-label="임시저장 삭제"
                                             variant="ghost"
                                             size="sm"
-                                            rounded="full"
-                                            color="red.500"
-                                            _hover={{ bg: 'red.50' }}
-                                            onClick={() => onDeleteDraft(draft.id || draft.post?.id)}
+                                            color="waba.faint"
+                                            _hover={{ color: 'red.500', bg: 'red.50' }}
+                                            onClick={() => onDeleteDraft(draft.id)}
                                         >
                                             <Trash2 size={16} />
                                         </IconButton>
-                                    </HStack>
+                                    </Flex>
                                 </Box>
                             ))}
                         </VStack>
                     ) : (
                         <VStack py={16} gap={4} textAlign="center">
-                            <Text fontSize="42px">✍️</Text>
+                            <Text fontSize="42px">📄</Text>
                             <Heading fontSize="18px" fontWeight="700" color="waba.charcoal">
-                                임시저장된 글이 없습니다
+                                보관 중인 임시저장 글이 없습니다
                             </Heading>
-                            <Text fontSize="14px" color="waba.faint">
-                                글을 쓰다가 중간에 나가더라도 언제든 자동으로 안전하게 보관됩니다.
+                            <Text fontSize="14px" color="waba.faint" maxW="380px">
+                                작성 중에 저장해둔 글이 있다면 여기에 보관됩니다.
                             </Text>
                         </VStack>
                     )

@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WABA 검색 결과 페이지 시안 (통합검색: 게시글 + 제품)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            waba: {
+              purple: '#7B5CFA',
+              purpleLight: '#F3EFFF',
+              purpleHover: '#6845E8',
+              purpleDeep: '#5332E0',
+              charcoal: '#1A1A1E',
+              muted: '#6E6E78',
+              faint: '#9E9EA8',
+              subtle: '#F4F4F6',
+              border: '#E8E8EE',
+              canvas: '#FAFAFC',
+            }
+          },
+          boxShadow: {
+            'card': '0 4px 20px -2px rgba(26, 26, 30, 0.05)',
+            'card-hover': '0 12px 32px -4px rgba(123, 92, 250, 0.12), 0 4px 12px -2px rgba(26, 26, 30, 0.06)',
+            'subtle': '0 2px 10px rgba(0, 0, 0, 0.03)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E2E2E8; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #C8C8D0; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Custom line clamp */
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-[#0B0C10] text-[#1A1A1E] min-h-screen p-6 antialiased selection:bg-[#7B5CFA]/20 selection:text-[#7B5CFA]">
+
+  <!-- Top Controller Bar -->
+  <header class="max-w-7xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 bg-[#14151B] border border-white/10 rounded-2xl px-6 py-4 shadow-xl">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-[#7B5CFA] flex items-center justify-center text-white font-black text-sm shadow-lg shadow-[#7B5CFA]/30">
+        W
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-white text-base font-bold tracking-tight">WABA 검색 결과 페이지 시안</h1>
+          <span class="text-[10px] font-bold bg-[#7B5CFA]/20 text-[#A78BFA] px-2 py-0.5 rounded-full border border-[#7B5CFA]/30">Stitch v1.1</span>
+        </div>
+        <p class="text-xs text-white/50">게시글(Post) + 제품(Product) 통합 검색 결과 피드 및 필터 UX</p>
+      </div>
+    </div>
+
+    <!-- View Mode Switcher -->
+    <div class="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10">
+      <button onclick="switchView('dual')" id="btn-dual" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#7B5CFA] text-white shadow-sm">
+        전체 비교 보기 (Dual View)
+      </button>
+      <button onclick="switchView('desktop')" id="btn-desktop" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5">
+        🖥️ 데스크톱 중심 (Desktop)
+      </button>
+      <button onclick="switchView('mobile')" id="btn-mobile" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5">
+        📱 모바일 중심 (Mobile)
+      </button>
+      <button onclick="toggleEmptyState()" id="btn-empty" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-amber-400 bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20">
+        ⚠️ 검색결과 없음 (Empty State)
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Canvas Container -->
+  <main class="max-w-7xl mx-auto">
+    <div id="container-grid" class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+
+      <!-- ============================================================== -->
+      <!-- 1. 데스크톱 검색 결과 뷰 (Desktop View)                        -->
+      <!-- ============================================================== -->
+      <section id="col-desktop" class="xl:col-span-8 flex flex-col gap-4">
+        <div class="flex items-center justify-between text-xs font-semibold text-white/60 px-2">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            데스크톱 뷰포트 (1440px 해상도 기준)
+          </span>
+          <span class="font-mono text-white/40">통합검색 (공간 18 + 제품 6)</span>
+        </div>
+
+        <!-- Desktop Screen Window -->
+        <div class="relative w-full rounded-3xl overflow-hidden border border-white/10 bg-[#FAFAFC] shadow-2xl flex flex-col">
+          
+          <!-- Realistic WABA Header -->
+          <div class="bg-white/90 backdrop-blur-md border-b border-[#E8E8EE] sticky top-0 z-30 px-8 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-8">
+              <div class="flex items-center gap-2">
+                <span class="font-black text-2xl tracking-tight text-[#1A1A1E]">WABA</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#7B5CFA]"></span>
+                <span class="text-[11px] font-semibold text-[#9E9EA8] tracking-wider">by WABAMI</span>
+              </div>
+              <nav class="flex items-center gap-6 text-sm font-semibold text-[#6E6E78]">
+                <a href="#" class="hover:text-[#1A1A1E]">홈</a>
+                <a href="#" class="hover:text-[#1A1A1E]">커뮤니티</a>
+                <a href="#" class="text-[#7B5CFA] font-bold">스냅·룩북</a>
+                <a href="#" class="hover:text-[#1A1A1E]">스토어</a>
+              </nav>
+            </div>
+
+            <!-- Header Quick Search & User -->
+            <div class="flex items-center gap-3">
+              <div class="relative w-72">
+                <input 
+                  type="text" 
+                  value="원목 캣타워" 
+                  class="w-full bg-[#F4F4F6] rounded-full px-4 py-2 pl-9 pr-8 text-xs font-medium text-[#1A1A1E] focus:bg-white focus:ring-2 focus:ring-[#7B5CFA]/20 outline-none border border-[#E8E8EE]"
+                />
+                <svg class="w-4 h-4 text-[#7B5CFA] absolute left-3 top-2.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <button class="absolute right-3 top-2.5 text-[#9E9EA8] hover:text-[#1A1A1E] text-xs">✕</button>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-[#F4F4F6] flex items-center justify-center text-xs text-[#1A1A1E] cursor-pointer hover:bg-[#EAEAEF]">
+                🛍️
+              </div>
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-[#7B5CFA] to-[#A78BFA] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                M
+              </div>
+            </div>
+          </div>
+
+          <!-- Page Body Content Area -->
+          <div class="p-8 max-w-5xl mx-auto w-full space-y-8">
+            
+            <!-- Result Title & Top Meta Header -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-[#E8E8EE]">
+              <div>
+                <div class="flex items-center gap-2 text-xs font-semibold text-[#7B5CFA] mb-1">
+                  <span>검색 결과</span>
+                  <span class="w-1 h-1 rounded-full bg-[#7B5CFA]"></span>
+                  <span class="text-[#9E9EA8]">통합 큐레이션</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <h2 class="text-2xl font-extrabold text-[#1A1A1E] tracking-tight">
+                    '<span class="text-[#7B5CFA]">원목 캣타워</span>' 검색 결과
+                  </h2>
+                  <span class="bg-[#F3EFFF] text-[#7B5CFA] font-bold text-xs px-2.5 py-1 rounded-full border border-[#7B5CFA]/20">
+                    총 24개
+                  </span>
+                </div>
+              </div>
+
+              <!-- Sort Dropdown -->
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-[#9E9EA8] font-medium">정렬:</span>
+                <select class="bg-white border border-[#E8E8EE] rounded-xl px-3 py-1.5 text-xs font-semibold text-[#1A1A1E] outline-none hover:border-[#7B5CFA] transition-colors cursor-pointer shadow-subtle">
+                  <option selected>정확도순</option>
+                  <option>최신순</option>
+                  <option>인기순 (좋아요)</option>
+                  <option>상품 핀 많은 순</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tab Navigation & Pet Filter Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <!-- Tabs -->
+              <div class="flex items-center gap-2 bg-[#F4F4F6] p-1 rounded-2xl border border-[#E8E8EE]">
+                <button onclick="switchSearchTab(this, 'all')" class="search-tab-btn active px-4 py-2 rounded-xl text-xs font-bold bg-white text-[#7B5CFA] shadow-xs transition-all">
+                  통합검색 <span class="ml-1 text-[11px] font-semibold text-[#7B5CFA]/80">24</span>
+                </button>
+                <button onclick="switchSearchTab(this, 'posts')" class="search-tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-[#6E6E78] hover:text-[#1A1A1E] transition-all">
+                  공간·룩북 <span class="ml-1 text-[11px] text-[#9E9EA8]">18</span>
+                </button>
+                <button onclick="switchSearchTab(this, 'products')" class="search-tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-[#6E6E78] hover:text-[#1A1A1E] transition-all">
+                  제품·아이템 <span class="ml-1 text-[11px] text-[#9E9EA8]">6</span>
+                </button>
+              </div>
+
+              <!-- Pet Quick Filter -->
+              <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                <span class="text-xs font-bold text-[#6E6E78] mr-1">대상 펫:</span>
+                <button class="px-3 py-1.5 rounded-full text-xs font-bold bg-[#7B5CFA] text-white shadow-xs">전체</button>
+                <button class="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6]">고양이 🐱</button>
+                <button class="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6]">강아지 🐶</button>
+                <button class="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-[#E8E8EE] text-[#1A1A1E] hover:bg-[#F4F4F6]">소동물 🦎</button>
+              </div>
+            </div>
+
+            <!-- NORMAL CONTENT STATE -->
+            <div id="desktop-content-normal" class="space-y-10">
+              
+              <!-- ============================================== -->
+              <!-- SECTION 1: 🛍️ 관련 추천 제품 (Product Results) -->
+              <!-- ============================================== -->
+              <div id="sec-products" class="bg-white rounded-3xl p-6 border border-[#E8E8EE] shadow-card">
+                <div class="flex items-center justify-between mb-5">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-[#F3EFFF] text-[#7B5CFA] flex items-center justify-center text-sm font-bold">
+                      🛍️
+                    </div>
+                    <div>
+                      <h3 class="text-base font-bold text-[#1A1A1E] tracking-tight">관련 추천 제품</h3>
+                      <p class="text-xs text-[#9E9EA8]">게시글 속 태그된 실제 구매 가능 원목 아이템</p>
+                    </div>
+                    <span class="ml-1 text-xs font-extrabold text-[#7B5CFA] bg-[#F3EFFF] px-2 py-0.5 rounded-full">6개</span>
+                  </div>
+                  <button class="text-xs font-bold text-[#7B5CFA] hover:text-[#5332E0] flex items-center gap-1 transition-colors">
+                    전체보기 (6) 
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+                  </button>
+                </div>
+
+                <!-- Products 4-Grid Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  
+                  <!-- Product 1 -->
+                  <div class="group relative bg-[#FAFAFC] rounded-2xl p-3 border border-[#E8E8EE] hover:border-[#7B5CFA]/40 hover:shadow-card-hover transition-all flex flex-col justify-between">
+                    <div>
+                      <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 mb-3">
+                        <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=400&q=80" alt="원목 캣타워" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <span class="absolute top-2 left-2 bg-[#7B5CFA] text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs">와바미 PICK</span>
+                        <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-xs">
+                          ♥
+                        </button>
+                      </div>
+                      <div class="text-[11px] font-semibold text-[#9E9EA8]">와바미 오리지널</div>
+                      <div class="text-xs font-bold text-[#1A1A1E] line-clamp-2 mt-0.5 group-hover:text-[#7B5CFA] transition-colors">
+                        노르딕 자작나무 풀세트 대형 캣폴 캣타워
+                      </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-[#E8E8EE]/80 flex items-center justify-between">
+                      <div>
+                        <span class="text-xs font-black text-red-500 mr-1">15%</span>
+                        <span class="text-sm font-extrabold text-[#1A1A1E]">135,150원</span>
+                        <div class="text-[10px] text-[#9E9EA8] line-through">159,000원</div>
+                      </div>
+                      <button class="w-7 h-7 rounded-lg bg-white border border-[#E8E8EE] flex items-center justify-center text-xs text-[#1A1A1E] hover:bg-[#7B5CFA] hover:text-white hover:border-[#7B5CFA] transition-all">
+                        🛒
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Product 2 -->
+                  <div class="group relative bg-[#FAFAFC] rounded-2xl p-3 border border-[#E8E8EE] hover:border-[#7B5CFA]/40 hover:shadow-card-hover transition-all flex flex-col justify-between">
+                    <div>
+                      <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 mb-3">
+                        <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80" alt="투명 해먹 캣타워" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-xs">
+                          ♥
+                        </button>
+                      </div>
+                      <div class="text-[11px] font-semibold text-[#9E9EA8]">펫리빙 스튜디오</div>
+                      <div class="text-xs font-bold text-[#1A1A1E] line-clamp-2 mt-0.5 group-hover:text-[#7B5CFA] transition-colors">
+                        아크릴 투명 우주선 해먹 슬림 원목 타워
+                      </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-[#E8E8EE]/80 flex items-center justify-between">
+                      <div>
+                        <span class="text-xs font-black text-red-500 mr-1">20%</span>
+                        <span class="text-sm font-extrabold text-[#1A1A1E]">71,200원</span>
+                        <div class="text-[10px] text-[#9E9EA8] line-through">89,000원</div>
+                      </div>
+                      <button class="w-7 h-7 rounded-lg bg-white border border-[#E8E8EE] flex items-center justify-center text-xs text-[#1A1A1E] hover:bg-[#7B5CFA] hover:text-white hover:border-[#7B5CFA] transition-all">
+                        🛒
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Product 3 -->
+                  <div class="group relative bg-[#FAFAFC] rounded-2xl p-3 border border-[#E8E8EE] hover:border-[#7B5CFA]/40 hover:shadow-card-hover transition-all flex flex-col justify-between">
+                    <div>
+                      <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 mb-3">
+                        <img src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=400&q=80" alt="미니 캣타워" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-xs">
+                          ♥
+                        </button>
+                      </div>
+                      <div class="text-[11px] font-semibold text-[#9E9EA8]">스튜디오 묘(妙)</div>
+                      <div class="text-xs font-bold text-[#1A1A1E] line-clamp-2 mt-0.5 group-hover:text-[#7B5CFA] transition-colors">
+                        삼줄 스크래쳐 일체형 원목 미니 캣타워 (원룸용)
+                      </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-[#E8E8EE]/80 flex items-center justify-between">
+                      <div>
+                        <span class="text-xs font-black text-[#7B5CFA] mr-1">정가</span>
+                        <span class="text-sm font-extrabold text-[#1A1A1E]">45,000원</span>
+                      </div>
+                      <button class="w-7 h-7 rounded-lg bg-white border border-[#E8E8EE] flex items-center justify-center text-xs text-[#1A1A1E] hover:bg-[#7B5CFA] hover:text-white hover:border-[#7B5CFA] transition-all">
+                        🛒
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Product 4 -->
+                  <div class="group relative bg-[#FAFAFC] rounded-2xl p-3 border border-[#E8E8EE] hover:border-[#7B5CFA]/40 hover:shadow-card-hover transition-all flex flex-col justify-between">
+                    <div>
+                      <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 mb-3">
+                        <img src="https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&w=400&q=80" alt="계단형 캣타워" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <button class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-xs">
+                          ♥
+                        </button>
+                      </div>
+                      <div class="text-[11px] font-semibold text-[#9E9EA8]">루시스퀘어</div>
+                      <div class="text-xs font-bold text-[#1A1A1E] line-clamp-2 mt-0.5 group-hover:text-[#7B5CFA] transition-colors">
+                        관절보호 완경사 와이드 원목 스텝 캣타워 계단
+                      </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-[#E8E8EE]/80 flex items-center justify-between">
+                      <div>
+                        <span class="text-xs font-black text-red-500 mr-1">10%</span>
+                        <span class="text-sm font-extrabold text-[#1A1A1E]">99,000원</span>
+                        <div class="text-[10px] text-[#9E9EA8] line-through">110,000원</div>
+                      </div>
+                      <button class="w-7 h-7 rounded-lg bg-white border border-[#E8E8EE] flex items-center justify-center text-xs text-[#1A1A1E] hover:bg-[#7B5CFA] hover:text-white hover:border-[#7B5CFA] transition-all">
+                        🛒
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- ============================================== -->
+              <!-- SECTION 2: 📸 공간 & 룩북 피드 (Post Results) -->
+              <!-- ============================================== -->
+              <div id="sec-posts" class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-[#F3EFFF] text-[#7B5CFA] flex items-center justify-center text-sm font-bold">
+                      📸
+                    </div>
+                    <h3 class="text-base font-bold text-[#1A1A1E] tracking-tight">관련 공간 &amp; 룩북 스냅</h3>
+                    <span class="text-xs font-extrabold text-[#7B5CFA] bg-[#F3EFFF] px-2 py-0.5 rounded-full">18개</span>
+                  </div>
+                  <span class="text-xs text-[#9E9EA8]">사진 속 제품 태그(Pin)를 터치해보세요</span>
+                </div>
+
+                <!-- 3-Column Masonry/Card Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
+                  <!-- Post Card 1 -->
+                  <div class="group bg-white rounded-3xl overflow-hidden border border-[#E8E8EE] shadow-card hover:shadow-card-hover transition-all flex flex-col cursor-pointer">
+                    <div class="relative w-full h-56 overflow-hidden bg-slate-100">
+                      <img src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=600&q=80" alt="거실 인테리어" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <!-- Pin Badge -->
+                      <div class="absolute bottom-3 left-3 bg-[#1A1A1E]/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/20">
+                        <span class="text-[#7B5CFA]">📌</span> 상품 3개
+                      </div>
+                      <!-- Pet Badge -->
+                      <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-[#1A1A1E] text-[11px] font-bold px-2.5 py-1 rounded-full shadow-xs">
+                        🐱 랙돌 3.5kg
+                      </div>
+                      <!-- Like Button -->
+                      <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/30 backdrop-blur-md text-white hover:text-red-400 flex items-center justify-center text-sm transition-colors">
+                        ♥
+                      </button>
+                    </div>
+                    
+                    <div class="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 class="text-sm font-bold text-[#1A1A1E] line-clamp-2 group-hover:text-[#7B5CFA] transition-colors leading-snug">
+                          성수동 햇살 가득한 거실, 원목 캣타워와 라탄 매트의 완벽한 조화 🌿
+                        </h4>
+                        <p class="text-xs text-[#6E6E78] mt-1.5 line-clamp-2">
+                          창가 햇볕을 좋아하는 루나를 위해 자작나무 캣폴을 설치했어요. 라탄 스툴과 색감이 찰떡이에요!
+                        </p>
+                      </div>
+
+                      <div class="mt-4 pt-3 border-t border-[#F0F0F4] flex items-center justify-between text-xs text-[#9E9EA8]">
+                        <div class="flex items-center gap-2">
+                          <div class="w-5 h-5 rounded-full bg-slate-300 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" class="w-full h-full object-cover" />
+                          </div>
+                          <span class="font-semibold text-[#1A1A1E]">@ragdoll_luna</span>
+                        </div>
+                        <div class="flex items-center gap-3 font-medium">
+                          <span class="flex items-center gap-1">❤️ 142</span>
+                          <span class="flex items-center gap-1">🔖 88</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Post Card 2 -->
+                  <div class="group bg-white rounded-3xl overflow-hidden border border-[#E8E8EE] shadow-card hover:shadow-card-hover transition-all flex flex-col cursor-pointer">
+                    <div class="relative w-full h-56 overflow-hidden bg-slate-100">
+                      <img src="https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=600&q=80" alt="캣타워 침실" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <div class="absolute bottom-3 left-3 bg-[#1A1A1E]/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/20">
+                        <span class="text-[#7B5CFA]">📌</span> 상품 2개
+                      </div>
+                      <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-[#1A1A1E] text-[11px] font-bold px-2.5 py-1 rounded-full shadow-xs">
+                        🐱 코숏 2묘
+                      </div>
+                      <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/30 backdrop-blur-md text-white hover:text-red-400 flex items-center justify-center text-sm transition-colors">
+                        ♥
+                      </button>
+                    </div>
+                    
+                    <div class="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 class="text-sm font-bold text-[#1A1A1E] line-clamp-2 group-hover:text-[#7B5CFA] transition-colors leading-snug">
+                          우드 톤 거실 인테리어에 자연스럽게 녹아드는 맞춤 캣타워 세팅
+                        </h4>
+                        <p class="text-xs text-[#6E6E78] mt-1.5 line-clamp-2">
+                          원목 결이 살아서 인테리어를 해치지 않는 슬림형 타워예요. 냥이들이 하루 종일 올라가 있어요.
+                        </p>
+                      </div>
+
+                      <div class="mt-4 pt-3 border-t border-[#F0F0F4] flex items-center justify-between text-xs text-[#9E9EA8]">
+                        <div class="flex items-center gap-2">
+                          <div class="w-5 h-5 rounded-full bg-slate-300 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" class="w-full h-full object-cover" />
+                          </div>
+                          <span class="font-semibold text-[#1A1A1E]">@wood_home_cat</span>
+                        </div>
+                        <div class="flex items-center gap-3 font-medium">
+                          <span class="flex items-center gap-1">❤️ 98</span>
+                          <span class="flex items-center gap-1">🔖 54</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Post Card 3 -->
+                  <div class="group bg-white rounded-3xl overflow-hidden border border-[#E8E8EE] shadow-card hover:shadow-card-hover transition-all flex flex-col cursor-pointer">
+                    <div class="relative w-full h-56 overflow-hidden bg-slate-100">
+                      <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80" alt="강아지 고양이 합사" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <div class="absolute bottom-3 left-3 bg-[#1A1A1E]/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/20">
+                        <span class="text-[#7B5CFA]">📌</span> 상품 4개
+                      </div>
+                      <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-[#1A1A1E] text-[11px] font-bold px-2.5 py-1 rounded-full shadow-xs">
+                        🐶 말티푸 · 🐱 샴
+                      </div>
+                      <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/30 backdrop-blur-md text-white hover:text-red-400 flex items-center justify-center text-sm transition-colors">
+                        ♥
+                      </button>
+                    </div>
+                    
+                    <div class="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 class="text-sm font-bold text-[#1A1A1E] line-clamp-2 group-hover:text-[#7B5CFA] transition-colors leading-snug">
+                          원목 캣타워 아래 강아지 푹신 방석을 배치한 합사 거실 스타일링 🏡
+                        </h4>
+                        <p class="text-xs text-[#6E6E78] mt-1.5 line-clamp-2">
+                          고양이는 높은 곳에서 내려다보고 강아지는 아래 방석에서 쉬는 평화로운 공존 구역입니다.
+                        </p>
+                      </div>
+
+                      <div class="mt-4 pt-3 border-t border-[#F0F0F4] flex items-center justify-between text-xs text-[#9E9EA8]">
+                        <div class="flex items-center gap-2">
+                          <div class="w-5 h-5 rounded-full bg-slate-300 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&q=80" class="w-full h-full object-cover" />
+                          </div>
+                          <span class="font-semibold text-[#1A1A1E]">@dog_and_cat</span>
+                        </div>
+                        <div class="flex items-center gap-3 font-medium">
+                          <span class="flex items-center gap-1">❤️ 215</span>
+                          <span class="flex items-center gap-1">🔖 130</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Pagination / More Button -->
+                <div class="pt-6 flex justify-center">
+                  <button class="px-6 py-3 rounded-full bg-white border border-[#E8E8EE] text-xs font-bold text-[#1A1A1E] hover:bg-[#F4F4F6] hover:border-[#7B5CFA]/40 transition-all shadow-subtle flex items-center gap-2">
+                    <span>공간·룩북 결과 15개 더보기</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- EMPTY STATE CONTAINER (Hidden by default, toggled via button) -->
+            <div id="desktop-content-empty" class="hidden py-16 px-6 bg-white rounded-3xl border border-[#E8E8EE] text-center space-y-6 shadow-card">
+              <div class="w-20 h-20 rounded-full bg-[#F3EFFF] text-[#7B5CFA] flex items-center justify-center text-3xl mx-auto shadow-inner">
+                🐾
+              </div>
+              <div class="space-y-2">
+                <h3 class="text-xl font-bold text-[#1A1A1E]">
+                  '<span class="text-[#7B5CFA]">외계인 고양이 침대</span>'에 대한 검색 결과가 없습니다
+                </h3>
+                <p class="text-xs text-[#9E9EA8] max-w-md mx-auto">
+                  단어의 철자가 정확한지 확인해 보시거나, 더 일반적인 단어 또는 유사한 키워드로 다시 검색해 보세요.
+                </p>
+              </div>
+
+              <!-- Recommendation Chips in Empty State -->
+              <div class="pt-4 max-w-lg mx-auto">
+                <div class="text-xs font-bold text-[#6E6E78] mb-3">와바미 집사들이 많이 찾는 추천 키워드</div>
+                <div class="flex flex-wrap justify-center gap-2">
+                  <button class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] transition-all">#원목캣타워</button>
+                  <button class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] transition-all">#논슬립매트</button>
+                  <button class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] transition-all">#고양이숨숨집</button>
+                  <button class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] transition-all">#강아지계단</button>
+                  <button class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#F4F4F6] hover:bg-[#EAEAEF] text-[#1A1A1E] transition-all">#원목식기</button>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button onclick="toggleEmptyState()" class="px-5 py-2.5 rounded-full bg-[#7B5CFA] text-white text-xs font-bold hover:bg-[#6845E8] transition-colors shadow-xs">
+                  원래 검색 결과로 돌아가기
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 2. 모바일 반응형 검색 결과 뷰 (Mobile View)                    -->
+      <!-- ============================================================== -->
+      <section id="col-mobile" class="xl:col-span-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between text-xs font-semibold text-white/60 px-2">
+          <span class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-violet-400"></span>
+            모바일 뷰포트 (393px 스크롤 피드)
+          </span>
+          <span class="font-mono text-white/40">Responsive Feed</span>
+        </div>
+
+        <!-- Phone Shell Container -->
+        <div class="relative w-full max-w-[393px] mx-auto h-[820px] rounded-[44px] overflow-hidden border-[8px] border-[#22242D] bg-[#FAFAFC] shadow-2xl flex flex-col">
+          
+          <!-- Dynamic Island Notch -->
+          <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-40 flex items-center justify-center">
+            <div class="w-3 h-3 rounded-full bg-[#1A1A1E] ml-auto mr-2"></div>
+          </div>
+
+          <!-- Mobile Header Bar -->
+          <div class="bg-white/95 backdrop-blur-md pt-10 px-4 pb-3 border-b border-[#E8E8EE] sticky top-0 z-30">
+            <!-- Search bar -->
+            <div class="flex items-center gap-2">
+              <div class="flex-1 flex items-center gap-2 bg-[#F4F4F6] rounded-2xl px-3 py-2 border border-[#E8E8EE]">
+                <svg class="w-3.5 h-3.5 text-[#7B5CFA] shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"></path></svg>
+                <input type="text" value="원목 캣타워" class="w-full bg-transparent text-xs text-[#1A1A1E] font-semibold outline-none" />
+                <button class="text-[#9E9EA8] text-[10px]">✕</button>
+              </div>
+              <button class="w-8 h-8 rounded-full bg-[#F4F4F6] flex items-center justify-center text-xs">
+                🛍️
+              </button>
+            </div>
+
+            <!-- Mobile Tabs -->
+            <div class="flex items-center gap-4 mt-3 text-xs font-bold border-b border-[#F0F0F4] pb-1">
+              <span class="text-[#7B5CFA] border-b-2 border-[#7B5CFA] pb-1.5">통합 24</span>
+              <span class="text-[#6E6E78] pb-1.5">공간 18</span>
+              <span class="text-[#6E6E78] pb-1.5">제품 6</span>
+            </div>
+          </div>
+
+          <!-- Mobile Scrollable Body -->
+          <div class="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+            
+            <!-- Result Summary Tag -->
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-[#1A1A1E]">'원목 캣타워' 24개</span>
+              <span class="text-[#9E9EA8] text-[11px]">정확도순 ▼</span>
+            </div>
+
+            <!-- Mobile Product Carousel Section -->
+            <div>
+              <div class="flex items-center justify-between mb-2.5">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-bold text-[#1A1A1E]">추천 제품</span>
+                  <span class="text-[10px] font-black text-[#7B5CFA] bg-[#F3EFFF] px-1.5 py-0.5 rounded-full">6</span>
+                </div>
+                <span class="text-[11px] font-bold text-[#7B5CFA]">더보기 ></span>
+              </div>
+
+              <!-- Horizontal Snap Scroll Products -->
+              <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                <!-- Mobile Item 1 -->
+                <div class="shrink-0 w-36 bg-white rounded-2xl p-2.5 border border-[#E8E8EE] shadow-xs flex flex-col justify-between">
+                  <div>
+                    <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?auto=format&fit=crop&w=300&q=80" class="w-full aspect-square rounded-xl object-cover mb-2" />
+                    <div class="text-[10px] text-[#9E9EA8]">와바미 오리지널</div>
+                    <div class="text-[11px] font-bold text-[#1A1A1E] line-clamp-2 mt-0.5">자작나무 풀세트 캣폴</div>
+                  </div>
+                  <div class="mt-2 pt-1.5 border-t border-[#F0F0F4]">
+                    <span class="text-[11px] font-black text-red-500">15%</span>
+                    <span class="text-xs font-black text-[#1A1A1E] ml-1">13.5만</span>
+                  </div>
+                </div>
+
+                <!-- Mobile Item 2 -->
+                <div class="shrink-0 w-36 bg-white rounded-2xl p-2.5 border border-[#E8E8EE] shadow-xs flex flex-col justify-between">
+                  <div>
+                    <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=300&q=80" class="w-full aspect-square rounded-xl object-cover mb-2" />
+                    <div class="text-[10px] text-[#9E9EA8]">펫리빙 스튜디오</div>
+                    <div class="text-[11px] font-bold text-[#1A1A1E] line-clamp-2 mt-0.5">투명 우주선 해먹 타워</div>
+                  </div>
+                  <div class="mt-2 pt-1.5 border-t border-[#F0F0F4]">
+                    <span class="text-[11px] font-black text-red-500">20%</span>
+                    <span class="text-xs font-black text-[#1A1A1E] ml-1">7.1만</span>
+                  </div>
+                </div>
+
+                <!-- Mobile Item 3 -->
+                <div class="shrink-0 w-36 bg-white rounded-2xl p-2.5 border border-[#E8E8EE] shadow-xs flex flex-col justify-between">
+                  <div>
+                    <img src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=300&q=80" class="w-full aspect-square rounded-xl object-cover mb-2" />
+                    <div class="text-[10px] text-[#9E9EA8]">스튜디오 묘</div>
+                    <div class="text-[11px] font-bold text-[#1A1A1E] line-clamp-2 mt-0.5">삼줄 미니 원목 캣타워</div>
+                  </div>
+                  <div class="mt-2 pt-1.5 border-t border-[#F0F0F4]">
+                    <span class="text-xs font-black text-[#1A1A1E]">4.5만</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile Post Feed Section -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-[#1A1A1E]">공간 &amp; 룩북 스냅 (18)</span>
+              </div>
+
+              <!-- Mobile Post Item 1 -->
+              <div class="bg-white rounded-2xl overflow-hidden border border-[#E8E8EE] shadow-xs">
+                <div class="relative w-full h-44">
+                  <img src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=500&q=80" class="w-full h-full object-cover" />
+                  <span class="absolute bottom-2 left-2 bg-[#1A1A1E]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">📌 상품 3개</span>
+                  <span class="absolute top-2 left-2 bg-white/90 text-[#1A1A1E] text-[10px] font-bold px-2 py-0.5 rounded-full">🐱 랙돌</span>
+                </div>
+                <div class="p-3">
+                  <div class="text-xs font-bold text-[#1A1A1E] line-clamp-1">성수동 햇살 가득한 거실, 원목 캣타워</div>
+                  <div class="mt-2 flex items-center justify-between text-[11px] text-[#9E9EA8]">
+                    <span>@ragdoll_luna</span>
+                    <span>❤️ 142 · 🔖 88</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mobile Post Item 2 -->
+              <div class="bg-white rounded-2xl overflow-hidden border border-[#E8E8EE] shadow-xs">
+                <div class="relative w-full h-44">
+                  <img src="https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=500&q=80" class="w-full h-full object-cover" />
+                  <span class="absolute bottom-2 left-2 bg-[#1A1A1E]/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">📌 상품 2개</span>
+                  <span class="absolute top-2 left-2 bg-white/90 text-[#1A1A1E] text-[10px] font-bold px-2 py-0.5 rounded-full">🐱 코숏</span>
+                </div>
+                <div class="p-3">
+                  <div class="text-xs font-bold text-[#1A1A1E] line-clamp-1">우드 톤 인테리어에 자연스러운 슬림 캣폴</div>
+                  <div class="mt-2 flex items-center justify-between text-[11px] text-[#9E9EA8]">
+                    <span>@wood_home_cat</span>
+                    <span>❤️ 98 · 🔖 54</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Mobile Bottom Indicator -->
+          <div class="py-2 flex justify-center bg-white border-t border-[#F0F0F4]">
+            <div class="w-32 h-1 bg-slate-300 rounded-full"></div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Interactive JavaScript logic -->
+  <script>
+    let isEmptyState = false;
+
+    function toggleEmptyState() {
+      isEmptyState = !isEmptyState;
+      const normalSec = document.getElementById('desktop-content-normal');
+      const emptySec = document.getElementById('desktop-content-empty');
+      const btnEmpty = document.getElementById('btn-empty');
+
+      if (isEmptyState) {
+        normalSec.classList.add('hidden');
+        emptySec.classList.remove('hidden');
+        btnEmpty.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white bg-amber-500 shadow-sm';
+      } else {
+        normalSec.classList.remove('hidden');
+        emptySec.classList.add('hidden');
+        btnEmpty.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-amber-400 bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20';
+      }
+    }
+
+    function switchSearchTab(btn, tab) {
+      document.querySelectorAll('.search-tab-btn').forEach(b => {
+        b.className = 'search-tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-[#6E6E78] hover:text-[#1A1A1E] transition-all';
+      });
+      btn.className = 'search-tab-btn active px-4 py-2 rounded-xl text-xs font-bold bg-white text-[#7B5CFA] shadow-xs transition-all';
+
+      const secProducts = document.getElementById('sec-products');
+      const secPosts = document.getElementById('sec-posts');
+
+      if (tab === 'all') {
+        secProducts.style.display = 'block';
+        secPosts.style.display = 'block';
+      } else if (tab === 'posts') {
+        secProducts.style.display = 'none';
+        secPosts.style.display = 'block';
+      } else if (tab === 'products') {
+        secProducts.style.display = 'block';
+        secPosts.style.display = 'none';
+      }
+    }
+
+    function switchView(mode) {
+      const colDesktop = document.getElementById('col-desktop');
+      const colMobile = document.getElementById('col-mobile');
+      const btnDual = document.getElementById('btn-dual');
+      const btnDesktop = document.getElementById('btn-desktop');
+      const btnMobile = document.getElementById('btn-mobile');
+
+      const activeClass = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all bg-[#7B5CFA] text-white shadow-sm';
+      const inactiveClass = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5';
+
+      btnDual.className = inactiveClass;
+      btnDesktop.className = inactiveClass;
+      btnMobile.className = inactiveClass;
+
+      if (mode === 'dual') {
+        colDesktop.className = 'xl:col-span-8 flex flex-col gap-4';
+        colMobile.className = 'xl:col-span-4 flex flex-col gap-4';
+        colDesktop.style.display = 'flex';
+        colMobile.style.display = 'flex';
+        btnDual.className = activeClass;
+      } else if (mode === 'desktop') {
+        colDesktop.className = 'col-span-12 flex flex-col gap-4 max-w-5xl mx-auto w-full';
+        colDesktop.style.display = 'flex';
+        colMobile.style.display = 'none';
+        btnDesktop.className = activeClass;
+      } else if (mode === 'mobile') {
+        colDesktop.style.display = 'none';
+        colMobile.className = 'col-span-12 flex flex-col gap-4 max-w-md mx-auto w-full';
+        colMobile.style.display = 'flex';
+        btnMobile.className = activeClass;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'desktop' || hash === 'mobile' || hash === 'dual') {
+        switchView(hash);
+      } else if (hash === 'empty') {
+        toggleEmptyState();
+      }
+    });
+  </script>
+</body>
+</html>

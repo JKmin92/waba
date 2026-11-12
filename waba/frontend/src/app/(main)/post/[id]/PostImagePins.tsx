@@ -44,19 +44,33 @@ export default function PostImagePins({ imageSrc, alt = "post image", pins = [],
                             onClick={() => onSelectPin(isActive ? '' : pin.pin_id)}
                             w="28px"
                             h="28px"
+                            p={0}
+                            m={0}
+                            lineHeight="1"
+                            position="relative"
+                            outline="none"
+                            flexShrink={0}
                             rounded="full"
                             bg={pinBg}
                             color="white"
                             border="2px solid white"
                             boxShadow="0 4px 12px rgba(0, 0, 0, 0.25)"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
                             cursor="pointer"
-                            transition="transform 0.15s"
+                            transition="transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)"
                             _hover={{ transform: 'scale(1.12)' }}
                         >
-                            <Box w={isActive ? '8px' : '5px'} h={isActive ? '8px' : '5px'} rounded="full" bg="white" />
+                            <Box
+                                position="absolute"
+                                top="50%"
+                                left="50%"
+                                transform="translate(-50%, -50%)"
+                                w={isActive ? '8px' : '6px'}
+                                h={isActive ? '8px' : '6px'}
+                                rounded="full"
+                                bg="white"
+                                flexShrink={0}
+                                transition="width 0.15s, height 0.15s"
+                            />
                         </Box>
 
                         {/* 활성 핀 상세 팝오버 툴팁 */}

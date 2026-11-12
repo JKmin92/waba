@@ -109,6 +109,8 @@ export interface Pet {
   breed: string;
   /** 생년월일 (YYYY-MM-DD) */
   birth_date: string | null;
+  /** 생년월일 추정 여부 (유기동물 등 정확한 생일을 모르는 경우) */
+  is_birth_estimated?: boolean | number;
   /** 성별 ('MALE' | 'FEMALE' | 'UNKNOWN') */
   gender: PetGender;
   /** 중성화 여부 */

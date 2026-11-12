@@ -10,27 +10,40 @@ import {
     Heading,
     HStack,
     IconButton,
+    Input,
     Menu,
     Portal,
     Text,
     VStack,
 } from "@chakra-ui/react";
-import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Pet } from "@/interface";
 import { petSpeciesLabel } from "@/utils/simpleUtils";
 import { toaster } from "@/components/ui/toaster";
+import PetHistoryModal from "./PetHistoryModal";
 
 interface PetSectionProps {
     pets: Pet[];
+    selectedPetId?: string | null;
+    onSelectPet?: (petId: string | null) => void;
     onAddPet?: () => void;
     onEditPet?: (pet: Pet) => void;
-    onDeletePet?: (petId: string) => Promise<void> | void;
+    onDeletePet?: (petId: string, authData?: { password?: string; confirm_name?: string }) => Promise<void> | void;
 }
 
-export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: PetSectionProps) {
+export default function PetSection({
+    pets,
+    selectedPetId,
+    onSelectPet,
+    onAddPet,
+    onEditPet,
+    onDeletePet,
+}: PetSectionProps) {
     const [deleteTargetPet, setDeleteTargetPet] = useState<Pet | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [historyPet, setHistoryPet] = useState<Pet | null>(null);
 
     const handleAddPet = () => {
         if (onAddPet) {
@@ -44,8 +57,13 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
         if (!deleteTargetPet || !onDeletePet || isDeleting) return;
         setIsDeleting(true);
         try {
-            await onDeletePet(deleteTargetPet.id);
+            await onDeletePet(deleteTargetPet.id, {
+                confirm_name: deleteConfirmText.trim()
+            });
             setDeleteTargetPet(null);
+            setDeleteConfirmText('');
+        } catch {
+            // error is handled in parent
         } finally {
             setIsDeleting(false);
         }
@@ -117,35 +135,64 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
                 </Button>
             </HStack>
 
-            {/* 반려동물 삭제 확인 모달 */}
+            {/* 반려동물 삭제 확인 모달 (6개월 안전 보관 & 본인 인증) */}
             <Dialog.Root
                 open={Boolean(deleteTargetPet)}
                 onOpenChange={(e) => {
-                    if (!e.open) setDeleteTargetPet(null);
+                    if (!e.open) {
+                        setDeleteTargetPet(null);
+                        setDeleteConfirmText('');
+                    }
                 }}
                 placement="center"
-                size="sm"
+                size="md"
             >
                 <Portal>
-                    <Dialog.Backdrop />
+                    <Dialog.Backdrop bg="rgba(15, 17, 23, 0.45)" backdropFilter="blur(8px)" />
                     <Dialog.Positioner>
-                        <Dialog.Content borderRadius="24px" p={6} bg="white">
-                            <Dialog.Header p={0} mb={2}>
-                                <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
-                                    {deleteTargetPet?.name}의 프로필을 삭제할까요?
+                        <Dialog.Content borderRadius="28px" p={6} bg="white" maxW="440px">
+                            <Dialog.Header p={0} mb={3}>
+                                <Dialog.Title fontSize="18px" fontWeight="800" color="charcoal">
+                                    {deleteTargetPet?.name}의 프로필을 보관/삭제할까요?
                                 </Dialog.Title>
                             </Dialog.Header>
-                            <Dialog.Body p={0} mb={6}>
-                                <Text fontSize="13px" color="gray.600">
-                                    삭제한 반려동물 프로필과 아바타 사진은 복구할 수 없습니다.
-                                </Text>
+                            <Dialog.Body p={0} mb={5}>
+                                <VStack gap={3.5} align="stretch">
+                                    <Box bg="#F4F4F6" p={3.5} rounded="2xl" border="1px solid" borderColor="#E8E8EE">
+                                        <Text fontSize="12px" fontWeight="800" color="charcoal" mb={1}>
+                                            🛡️ 6개월(180일) 안전 보관 정책 안내
+                                        </Text>
+                                        <Text fontSize="12px" color="fg.subtle" lineHeight="relaxed">
+                                            삭제 시 마이페이지와 커뮤니티에서 즉시 숨겨지며, 아이와의 모든 사진, 룩북 태그, 건강 수첩 기록은 <strong>6개월간 안전하게 동결 보관</strong>됩니다.
+                                        </Text>
+                                        <Text fontSize="11px" color="waba.purple" fontWeight="bold" mt={1}>
+                                            ※ 6개월 이내 고객센터 문의 시 언제든 원상태로 100% 복구할 수 있습니다.
+                                        </Text>
+                                    </Box>
+
+                                    <Box>
+                                        <Text fontSize="12px" fontWeight="bold" color="charcoal" mb={1.5}>
+                                            실수 방지를 위해 반려동물 이름 <strong>&ldquo;{deleteTargetPet?.name}&rdquo;</strong>을(를) 입력해주세요:
+                                        </Text>
+                                        <Input
+                                            size="sm"
+                                            rounded="xl"
+                                            placeholder={deleteTargetPet?.name || ''}
+                                            value={deleteConfirmText}
+                                            onChange={(e: any) => setDeleteConfirmText(e.target.value)}
+                                        />
+                                    </Box>
+                                </VStack>
                             </Dialog.Body>
                             <Dialog.Footer p={0} gap={2}>
                                 <Button
                                     variant="outline"
                                     rounded="full"
                                     flex={1}
-                                    onClick={() => setDeleteTargetPet(null)}
+                                    onClick={() => {
+                                        setDeleteTargetPet(null);
+                                        setDeleteConfirmText('');
+                                    }}
                                     disabled={isDeleting}
                                 >
                                     취소
@@ -158,8 +205,9 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
                                     flex={1}
                                     onClick={handleConfirmDelete}
                                     loading={isDeleting}
+                                    disabled={isDeleting || deleteConfirmText.trim() !== deleteTargetPet?.name}
                                 >
-                                    삭제
+                                    보관 및 삭제
                                 </Button>
                             </Dialog.Footer>
                         </Dialog.Content>
@@ -198,7 +246,7 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
                                 <Portal>
                                     <Menu.Positioner>
                                         <Menu.Content
-                                            minW="130px"
+                                            minW="165px"
                                             borderRadius="16px"
                                             p={1.5}
                                             boxShadow="0 12px 32px -4px rgba(26, 28, 30, 0.12)"
@@ -206,6 +254,36 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
                                             borderColor="waba.border"
                                             bg="white"
                                         >
+                                            <Menu.Item
+                                                value="diary"
+                                                cursor="pointer"
+                                                borderRadius="10px"
+                                                py={2}
+                                                px={3}
+                                                color="waba.charcoal"
+                                                _hover={{ bg: 'waba.subtle' }}
+                                                onClick={() => setHistoryPet(pet)}
+                                            >
+                                                <BookOpen size={14} />
+                                                <Text fontSize="13px" fontWeight="600">건강 &amp; 진료 수첩</Text>
+                                            </Menu.Item>
+                                            <Menu.Item
+                                                value="history"
+                                                cursor="pointer"
+                                                borderRadius="10px"
+                                                py={2}
+                                                px={3}
+                                                color="waba.purple"
+                                                _hover={{ bg: '#F3EFFF' }}
+                                                onClick={() => {
+                                                    onSelectPet?.(pet.id);
+                                                    setTimeout(() => {
+                                                        document.getElementById('my-activity-section')?.scrollIntoView({ behavior: 'smooth' });
+                                                    }, 100);
+                                                }}
+                                            >
+                                                <Text fontSize="13px" fontWeight="700">🐾 {pet.name}의 기록 모아보기</Text>
+                                            </Menu.Item>
                                             <Menu.Item
                                                 value="edit"
                                                 cursor="pointer"
@@ -274,7 +352,14 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
                                         <Text color="gray.300">•</Text>
                                     )}
                                     {pet.birth_date && (
-                                        <Text>{calculateAge(pet.birth_date)}</Text>
+                                        <HStack gap={1}>
+                                            <Text>{calculateAge(pet.birth_date)}</Text>
+                                            {pet.is_birth_estimated ? (
+                                                <Badge bg="waba.subtle" color="waba.muted" px={1} py={0} fontSize="10px" fontWeight="600" borderRadius="sm">
+                                                    추정
+                                                </Badge>
+                                            ) : null}
+                                        </HStack>
                                     )}
                                 </HStack>
                             </VStack>
@@ -304,6 +389,15 @@ export default function PetSection({ pets, onAddPet, onEditPet, onDeletePet }: P
                     <Text fontSize="13px" fontWeight="600">반려동물 추가</Text>
                 </Box>
             </Grid>
+
+            {/* 펫 건강 & 진료 수첩 모달 */}
+            <PetHistoryModal
+                open={Boolean(historyPet)}
+                onOpenChange={(open) => {
+                    if (!open) setHistoryPet(null);
+                }}
+                pet={historyPet}
+            />
         </Box>
     );
 }

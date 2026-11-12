@@ -69,10 +69,9 @@ export default function PetRegisterModal({
     const [name, setName] = useState('');
     const [breed, setBreed] = useState('');
     const [birthDate, setBirthDate] = useState('');
+    const [isBirthEstimated, setIsBirthEstimated] = useState(false);
     const [gender, setGender] = useState<PetGender>('FEMALE');
     const [isNeutered, setIsNeutered] = useState(true);
-    const [weightKg, setWeightKg] = useState('');
-    const [bodyLengthCm, setBodyLengthCm] = useState('');
     const [isPrimary, setIsPrimary] = useState(true);
     const [aiConsent, setAiConsent] = useState(true);
 
@@ -91,10 +90,9 @@ export default function PetRegisterModal({
             setName(editingPet.name || '');
             setBreed(editingPet.breed || '');
             setBirthDate(editingPet.birth_date ? String(editingPet.birth_date).slice(0, 10) : '');
+            setIsBirthEstimated(Boolean(editingPet.is_birth_estimated));
             setGender(editingPet.gender || 'UNKNOWN');
             setIsNeutered(Boolean(editingPet.is_neutered));
-            setWeightKg(editingPet.latest_weight_kg !== null && editingPet.latest_weight_kg !== undefined ? String(editingPet.latest_weight_kg) : '');
-            setBodyLengthCm(editingPet.latest_body_length_cm !== null && editingPet.latest_body_length_cm !== undefined ? String(editingPet.latest_body_length_cm) : '');
             setIsPrimary(Boolean(editingPet.is_primary));
             setAiConsent(editingPet.ai_private_data_consent === undefined ? true : Boolean(editingPet.ai_private_data_consent));
             setPreviewImageUrl(editingPet.current_avatar_url || null);
@@ -106,10 +104,9 @@ export default function PetRegisterModal({
             setName('');
             setBreed('');
             setBirthDate('');
+            setIsBirthEstimated(false);
             setGender('FEMALE');
             setIsNeutered(true);
-            setWeightKg('');
-            setBodyLengthCm('');
             setIsPrimary(existingPetsCount === 0);
             setAiConsent(true);
             setPreviewImageUrl(null);
@@ -186,15 +183,6 @@ export default function PetRegisterModal({
             return;
         }
 
-        if (weightKg && (isNaN(Number(weightKg)) || Number(weightKg) <= 0 || Number(weightKg) > 200)) {
-            toaster.create({ title: '올바른 체중(kg)을 입력해주세요.', type: 'error' });
-            return;
-        }
-        if (bodyLengthCm && (isNaN(Number(bodyLengthCm)) || Number(bodyLengthCm) <= 0 || Number(bodyLengthCm) > 300)) {
-            toaster.create({ title: '올바른 등길이/체장(cm)을 입력해주세요.', type: 'error' });
-            return;
-        }
-
         setIsSubmitting(true);
         try {
             const formData = new FormData();
@@ -203,10 +191,9 @@ export default function PetRegisterModal({
             formData.append('name', trimmedName);
             formData.append('breed', trimmedBreed);
             formData.append('birth_date', birthDate || '');
+            formData.append('is_birth_estimated', String(isBirthEstimated));
             formData.append('gender', gender);
             formData.append('is_neutered', String(isNeutered));
-            formData.append('latest_weight_kg', weightKg || '');
-            formData.append('latest_body_length_cm', bodyLengthCm || '');
             formData.append('is_primary', String((!isEditMode && existingPetsCount === 0) ? true : isPrimary));
             formData.append('ai_private_data_consent', String(aiConsent));
 
@@ -271,6 +258,10 @@ export default function PetRegisterModal({
                         boxShadow="0 24px 48px -12px rgba(26, 28, 30, 0.22)"
                         bg="white"
                         position="relative"
+                        css={{
+                            scrollbarWidth: 'none',
+                            '&::-webkit-scrollbar': { display: 'none' },
+                        }}
                     >
                         {/* 상단 포인트 라인 */}
                         <Box
@@ -566,7 +557,30 @@ export default function PetRegisterModal({
                                             <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
                                                 생년월일
                                             </Text>
-                                            <Text fontSize="11px" color="waba.faint">선택</Text>
+                                            <HStack
+                                                as="button"
+                                                gap={1}
+                                                cursor="pointer"
+                                                onClick={() => setIsBirthEstimated(!isBirthEstimated)}
+                                            >
+                                                <Flex
+                                                    w="14px"
+                                                    h="14px"
+                                                    borderRadius="4px"
+                                                    border="1.5px solid"
+                                                    borderColor={isBirthEstimated ? 'waba.purple' : 'waba.border'}
+                                                    bg={isBirthEstimated ? 'waba.purple' : 'white'}
+                                                    align="center"
+                                                    justify="center"
+                                                    color="white"
+                                                    fontSize="10px"
+                                                >
+                                                    {isBirthEstimated && <Check size={10} strokeWidth={3} />}
+                                                </Flex>
+                                                <Text fontSize="11px" fontWeight="600" color={isBirthEstimated ? 'waba.purple' : 'waba.muted'}>
+                                                    추정 (정확한 생일을 모름)
+                                                </Text>
+                                            </HStack>
                                         </HStack>
                                         <Input
                                             type="date"
@@ -640,99 +654,6 @@ export default function PetRegisterModal({
                                                 );
                                             })}
                                         </Grid>
-                                    </Box>
-                                </Grid>
-
-                                {/* 체형 측정치: 체중 & 등길이 (2열 그리드 - 선택) */}
-                                <Grid templateColumns={{ base: '1fr', sm: '1fr 1fr' }} gap={3.5}>
-                                    <Box>
-                                        <HStack justify="space-between" mb={1.5}>
-                                            <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
-                                                현재 체중
-                                            </Text>
-                                            <Text fontSize="11px" color="waba.faint">선택 (성장 기록 연동)</Text>
-                                        </HStack>
-                                        <Box position="relative">
-                                            <Input
-                                                type="number"
-                                                step="0.1"
-                                                min="0"
-                                                value={weightKg}
-                                                onChange={(e) => setWeightKg(e.target.value)}
-                                                placeholder="예: 4.2"
-                                                h="42px"
-                                                borderRadius="14px"
-                                                bg="waba.subtle"
-                                                border="1px solid"
-                                                borderColor="waba.border"
-                                                fontSize="14px"
-                                                fontWeight="600"
-                                                pl={3.5}
-                                                pr={10}
-                                                _focus={{
-                                                    bg: 'white',
-                                                    borderColor: 'waba.purple',
-                                                    outline: 'none',
-                                                }}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right={3.5}
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="12px"
-                                                fontWeight="700"
-                                                color="waba.faint"
-                                                pointerEvents="none"
-                                            >
-                                                kg
-                                            </Text>
-                                        </Box>
-                                    </Box>
-
-                                    <Box>
-                                        <HStack justify="space-between" mb={1.5}>
-                                            <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
-                                                등길이 / 체장
-                                            </Text>
-                                            <Text fontSize="11px" color="waba.faint">선택 (가구 맞춤 추천)</Text>
-                                        </HStack>
-                                        <Box position="relative">
-                                            <Input
-                                                type="number"
-                                                step="0.5"
-                                                min="0"
-                                                value={bodyLengthCm}
-                                                onChange={(e) => setBodyLengthCm(e.target.value)}
-                                                placeholder="예: 36.5"
-                                                h="42px"
-                                                borderRadius="14px"
-                                                bg="waba.subtle"
-                                                border="1px solid"
-                                                borderColor="waba.border"
-                                                fontSize="14px"
-                                                fontWeight="600"
-                                                pl={3.5}
-                                                pr={10}
-                                                _focus={{
-                                                    bg: 'white',
-                                                    borderColor: 'waba.purple',
-                                                    outline: 'none',
-                                                }}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right={3.5}
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="12px"
-                                                fontWeight="700"
-                                                color="waba.faint"
-                                                pointerEvents="none"
-                                            >
-                                                cm
-                                            </Text>
-                                        </Box>
                                     </Box>
                                 </Grid>
 

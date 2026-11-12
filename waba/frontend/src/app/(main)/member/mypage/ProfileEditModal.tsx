@@ -351,7 +351,7 @@ export default function ProfileEditModal({
                                     </HStack>
 
                                     <Text fontSize="11px" color="waba.faint" textAlign="center">
-                                        최소 가로 150px 이상 · 1:1 정사각형 중앙 자동 크롭 (최대 500px, 72 DPI WebP)
+                                        최소 가로 150px 이상 · 1:1 정사각형 중앙 자동 크롭
                                     </Text>
                                 </VStack>
 

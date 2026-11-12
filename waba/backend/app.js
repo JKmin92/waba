@@ -7,6 +7,8 @@ import cookieParser from 'cookie-parser';
 import postRoutes from './src/routes/postRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
+import searchRoutes from './src/routes/searchRoutes.js';
+import publicRoutes from './src/routes/publicRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +34,8 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/api/post', postRoutes);
 app.use('/api/product', productRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/public', publicRoutes);
 
 app.use((err, req, res, next) => {
     console.error('🔥 Server Error:', err);
