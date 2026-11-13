@@ -31,6 +31,13 @@ router.delete('/pets/:petId/journeys/:journeyId', verifyToken, userController.de
 // 유저 작성 글 간편 목록 (기록-게시글 연결 모달용)
 router.get('/my-posts-simple', verifyToken, userController.getUserSimplePosts);
 
+// AI 스마트 건강 수첩 자동 추출
+router.post('/ai/extract-health-event', verifyToken, userController.extractHealthEvent);
+
+// 사용자 AI 자동 기록 전역 설정(ON/OFF)
+router.get('/settings/auto-journal', verifyToken, userController.getAutoJournalSetting);
+router.patch('/settings/auto-journal', verifyToken, userController.updateAutoJournalSetting);
+
 router.get('/profile', verifyToken, userController.getUserProfile);
 router.put('/profile', verifyToken, uploadProfileImage, userController.updateUserProfile);
 

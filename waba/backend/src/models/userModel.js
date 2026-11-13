@@ -205,6 +205,7 @@ export const getUserProfile = async (userId) => {
         SELECT 
             u.id, u.email, u.nickname, u.profile_image_url, u.bio,
             u.role, u.mentor_badge, u.vet_license_info, u.is_multi_species,
+            u.auto_journal_enabled,
             u.reward_points, u.first_pet_reward_claimed, u.status, u.created_at,
             (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND status = 'PUBLISHED') AS post_count,
             (SELECT COUNT(*) FROM post_interactions WHERE user_id = u.id AND interaction_type = 'BOOKMARK') AS bookmark_count,
@@ -219,8 +220,27 @@ export const getUserProfile = async (userId) => {
     const pets = await getUserPets(userId);
     return {
         ...rows[0],
+        auto_journal_enabled: Boolean(rows[0].auto_journal_enabled),
         pets
     };
+};
+
+export const getAutoJournalSetting = async (userId) => {
+    const [rows] = await db.query(
+        `SELECT auto_journal_enabled FROM users WHERE id = ? LIMIT 1`,
+        [userId]
+    );
+    if (!rows[0]) return false;
+    return Boolean(rows[0].auto_journal_enabled);
+};
+
+export const updateAutoJournalSetting = async (userId, enabled) => {
+    const val = enabled === true || enabled === 1 || enabled === '1' || enabled === 'true' ? 1 : 0;
+    await db.query(
+        `UPDATE users SET auto_journal_enabled = ?, updated_at = NOW() WHERE id = ?`,
+        [val, userId]
+    );
+    return Boolean(val);
 };
 
 export const updateUserProfile = async (userId, { nickname, bio, profile_image_url, is_multi_species }) => {
@@ -785,7 +805,7 @@ export const getPetHistories = async (userId, petId) => {
             DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS date,
             DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date, 
             ph.category, ph.title, ph.description, ph.description AS notes, ph.hospital_name, 
-            ph.weight_kg, ph.created_at, ph.updated_at,
+            ph.weight_kg, ph.is_ai_generated, ph.created_at, ph.updated_at,
             CASE 
                 WHEN pj.id IS NOT NULL THEN JSON_OBJECT('id', pj.id, 'title', pj.title, 'is_ongoing', pj.is_ongoing = 1)
                 ELSE NULL
@@ -828,7 +848,7 @@ export const getPetHistoryById = async (userId, petId, historyId) => {
             DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS date,
             DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date, 
             ph.category, ph.title, ph.description, ph.description AS notes, ph.hospital_name, 
-            ph.weight_kg, ph.created_at, ph.updated_at,
+            ph.weight_kg, ph.is_ai_generated, ph.created_at, ph.updated_at,
             CASE 
                 WHEN pj.id IS NOT NULL THEN JSON_OBJECT('id', pj.id, 'title', pj.title, 'is_ongoing', pj.is_ongoing = 1)
                 ELSE NULL
@@ -864,6 +884,26 @@ export const getPetHistoryById = async (userId, petId, historyId) => {
     };
 };
 
+export const getPetHistoriesByPostId = async (userId, postId) => {
+    const [rows] = await db.query(
+        `SELECT
+            ph.id, ph.pet_id, ph.user_id, ph.journey_id,
+            DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date,
+            ph.category, ph.title, ph.description, ph.hospital_name,
+            ph.weight_kg, ph.is_ai_generated
+         FROM pet_histories ph
+         JOIN pet_history_posts php ON php.history_id = ph.id
+         WHERE php.post_id = ? AND ph.user_id = ?
+         ORDER BY ph.id ASC`,
+        [postId, userId]
+    );
+    return rows.map((r) => ({
+        ...r,
+        weight_kg: r.weight_kg !== null ? Number(r.weight_kg) : null,
+        is_ai_generated: Number(r.is_ai_generated) === 1 ? 1 : 0
+    }));
+};
+
 export const createPetHistory = async (userId, petId, historyData) => {
     const pet = await getUserPetById(userId, petId);
     if (!pet) {
@@ -880,7 +920,8 @@ export const createPetHistory = async (userId, petId, historyData) => {
         hospital_name = null,
         weight_kg = null,
         journey_id = null,
-        post_ids = []
+        post_ids = [],
+        is_ai_generated = 0
     } = historyData;
 
     const allowedCategories = ['SURGERY', 'VACCINE', 'CHECKUP', 'WEIGHT', 'EVENT', 'OTHER'];
@@ -889,12 +930,13 @@ export const createPetHistory = async (userId, petId, historyData) => {
         ? Number(weight_kg)
         : null;
     const finalJourneyId = journey_id ? Number(journey_id) : null;
+    const finalIsAiGenerated = is_ai_generated ? 1 : 0;
 
     const [res] = await db.query(
         `INSERT INTO pet_histories (
-            pet_id, user_id, journey_id, event_date, category, title, description, hospital_name, weight_kg, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [petId, userId, finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight]
+            pet_id, user_id, journey_id, event_date, category, title, description, hospital_name, weight_kg, is_ai_generated, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [petId, userId, finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, finalIsAiGenerated]
     );
 
     const insertedId = res.insertId;
@@ -946,7 +988,8 @@ export const updatePetHistory = async (userId, petId, historyId, historyData) =>
         hospital_name = existing.hospital_name,
         weight_kg = existing.weight_kg,
         journey_id,
-        post_ids
+        post_ids,
+        is_ai_generated = 0
     } = historyData;
 
     const allowedCategories = ['SURGERY', 'VACCINE', 'CHECKUP', 'WEIGHT', 'EVENT', 'OTHER'];
@@ -957,12 +1000,13 @@ export const updatePetHistory = async (userId, petId, historyId, historyData) =>
     const finalJourneyId = journey_id !== undefined
         ? (journey_id ? Number(journey_id) : null)
         : existing.journey_id;
+    const finalIsAiGenerated = is_ai_generated ? 1 : 0;
 
     await db.query(
         `UPDATE pet_histories SET
-            journey_id = ?, event_date = ?, category = ?, title = ?, description = ?, hospital_name = ?, weight_kg = ?, updated_at = NOW()
+            journey_id = ?, event_date = ?, category = ?, title = ?, description = ?, hospital_name = ?, weight_kg = ?, is_ai_generated = ?, updated_at = NOW()
          WHERE id = ? AND pet_id = ? AND user_id = ?`,
-        [finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, historyId, petId, userId]
+        [finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, finalIsAiGenerated, historyId, petId, userId]
     );
 
     // 연결된 룩북 글(pet_history_posts) 재동기화
@@ -1117,7 +1161,7 @@ export const getPublicJourneyBySlug = async (slug) => {
             DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS date,
             DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date, 
             ph.category, ph.title, ph.description, ph.description AS notes, ph.hospital_name, 
-            ph.weight_kg, ph.created_at, ph.updated_at,
+            ph.weight_kg, ph.is_ai_generated, ph.created_at, ph.updated_at,
             COALESCE((
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(

@@ -473,3 +473,92 @@ export const getPublicJourneyBySlug = async (req, res, next) => {
         next(e);
     }
 };
+
+const handleGeminiError = (e, res, next) => {
+    if (e.message === 'GEMINI_API_KEY_MISSING' || e.message === 'GEMINI_AUTH_ERROR') {
+        return res.status(503).json({
+            success: false,
+            code: e.message,
+            message: 'AI 분석 서비스 설정이 완료되지 않았습니다.'
+        });
+    }
+    if (e.message === 'GEMINI_QUOTA_EXCEEDED' || e.message === 'GEMINI_UNAVAILABLE' || e.message === 'GEMINI_TIMEOUT') {
+        return res.status(e.status || 503).json({
+            success: false,
+            code: e.message,
+            message: 'AI 분석 요청이 일시적으로 혼잡하거나 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
+        });
+    }
+    if (e.message === 'GEMINI_EMPTY_RESPONSE' || e.message === 'GEMINI_REQUEST_FAILED') {
+        return res.status(502).json({
+            success: false,
+            code: e.message,
+            message: 'AI 건강 기록 추출 중 일시적인 오류가 발생했습니다.'
+        });
+    }
+    return next(e);
+};
+
+export const extractHealthEvent = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+
+        const { title = '', content = '', pet_id = null } = req.body || {};
+        const hasTitle = Boolean(String(title || '').trim());
+        const hasContent = Array.isArray(content) ? content.length > 0 : Boolean(String(content || '').trim());
+
+        if (!hasTitle && !hasContent) {
+            return res.status(400).json({
+                success: false,
+                message: '분석할 게시글 제목 또는 본문을 입력해주세요.'
+            });
+        }
+
+        const extracted = await userService.extractHealthEvent(userId, { title, content, pet_id });
+        return res.status(200).json({
+            success: true,
+            extracted
+        });
+    } catch (e) {
+        return handleGeminiError(e, res, next);
+    }
+};
+
+export const getAutoJournalSetting = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const auto_journal_enabled = await userService.getAutoJournalSetting(userId);
+        return res.status(200).json({
+            success: true,
+            auto_journal_enabled
+        });
+    } catch (e) {
+        next(e);
+    }
+};
+
+export const updateAutoJournalSetting = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const { enabled } = req.body || {};
+        if (enabled === undefined) {
+            return res.status(400).json({ success: false, message: 'enabled 값을 전달해주세요.' });
+        }
+        const auto_journal_enabled = await userService.updateAutoJournalSetting(userId, enabled);
+        return res.status(200).json({
+            success: true,
+            auto_journal_enabled
+        });
+    } catch (e) {
+        next(e);
+    }
+};

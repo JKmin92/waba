@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateUserId, generateIdentityId, generatePetId } from '../../utils/simpleUtils.js';
 import { processAndSaveProfileImage, deleteProfileImageFile, processAndSavePetAvatar } from '../../utils/imageUtils.js';
+import { extractPetHealthEvent } from './geminiService.js';
 
 export const checkNickname = async (nickname) => {
     return await userModel.checkNickname(nickname);
@@ -636,7 +637,8 @@ export const createPetHistory = async (userId, petId, data) => {
         hospital_name: hospital_name ? String(hospital_name).trim() : null,
         weight_kg,
         journey_id,
-        post_ids
+        post_ids,
+        is_ai_generated: 0
     });
 };
 
@@ -665,7 +667,8 @@ export const updatePetHistory = async (userId, petId, historyId, data) => {
         hospital_name: hospital_name !== undefined ? (hospital_name ? String(hospital_name).trim() : null) : undefined,
         weight_kg,
         journey_id,
-        post_ids
+        post_ids,
+        is_ai_generated: 0
     });
 };
 
@@ -738,4 +741,28 @@ export const getPublicJourneyBySlug = async (slug) => {
         throw error;
     }
     return data;
+};
+
+export const extractHealthEvent = async (userId, { title, content, pet_id } = {}) => {
+    let pet = null;
+    if (pet_id) {
+        pet = await userModel.getUserPetById(userId, pet_id);
+    }
+    const todayDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+
+    return await extractPetHealthEvent({
+        title,
+        content,
+        petName: pet?.name || '',
+        species: pet?.custom_species || pet?.species || '',
+        todayDate
+    });
+};
+
+export const getAutoJournalSetting = async (userId) => {
+    return await userModel.getAutoJournalSetting(userId);
+};
+
+export const updateAutoJournalSetting = async (userId, enabled) => {
+    return await userModel.updateAutoJournalSetting(userId, enabled);
 };

@@ -36,7 +36,7 @@ export interface Board {
 /** 블록 에디터 본문 요소 타입 (글 또는 이미지 ID 참조) */
 export type PostContentBlock =
   | { type: 'text'; content: string }
-  | { type: 'image'; image_id: number };
+  | { type: 'image'; image_id: number; is_sensitive?: boolean | number };
 
 /** 2. 게시글 기본 테이블 (posts 테이블) */
 export interface Post {
@@ -56,6 +56,8 @@ export interface Post {
   related_disease_id?: number | null;
   /** [✓ 수의사 공식 검증] 획득 여부 */
   is_vet_verified: boolean | number;
+  /** 대표 썸네일 민감 이미지 여부 */
+  thumbnail_is_sensitive?: boolean | number;
   /** 조회수 */
   view_count: number;
   /** 좋아요(하트) 수 */
@@ -86,6 +88,8 @@ export interface PostImage {
   is_thumbnail: boolean | number;
   /** AI 생성 이미지 여부 (true/1: 해당 사진에 [AI 연출 이미지] 배지 표시) */
   is_ai_generated: boolean | number;
+  /** 민감한(혐오감 유발 가능) 이미지 여부 */
+  is_sensitive?: boolean | number;
   /** 게시글 내 이미지 슬라이드 순서 (1부터 시작) */
   sort_order: number;
 }
@@ -217,4 +221,5 @@ export interface PostDetail {
   /** 9) 현재 로그인한 회원의 인터랙션 상태 */
   is_liked?: boolean;
   is_bookmarked?: boolean;
+  thumbnail_is_sensitive?: boolean | number;
 }

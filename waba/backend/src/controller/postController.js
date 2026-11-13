@@ -1,6 +1,12 @@
 import * as postService from '../service/postService.js';
 import * as cheerio from 'cheerio';
 import { processAndSavePostImages, cleanupUnusedPostImages } from '../../utils/imageUtils.js';
+import { moderatePostUploadFiles, moderateImageBuffer } from '../service/moderationService.js';
+import {
+    validatePostPinUrls,
+    getActiveAllowedDomains,
+    isValidAffiliateUrl
+} from '../service/affiliateWhitelistService.js';
 import { generatePostId } from '../../utils/simpleUtils.js';
 import { convertToCoupangPartnersUrl, isCoupangUrl } from '../../utils/coupangPartners.js';
 
@@ -194,7 +200,18 @@ export const createPost = async (req, res, next) => {
             });
         }
         // Support both application/json and multipart/form-data
-        let { board_id = 'SNAP', title = '', content, blocks, selected_pets, tags, postId } = req.body;
+        let {
+            board_id = 'SNAP',
+            title = '',
+            content,
+            blocks,
+            selected_pets,
+            tags,
+            postId,
+            auto_journal,
+            auto_journal_pet_id,
+            auto_journal_journey_id
+        } = req.body;
 
         let parsedBlocks = [];
         try {
@@ -225,15 +242,52 @@ export const createPost = async (req, res, next) => {
             });
         }
 
+        const pinUrlCheck = await validatePostPinUrls(parsedBlocks);
+        if (!pinUrlCheck.valid) {
+            return res.status(400).json({
+                success: false,
+                message: '허용되지 않은 외부 쇼핑몰 링크입니다. 제휴 쇼핑몰(쿠팡, 네이버 등) URL만 등록할 수 있습니다.'
+            });
+        }
+
         const finalPostId = postId || generatePostId();
+
+        // OpenAI Moderation API check on newly uploaded images
+        let sensitivityByFileIndex = {};
+        if (req.files && req.files.length > 0) {
+            const modResult = await moderatePostUploadFiles({
+                files: req.files,
+                contentBlocks: parsedBlocks
+            });
+            if (modResult.blocked) {
+                return res.status(400).json({
+                    success: false,
+                    message: '선정적이거나 부적절한 이미지는 업로드할 수 없습니다.'
+                });
+            }
+            sensitivityByFileIndex = modResult.sensitivityByFileIndex || {};
+        }
 
         // Process any uploaded images via Sharp: max 1500px, 72 DPI, WebP
         const resolvedBlocks = await processAndSavePostImages({
             postId: finalPostId,
             createdAt: new Date(),
             files: req.files || [],
-            contentBlocks: parsedBlocks
+            contentBlocks: parsedBlocks,
+            sensitivityByFileIndex
         });
+
+        const pinPetIds = [];
+        for (const b of resolvedBlocks || []) {
+            if (b?.type === 'image' && Array.isArray(b.pins)) {
+                for (const pin of b.pins) {
+                    if (pin?.pin_type === 'PET' && pin?.pet_id) {
+                        pinPetIds.push(pin.pet_id);
+                    }
+                }
+            }
+        }
+        const resolvedAutoPetId = auto_journal_pet_id || parsedPets[0] || pinPetIds[0] || null;
 
         const result = await postService.createPost(userId, {
             postId: finalPostId,
@@ -242,7 +296,11 @@ export const createPost = async (req, res, next) => {
             content: resolvedBlocks,
             selected_pets: parsedPets,
             tags: parsedTags,
-            status: 'PUBLISHED'
+            status: 'PUBLISHED',
+            enableAutoJournalHook: true,
+            auto_journal,
+            auto_journal_pet_id: resolvedAutoPetId,
+            auto_journal_journey_id
         });
 
         return res.status(201).json({
@@ -290,14 +348,39 @@ export const saveDraft = async (req, res, next) => {
             parsedTags = [];
         }
 
+        const pinUrlCheck = await validatePostPinUrls(parsedBlocks);
+        if (!pinUrlCheck.valid) {
+            return res.status(400).json({
+                success: false,
+                message: '허용되지 않은 외부 쇼핑몰 링크입니다. 제휴 쇼핑몰(쿠팡, 네이버 등) URL만 등록할 수 있습니다.'
+            });
+        }
+
         const finalPostId = postId || generatePostId();
+
+        // OpenAI Moderation API check on newly uploaded images
+        let sensitivityByFileIndex = {};
+        if (req.files && req.files.length > 0) {
+            const modResult = await moderatePostUploadFiles({
+                files: req.files,
+                contentBlocks: parsedBlocks
+            });
+            if (modResult.blocked) {
+                return res.status(400).json({
+                    success: false,
+                    message: '선정적이거나 부적절한 이미지는 업로드할 수 없습니다.'
+                });
+            }
+            sensitivityByFileIndex = modResult.sensitivityByFileIndex || {};
+        }
 
         // Process any uploaded images via Sharp: max 1500px, 72 DPI, WebP
         const resolvedBlocks = await processAndSavePostImages({
             postId: finalPostId,
             createdAt: new Date(),
             files: req.files || [],
-            contentBlocks: parsedBlocks
+            contentBlocks: parsedBlocks,
+            sensitivityByFileIndex
         });
 
         const result = await postService.createPost(userId, {
@@ -367,21 +450,30 @@ export const deletePost = async (req, res, next) => {
 
 export const parseUrlMetadata = async (req, res, next) => {
     try {
-        const { url } = req.body;
-        if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+        const { url } = req.body || {};
+        const trimmedUrl = typeof url === 'string' ? url.trim() : '';
+        if (!trimmedUrl) {
             return res.status(400).json({
                 success: false,
-                message: '올바른 URL(http/https)을 입력해주세요.'
+                message: '허용되지 않은 외부 쇼핑몰 링크입니다. 제휴 쇼핑몰(쿠팡, 네이버 등) URL만 등록할 수 있습니다.'
             });
         }
 
-        let targetUrl = url;
+        const allowedDomains = await getActiveAllowedDomains();
+        if (!isValidAffiliateUrl(trimmedUrl, allowedDomains)) {
+            return res.status(400).json({
+                success: false,
+                message: '허용되지 않은 외부 쇼핑몰 링크입니다. 제휴 쇼핑몰(쿠팡, 네이버 등) URL만 등록할 수 있습니다.'
+            });
+        }
+
+        let targetUrl = trimmedUrl;
         let partnersShortenUrl = null;
 
         // 1. 쿠팡 URL인 경우 먼저 내 쿠팡 파트너스 변환 API를 통해 파트너스 단축 URL 생성
-        if (isCoupangUrl(url)) {
+        if (isCoupangUrl(trimmedUrl)) {
             try {
-                partnersShortenUrl = await convertToCoupangPartnersUrl(url);
+                partnersShortenUrl = await convertToCoupangPartnersUrl(trimmedUrl);
                 if (partnersShortenUrl) {
                     targetUrl = partnersShortenUrl;
                 }
@@ -568,7 +660,17 @@ export const updatePost = async (req, res, next) => {
             throw e;
         }
 
-        const { board_id = 'SNAP', title = '', content, blocks, selected_pets, tags } = req.body;
+        const {
+            board_id = 'SNAP',
+            title = '',
+            content,
+            blocks,
+            selected_pets,
+            tags,
+            auto_journal,
+            auto_journal_pet_id,
+            auto_journal_journey_id
+        } = req.body;
 
         const parseJson = (raw, fallback) => {
             try {
@@ -585,14 +687,51 @@ export const updatePost = async (req, res, next) => {
             return res.status(400).json({ success: false, message: '게시글 제목을 입력해주세요.' });
         }
 
+        const pinUrlCheck = await validatePostPinUrls(parsedBlocks);
+        if (!pinUrlCheck.valid) {
+            return res.status(400).json({
+                success: false,
+                message: '허용되지 않은 외부 쇼핑몰 링크입니다. 제휴 쇼핑몰(쿠팡, 네이버 등) URL만 등록할 수 있습니다.'
+            });
+        }
+
+        // OpenAI Moderation API check on newly uploaded images
+        let sensitivityByFileIndex = {};
+        if (req.files && req.files.length > 0) {
+            const modResult = await moderatePostUploadFiles({
+                files: req.files,
+                contentBlocks: parsedBlocks
+            });
+            if (modResult.blocked) {
+                return res.status(400).json({
+                    success: false,
+                    message: '선정적이거나 부적절한 이미지는 업로드할 수 없습니다.'
+                });
+            }
+            sensitivityByFileIndex = modResult.sensitivityByFileIndex || {};
+        }
+
         // 기존 게시글 생성일 기준 폴더에 저장 (삭제 시 폴더 단위 정리 규칙 유지)
         const resolvedBlocks = await processAndSavePostImages({
             postId,
             createdAt: meta.created_at,
             files: req.files || [],
             contentBlocks: parsedBlocks,
-            uniqueNames: true
+            uniqueNames: true,
+            sensitivityByFileIndex
         });
+
+        const pinPetIds = [];
+        for (const b of resolvedBlocks || []) {
+            if (b?.type === 'image' && Array.isArray(b.pins)) {
+                for (const pin of b.pins) {
+                    if (pin?.pin_type === 'PET' && pin?.pet_id) {
+                        pinPetIds.push(pin.pet_id);
+                    }
+                }
+            }
+        }
+        const resolvedAutoPetId = auto_journal_pet_id || parsedPets[0] || pinPetIds[0] || null;
 
         const result = await postService.createPost(userId, {
             postId,
@@ -601,7 +740,12 @@ export const updatePost = async (req, res, next) => {
             content: resolvedBlocks,
             selected_pets: parsedPets,
             tags: parsedTags,
-            status: 'PUBLISHED'
+            status: 'PUBLISHED',
+            enableAutoJournalHook: true,
+            isPostUpdate: true,
+            auto_journal,
+            auto_journal_pet_id: resolvedAutoPetId,
+            auto_journal_journey_id
         });
 
         // 본문에서 제거된 이미지 파일 정리
@@ -649,6 +793,43 @@ export const updateComment = async (req, res, next) => {
         if (e.message === 'FORBIDDEN') {
             return res.status(403).json({ success: false, message: '본인이 작성한 댓글만 수정할 수 있습니다.' });
         }
+        next(e);
+    }
+};
+
+// 에디터 이미지 선택 시 즉시 사전 모더레이션 검사
+export const moderateImage = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+
+        const files = req.files || [];
+        if (!Array.isArray(files) || files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: '검사할 이미지 파일이 없습니다.'
+            });
+        }
+
+        const results = await Promise.all(
+            files.map(async (file, index) => {
+                const verdict = await moderateImageBuffer(file.buffer);
+                return {
+                    index,
+                    blocked: Boolean(verdict.blocked),
+                    is_sensitive: Boolean(verdict.isSensitive),
+                    reason: verdict.reason || null
+                };
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            results
+        });
+    } catch (e) {
         next(e);
     }
 };

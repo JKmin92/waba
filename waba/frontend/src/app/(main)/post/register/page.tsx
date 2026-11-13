@@ -34,6 +34,15 @@ export default function PostRegisterPage() {
             formData.append('title', data.title);
             formData.append('selected_pets', JSON.stringify(data.selectedPets || []));
             formData.append('tags', JSON.stringify(data.tags || []));
+            if (data.auto_journal !== undefined) {
+                formData.append('auto_journal', String(Boolean(data.auto_journal)));
+            }
+            if (data.auto_journal && data.auto_journal_pet_id) {
+                formData.append('auto_journal_pet_id', data.auto_journal_pet_id);
+            }
+            if (data.auto_journal && data.auto_journal_journey_id) {
+                formData.append('auto_journal_journey_id', data.auto_journal_journey_id);
+            }
 
             let fileIndex = 0;
             const formattedBlocks = data.blocks.map((b) => {
@@ -62,6 +71,7 @@ export default function PostRegisterPage() {
 
             const res = await axiosInstance.post('/post', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 45000,
             });
 
             if (res.data?.success) {
@@ -74,6 +84,12 @@ export default function PostRegisterPage() {
                     description: '+500P 리워드가 적립되었습니다.',
                     type: 'success',
                 });
+                if (res.data?.auto_journal_result?.created === true) {
+                    toaster.create({
+                        title: '게시글 등록과 함께 건강 수첩에도 자동 기록되었어요!',
+                        type: 'success',
+                    });
+                }
                 const newPostId = res.data?.postId;
                 if (newPostId) {
                     router.push(`/post/${newPostId}`);

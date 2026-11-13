@@ -2,6 +2,7 @@
 
 import { Box, CloseButton, FormatNumber, HStack, Image, Text } from "@chakra-ui/react";
 import { ProductPinItem } from "@/interface";
+import SensitiveImageOverlay from "../../common/SensitiveImageOverlay";
 
 interface PostImagePinsProps {
     imageSrc: string;
@@ -9,12 +10,14 @@ interface PostImagePinsProps {
     pins?: ProductPinItem[];
     activePinId?: string;
     onSelectPin: (pinId: string) => void;
+    isSensitive?: boolean | number;
 }
 
-export default function PostImagePins({ imageSrc, alt = "post image", pins = [], activePinId, onSelectPin }: PostImagePinsProps) {
+export default function PostImagePins({ imageSrc, alt = "post image", pins = [], activePinId, onSelectPin, isSensitive }: PostImagePinsProps) {
     return (
-        <Box position="relative" rounded="xl" overflow="hidden" my="4">
+        <Box position="relative" rounded="xl" overflow="hidden" my="4" minH={isSensitive ? "260px" : undefined}>
             <Image src={imageSrc} alt={alt} width="100%" rounded="xl" />
+            <SensitiveImageOverlay isSensitive={isSensitive} />
             {pins.map((pin) => {
                 const isActive = activePinId === pin.pin_id;
                 const isPetPin = pin.pin_type === 'PET';

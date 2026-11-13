@@ -52,6 +52,7 @@ export const getMainPostList = async () => {
                         'image_url', pi.image_url,
                         'is_thumbnail', (pi.is_thumbnail = 1),
                         'is_ai_generated', (pi.is_ai_generated = 1),
+                        'is_sensitive', (pi.is_sensitive = 1),
                         'sort_order', pi.sort_order
                     )
                 )
@@ -232,6 +233,7 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                         'image_url', pi.image_url,
                         'is_thumbnail', (pi.is_thumbnail = 1),
                         'is_ai_generated', (pi.is_ai_generated = 1),
+                        'is_sensitive', (pi.is_sensitive = 1),
                         'sort_order', pi.sort_order
                     )
                 )
@@ -637,6 +639,7 @@ export const getPostList = async (boardId) => {
                         'image_url', pi.image_url,
                         'is_thumbnail', (pi.is_thumbnail = 1),
                         'is_ai_generated', (pi.is_ai_generated = 1),
+                        'is_sensitive', (pi.is_sensitive = 1),
                         'sort_order', pi.sort_order
                     )
                 )
@@ -773,6 +776,7 @@ const getPostListBaseQuery = (whereClause, orderBy = 'p.created_at DESC') => `
                     'image_url', pi.image_url,
                     'is_thumbnail', (pi.is_thumbnail = 1),
                     'is_ai_generated', (pi.is_ai_generated = 1),
+                    'is_sensitive', (pi.is_sensitive = 1),
                     'sort_order', pi.sort_order
                 )
             )
@@ -948,11 +952,12 @@ export const createOrUpdatePost = async (userId, {
         } else if (block.type === 'image') {
             const imageUrl = block.image_url || block.previewUrl || '';
             const isThumbnail = imageOrder === 1 ? 1 : 0;
+            const isSensitive = block.is_sensitive ? 1 : 0;
 
             const [imgResult] = await db.query(
-                `INSERT INTO post_images (post_id, image_url, is_thumbnail, is_ai_generated, sort_order, created_at)
-                 VALUES (?, ?, ?, 0, ?, NOW())`,
-                [postId, imageUrl, isThumbnail, imageOrder]
+                `INSERT INTO post_images (post_id, image_url, is_thumbnail, is_ai_generated, is_sensitive, sort_order, created_at)
+                 VALUES (?, ?, ?, 0, ?, ?, NOW())`,
+                [postId, imageUrl, isThumbnail, isSensitive, imageOrder]
             );
             const postImageId = imgResult.insertId;
             imageOrder++;
@@ -961,7 +966,8 @@ export const createOrUpdatePost = async (userId, {
                 type: 'image',
                 image_id: postImageId,
                 caption: block.caption || '',
-                image_url: imageUrl
+                image_url: imageUrl,
+                is_sensitive: Boolean(block.is_sensitive)
             });
 
             // 이미지 내 핀(Pin) 저장

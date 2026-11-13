@@ -439,6 +439,7 @@ export default function PostDetail({ postId }: { postId: string }) {
                                         pins={pins}
                                         activePinId={activePinId}
                                         onSelectPin={setActivePinId}
+                                        isSensitive={Boolean(content.is_sensitive || image?.is_sensitive)}
                                     />
                                 )
                             }

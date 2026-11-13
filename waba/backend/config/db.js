@@ -74,6 +74,7 @@ const pool = mysql.createPool({
               \`description\` TEXT NULL,
               \`hospital_name\` VARCHAR(100) NULL,
               \`weight_kg\` DECIMAL(5, 2) NULL,
+              \`is_ai_generated\` TINYINT(1) NOT NULL DEFAULT 0,
               \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               INDEX \`idx_pet_histories_pet\` (\`pet_id\`, \`event_date\` DESC),
@@ -119,6 +120,13 @@ const pool = mysql.createPool({
             console.log("✅ [DB Migration] pet_histories.journey_id 컬럼 추가 완료.");
         }
 
+        // pet_histories.is_ai_generated 컬럼 존재 여부 확인 및 추가
+        const [isAiGeneratedCols] = await pool.query("SHOW COLUMNS FROM `pet_histories` LIKE 'is_ai_generated'");
+        if (isAiGeneratedCols.length === 0) {
+            await pool.query("ALTER TABLE `pet_histories` ADD COLUMN `is_ai_generated` TINYINT(1) NOT NULL DEFAULT 0 AFTER `weight_kg`");
+            console.log("✅ [DB Migration] pet_histories.is_ai_generated 컬럼 추가 완료.");
+        }
+
         // pet_history_posts 테이블 자동 생성 (기록과 룩북 글 N:M 연결)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS \`pet_history_posts\` (
@@ -144,6 +152,49 @@ const pool = mysql.createPool({
             `);
             console.log("✅ [DB Migration] pets 소프트 삭제(is_deleted, deleted_at) 컬럼 및 인덱스 추가 완료.");
         }
+
+        // users.auto_journal_enabled 컬럼 존재 여부 확인 및 추가
+        const [autoJournalCols] = await pool.query("SHOW COLUMNS FROM `users` LIKE 'auto_journal_enabled'");
+        if (autoJournalCols.length === 0) {
+            await pool.query("ALTER TABLE `users` ADD COLUMN `auto_journal_enabled` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_multi_species`");
+            console.log("✅ [DB Migration] users.auto_journal_enabled 컬럼 추가 완료.");
+        }
+
+        // post_images.is_sensitive 컬럼 존재 여부 확인 및 추가
+        const [postImgSensitiveCols] = await pool.query("SHOW COLUMNS FROM `post_images` LIKE 'is_sensitive'");
+        if (postImgSensitiveCols.length === 0) {
+            await pool.query("ALTER TABLE `post_images` ADD COLUMN `is_sensitive` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_ai_generated`");
+            console.log("✅ [DB Migration] post_images.is_sensitive 컬럼 추가 완료.");
+        }
+
+        // allowed_affiliate_domains 테이블 자동 생성 및 기본 제휴 쇼핑몰 시드
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`allowed_affiliate_domains\` (
+              \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+              \`domain\` VARCHAR(255) NOT NULL UNIQUE,
+              \`mall_name\` VARCHAR(100) NOT NULL,
+              \`is_active\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        await pool.query(`
+            INSERT IGNORE INTO \`allowed_affiliate_domains\` (\`domain\`, \`mall_name\`) VALUES
+            ('coupang.com', '쿠팡'),
+            ('link.coupang.com', '쿠팡 파트너스'),
+            ('smartstore.naver.com', '네이버 스마트스토어'),
+            ('brand.naver.com', '네이버 브랜드스토어'),
+            ('shopping.naver.com', '네이버 쇼핑'),
+            ('naver.me', '네이버 단축URL'),
+            ('11st.co.kr', '11번가'),
+            ('gmarket.co.kr', 'G마켓'),
+            ('auction.co.kr', '옥션'),
+            ('ssg.com', 'SSG닷컴'),
+            ('kurly.com', '컬리'),
+            ('pet-friends.co.kr', '펫프렌즈'),
+            ('oliveyoung.co.kr', '올리브영')
+        `);
+        console.log("✅ [DB Migration] allowed_affiliate_domains 테이블 및 기본 도메인 시드 확인 완료.");
     } catch (err) {
         console.error("⚠️ [DB Migration] pet_journeys/posts 테이블 생성 실패:", err.message);
     }

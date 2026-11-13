@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA Main &amp; Header — Responsive Breakpoints (375 / 768 / 1024)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --waba-purple: #7B5CFA;
+      --waba-purple-light: #F3EFFF;
+      --waba-charcoal: #1A1A1E;
+      --waba-canvas: #FAFAFC;
+      --waba-surface: #FFFFFF;
+      --waba-subtle: #F4F4F6;
+      --waba-border: #E8E8EE;
+      --waba-muted: #6E6E78;
+      --waba-faint: #9E9EA8;
+      --studio-bg: #EDEDF2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--studio-bg);
+      color: var(--waba-charcoal);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Studio Chrome */
+    .studio-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--waba-border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .studio-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .studio-badge {
+      background: var(--waba-purple);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .studio-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+    }
+
+    .studio-sub {
+      font-size: 12px;
+      color: var(--waba-muted);
+    }
+
+    .studio-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--waba-subtle);
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid var(--waba-border);
+    }
+
+    .studio-tab {
+      border: none;
+      background: transparent;
+      color: var(--waba-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .studio-tab.active {
+      background: var(--waba-charcoal);
+      color: #fff;
+    }
+
+    /* Canvas Layouts */
+    .studio-canvas {
+      padding: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 36px;
+    }
+
+    .artboard-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .artboard-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 4px;
+    }
+
+    .artboard-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bp-pill {
+      background: var(--waba-purple-light);
+      color: var(--waba-purple);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .bp-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+    }
+
+    .bp-size {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--waba-muted);
+    }
+
+    .device-frame {
+      background: var(--waba-canvas);
+      border-radius: 32px;
+      border: 6px solid #1E1E24;
+      box-shadow: 0 24px 60px rgba(26, 26, 30, 0.14);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Single-view mode for clean screenshots */
+    body.single-mode {
+      background: #E6E6EC;
+    }
+    body.single-mode .studio-topbar {
+      display: none;
+    }
+    body.single-mode .studio-canvas {
+      padding: 24px;
+      justify-content: center;
+    }
+    body.single-mode .artboard-wrap {
+      display: none;
+    }
+    body.single-mode .artboard-wrap.is-target {
+      display: flex;
+    }
+
+    /* Guideline Card under each Artboard */
+    .guideline-card {
+      background: #fff;
+      border: 1px solid var(--waba-border);
+      border-radius: 20px;
+      padding: 16px 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .guideline-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--waba-purple);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .guideline-list {
+      list-style: none;
+      display: grid;
+      gap: 5px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #3A3A44;
+    }
+
+    .guideline-list li strong {
+      color: var(--waba-charcoal);
+    }
+
+    /* ============================================================
+       SHARED WABA PAGE TOKENS & COMPONENTS
+    ============================================================ */
+    .waba-page {
+      background: var(--waba-canvas);
+      position: relative;
+      padding-bottom: 36px;
+    }
+
+    /* Floating Pill Header */
+    .waba-header-wrap {
+      position: relative;
+      z-index: 20;
+      padding: 14px 20px 0;
+    }
+
+    .waba-header {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--waba-border);
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 8px 24px rgba(26, 26, 30, 0.05);
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .logo-word {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--waba-charcoal);
+    }
+
+    .logo-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--waba-purple);
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--waba-faint);
+      margin-left: 2px;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--waba-muted);
+    }
+
+    .header-nav .active {
+      color: var(--waba-charcoal);
+      font-weight: 700;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid var(--waba-border);
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--waba-charcoal);
+      position: relative;
+    }
+
+    .bag-dot {
+      position: absolute;
+      top: 6px;
+      right: 7px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--waba-purple);
+    }
+
+    .upload-pill {
+      background: var(--waba-charcoal);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .upload-pill.compact {
+      padding: 6px 11px;
+      font-size: 11px;
+    }
+
+    /* Hero Lookbook Card */
+    .lookbook-card {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      background: linear-gradient(155deg, #D9D2C5 0%, #EFECE6 50%, #C7BFA9 100%);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .lookbook-overlay-top {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 3;
+      gap: 8px;
+    }
+
+    .glass-pill {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .glass-pill-dark {
+      background: rgba(26, 26, 30, 0.72);
+      backdrop-filter: blur(12px);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.04em;
+    }
+
+    .pin-dot {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.92);
+      border: 2px solid var(--waba-charcoal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      z-index: 3;
+    }
+
+    .pin-dot::after {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--waba-charcoal);
+    }
+
+    .pin-dot.active {
+      background: var(--waba-purple);
+      border-color: #fff;
+      transform: scale(1.12);
+    }
+
+    .pin-dot.active::after {
+      background: #fff;
+    }
+
+    .active-pin-card {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      border-radius: 20px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 12px 30px rgba(26, 26, 30, 0.14);
+      z-index: 4;
+    }
+
+    .pin-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #EFEBF8;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pin-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pin-brand {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--waba-purple);
+    }
+
+    .pin-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .pin-price {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--waba-muted);
+      margin-top: 2px;
+    }
+
+    .circle-arrow {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--waba-purple);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* Care Lounge Card */
+    .care-card {
+      background: #fff;
+      border: 1px solid var(--waba-border);
+      border-radius: 28px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .care-visual {
+      position: relative;
+      flex: 1;
+      min-height: 165px;
+      background: linear-gradient(160deg, #4B4E5C 0%, #2B2D36 100%);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .care-visual-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .care-tags {
+      display: flex;
+      gap: 6px;
+    }
+
+    .care-tag {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 999px;
+    }
+
+    .care-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.35;
+    }
+
+    .care-sub {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.78);
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .care-footer {
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--waba-border);
+      background: #fff;
+    }
+
+    .author-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--waba-purple-light);
+      color: var(--waba-purple);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .vet-badge {
+      background: var(--waba-purple-light);
+      color: var(--waba-purple);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    /* Reward Banner */
+    .reward-card {
+      background: var(--waba-charcoal);
+      color: #fff;
+      border-radius: 28px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .reward-glow {
+      position: absolute;
+      top: -45px;
+      right: -45px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: var(--waba-purple);
+      opacity: 0.34;
+      filter: blur(36px);
+      pointer-events: none;
+    }
+
+    .reward-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .reward-pill {
+      background: var(--waba-purple);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+
+    .reward-eyebrow {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.08em;
+    }
+
+    .reward-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .reward-desc {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.72);
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    .reward-cta {
+      align-self: flex-start;
+      background: #fff;
+      color: var(--waba-charcoal);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Section Headers */
+    .sec-eyebrow {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--waba-purple);
+      letter-spacing: 0.1em;
+    }
+
+    .sec-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--waba-charcoal);
+      margin-top: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .sec-desc {
+      font-size: 12px;
+      color: var(--waba-muted);
+      margin-top: 4px;
+    }
+
+    .sec-link {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+      white-space: nowrap;
+    }
+
+    /* Product Cards */
+    .prod-card {
+      background: #fff;
+      border: 1px solid var(--waba-border);
+      border-radius: 22px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .prod-thumb {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      background: var(--waba-subtle);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .prod-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .prod-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .prod-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 5px;
+      flex-wrap: wrap;
+    }
+
+    .prod-price {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tag-count {
+      background: var(--waba-purple-light);
+      color: var(--waba-purple);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    .bag-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--waba-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Feed Snap Cards */
+    .snap-card {
+      background: #fff;
+      border: 1px solid var(--waba-border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .snap-img {
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .snap-pill {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: var(--waba-charcoal);
+    }
+
+    .snap-body {
+      padding: 10px 12px;
+    }
+
+    .snap-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--waba-charcoal);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .snap-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--waba-muted);
+    }
+
+    /* ============================================================
+       1. MOBILE (375px / 360px ~ 375px & Z Flip Unfolded)
+    ============================================================ */
+    .frame-mobile {
+      width: 375px;
+    }
+
+    .frame-mobile .waba-header-wrap {
+      padding: 12px 14px 0;
+    }
+
+    .frame-mobile .waba-header {
+      padding: 8px 14px;
+    }
+
+    .frame-mobile .logo-sub,
+    .frame-mobile .header-nav {
+      display: none;
+    }
+
+    .frame-mobile .page-body {
+      padding: 14px 16px 0;
+      display: grid;
+      gap: 24px;
+    }
+
+    .frame-mobile .hero-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .frame-mobile .lookbook-card {
+      height: 360px;
+      border-radius: 22px;
+    }
+
+    .frame-mobile .care-card {
+      border-radius: 22px;
+    }
+
+    .frame-mobile .care-visual {
+      min-height: 150px;
+    }
+
+    .frame-mobile .reward-card {
+      border-radius: 22px;
+      padding: 16px;
+    }
+
+    .frame-mobile .sec-title {
+      font-size: 18px;
+    }
+
+    .frame-mobile .obj-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .frame-mobile .feed-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .frame-mobile .snap-card {
+      border-radius: 16px;
+    }
+
+    .frame-mobile .snap-body {
+      padding: 8px 10px;
+    }
+
+    .frame-mobile .snap-title {
+      font-size: 12px;
+    }
+
+    /* ============================================================
+       2. TABLET PORTRAIT (768px)
+    ============================================================ */
+    .frame-tablet-p {
+      width: 768px;
+    }
+
+    .frame-tablet-p .waba-header-wrap {
+      padding: 16px 24px 0;
+    }
+
+    .frame-tablet-p .waba-header {
+      padding: 10px 18px;
+    }
+
+    .frame-tablet-p .header-nav {
+      gap: 14px;
+      font-size: 12px;
+    }
+
+    .frame-tablet-p .page-body {
+      padding: 18px 24px 0;
+      display: grid;
+      gap: 28px;
+    }
+
+    /* 2-Row Top Cover + Balanced 2-Col Curation */
+    .frame-tablet-p .hero-stack {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 16px;
+    }
+
+    .frame-tablet-p .lookbook-card {
+      grid-column: 1 / -1;
+      height: 400px;
+      border-radius: 26px;
+    }
+
+    .frame-tablet-p .care-card {
+      height: 245px;
+      border-radius: 24px;
+    }
+
+    .frame-tablet-p .reward-card {
+      height: 245px;
+      border-radius: 24px;
+    }
+
+    .frame-tablet-p .obj-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .frame-tablet-p .feed-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    /* ============================================================
+       3. TABLET LANDSCAPE (1024px)
+    ============================================================ */
+    .frame-tablet-l {
+      width: 1024px;
+    }
+
+    .frame-tablet-l .waba-header-wrap {
+      padding: 16px 24px 0;
+    }
+
+    .frame-tablet-l .waba-header {
+      padding: 10px 22px;
+    }
+
+    .frame-tablet-l .page-body {
+      padding: 20px 24px 0;
+      display: grid;
+      gap: 32px;
+    }
+
+    .frame-tablet-l .hero-stack {
+      display: grid;
+      grid-template-columns: 8fr 4fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .frame-tablet-l .lookbook-card {
+      height: 460px;
+      border-radius: 26px;
+    }
+
+    .frame-tablet-l .hero-right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      height: 460px;
+    }
+
+    .frame-tablet-l .care-card {
+      flex: 1.85;
+      border-radius: 26px;
+    }
+
+    .frame-tablet-l .reward-card {
+      flex: 1;
+      border-radius: 26px;
+    }
+
+    .frame-tablet-l .obj-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .frame-tablet-l .feed-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="studio-topbar">
+    <div class="studio-brand">
+      <span class="studio-badge">WABA STITCH</span>
+      <div>
+        <div class="studio-title">Main Page &amp; Header — Responsive Breakpoints</div>
+        <div class="studio-sub">Mobile (375px / Z Flip) · Tablet Portrait (768px) · Tablet Landscape (1024px)</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">Overview (All 3)</button>
+      <button class="studio-tab" data-target="mobile" onclick="setView('mobile')">Mobile 375px</button>
+      <button class="studio-tab" data-target="tablet-portrait" onclick="setView('tablet-portrait')">Tablet Portrait 768px</button>
+      <button class="studio-tab" data-target="tablet-landscape" onclick="setView('tablet-landscape')">Tablet Landscape 1024px</button>
+    </div>
+  </header>
+
+  <main class="studio-canvas">
+
+    <!-- ============================================================
+         1. MOBILE ARTBOARD (375px)
+    ============================================================ -->
+    <section class="artboard-wrap" id="artboard-mobile">
+      <div class="artboard-meta">
+        <div class="artboard-label">
+          <span class="bp-pill">MOBILE</span>
+          <span class="bp-name">360~375px &amp; Z Flip Unfolded</span>
+        </div>
+        <span class="bp-size">1-Col Stack · 2-Col Feed</span>
+      </div>
+
+      <div class="device-frame frame-mobile">
+        <div class="waba-page">
+          <!-- Mobile Floating Pill Header -->
+          <div class="waba-header-wrap">
+            <div class="waba-header">
+              <div class="logo-group">
+                <span class="logo-word">WABA</span>
+                <span class="logo-dot"></span>
+              </div>
+              <div class="header-actions">
+                <span class="icon-btn" title="검색">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                </span>
+                <span class="icon-btn" title="장바구니">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  <span class="bag-dot"></span>
+                </span>
+                <span class="upload-pill compact">+ 올리기</span>
+                <span class="icon-btn" title="메뉴" style="background:#F4F4F6;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="page-body">
+            <!-- Hero 1-Col Stack -->
+            <div class="hero-stack">
+              <div class="lookbook-card">
+                <svg viewBox="0 0 400 360" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
+                  <defs>
+                    <linearGradient id="wallM" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECE7DE"/><stop offset="100%" stop-color="#D8D0C2"/></linearGradient>
+                  </defs>
+                  <rect width="400" height="360" fill="url(#wallM)"/>
+                  <rect x="0" y="245" width="400" height="115" fill="#C7B9A5"/>
+                  <!-- Minimalist sofa -->
+                  <rect x="44" y="165" width="240" height="82" rx="22" fill="#F6F3EC"/>
+                  <rect x="34" y="188" width="260" height="62" rx="18" fill="#E8E1D5"/>
+                  <!-- Pet cushion -->
+                  <ellipse cx="295" cy="252" rx="52" ry="18" fill="#DED6F9"/>
+                  <circle cx="292" cy="236" r="14" fill="#A67B5B"/>
+                  <circle cx="286" cy="230" r="5" fill="#8C6245"/>
+                  <!-- Floor lamp -->
+                  <line x1="65" y1="75" x2="65" y2="245" stroke="#3A3A44" stroke-width="4"/>
+                  <path d="M44 78 Q65 44 86 78 Z" fill="#FFFDF8"/>
+                </svg>
+
+                <div class="lookbook-overlay-top">
+                  <span class="glass-pill">🐾 몽글 · 말티푸</span>
+                  <span class="glass-pill-dark">WABA LOOKBOOK · AI</span>
+                </div>
+
+                <span class="pin-dot active" style="top: 48%; left: 38%;"></span>
+                <span class="pin-dot" style="top: 64%; left: 72%;"></span>
+
+                <div class="active-pin-card">
+                  <div class="pin-thumb">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="2"><rect x="3" y="8" width="18" height="10" rx="4"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
+                  </div>
+                  <div class="pin-meta">
+                    <div class="pin-brand">WABAMI LIVING · 몽글 착용</div>
+                    <div class="pin-title">클라우드 방수 패브릭 펫 소파</div>
+                    <div class="pin-price">₩189,000</div>
+                  </div>
+                  <span class="circle-arrow">→</span>
+                </div>
+              </div>
+
+              <!-- Care Lounge -->
+              <div class="care-card">
+                <div class="care-visual">
+                  <div class="care-visual-top">
+                    <div class="care-tags">
+                      <span class="care-tag">#슬개골케어</span>
+                      <span class="care-tag">#리빙동선</span>
+                    </div>
+                    <span class="logo-dot" style="width:9px;height:9px;"></span>
+                  </div>
+                  <div>
+                    <div class="care-title" style="font-size:16px;">소형견 슬개골 부담을 줄이는<br/>거실 러그 &amp; 스텝 배치 공식</div>
+                    <div class="care-sub">마찰 계수와 단차 높이에 따른 관절 하중 분석</div>
+                  </div>
+                </div>
+                <div class="care-footer">
+                  <div class="author-row">
+                    <div class="avatar-circle">김</div>
+                    <div>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:12px;font-weight:700;">김다은 수의사</span>
+                        <span class="vet-badge">✓ 공식 검증</span>
+                      </div>
+                      <div style="font-size:10px;color:var(--waba-faint);">정형외과 전문 케어 멘토</div>
+                    </div>
+                  </div>
+                  <span class="icon-btn" style="background:var(--waba-subtle);border:none;">→</span>
+                </div>
+              </div>
+
+              <!-- Reward Banner -->
+              <div class="reward-card">
+                <div class="reward-glow"></div>
+                <div style="position:relative;z-index:1;">
+                  <div class="reward-badge-row">
+                    <span class="reward-pill">5% 리워드 적립</span>
+                    <span class="reward-eyebrow">WABA REWARD</span>
+                  </div>
+                  <div class="reward-title">내 공간에 와바미 제품을 태그하면<br/>구매 발생 시 포인트가 쌓입니다</div>
+                  <div class="reward-desc">공간을 기록하는 것만으로 리빙 크리에이터가 되는 방법</div>
+                </div>
+                <span class="reward-cta" style="position:relative;z-index:1;">크리에이터 체험단 보기 ›</span>
+              </div>
+            </div>
+
+            <!-- Section: Living & Care Objects -->
+            <div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px;">
+                <div>
+                  <div class="sec-eyebrow">VERIFIED LIVING ESSENTIALS</div>
+                  <div class="sec-title">많이 태그된 오브젝트</div>
+                </div>
+                <span class="sec-link">전체 보기 →</span>
+              </div>
+              <div class="obj-grid">
+                <div class="prod-card">
+                  <div class="prod-thumb">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="1.8"><path d="M4 14h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Z"/><path d="M6 14V9a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v5"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name">논슬립 부클레 펫 스텝 2단</div>
+                    <div class="prod-meta">
+                      <span class="prod-price">₩79,000</span>
+                      <span class="tag-count">🏷 태그 142회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+                <div class="prod-card">
+                  <div class="prod-thumb">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="1.8"><circle cx="12" cy="14" r="6"/><path d="M9 6h6"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name">세라믹 원목 높이조절 식기</div>
+                    <div class="prod-meta">
+                      <span class="prod-price">₩54,000</span>
+                      <span class="tag-count">🏷 태그 98회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Best Mentor & Life Snap (2-Column Feed, Tabs Removed) -->
+            <div>
+              <div style="margin-bottom:12px;">
+                <div class="sec-eyebrow">CURATED LOOKBOOK &amp; SPACES</div>
+                <div class="sec-title">베스트 멘토 &amp; 라이프 스냅</div>
+              </div>
+              <div class="feed-grid">
+                <div class="snap-card">
+                  <div class="snap-img" style="height:150px;background:linear-gradient(145deg,#EAE3D7,#D3C7B6);">
+                    <span class="snap-pill">AI 룩북</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">채광 좋은 24평 화이트 우드 펫 리빙룸</div>
+                    <div class="snap-meta"><span>코코네</span><span>♥ 128</span></div>
+                  </div>
+                </div>
+                <div class="snap-card">
+                  <div class="snap-img" style="height:150px;background:linear-gradient(145deg,#DFD9EE,#C5BCE0);">
+                    <span class="snap-pill">멘토 추천</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">노령견을 위한 미끄럼 방지 동선 리모델링</div>
+                    <div class="snap-meta"><span>보리집사</span><span>♥ 94</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guideline-card" style="width:375px;">
+        <div class="guideline-title">Mobile (360~375px / Z Flip Unfolded) Spec</div>
+        <ul class="guideline-list">
+          <li><strong>Header:</strong> `by WABAMI` 및 중앙 내비 숨김, 우측 검색/장바구니/미니 `+ 올리기`/햄버거 메뉴 배치 (`px: 14px`)</li>
+          <li><strong>Hero Stack:</strong> 1열 수직 적층 (`gap: 14px`), 룩북 높이 `360px`로 축소해 첫 화면 스크롤 내 Care Lounge 진입 유도</li>
+          <li><strong>Objects &amp; Feed:</strong> 오브젝트 1열 컴팩트 리스트, 스냅 피드는 2열(`repeat(2, 1fr)`) 배치 및 `[전체-거실-휴식존]` 탭 제거</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         2. TABLET PORTRAIT ARTBOARD (768px)
+    ============================================================ -->
+    <section class="artboard-wrap" id="artboard-tablet-portrait">
+      <div class="artboard-meta">
+        <div class="artboard-label">
+          <span class="bp-pill">TABLET PORTRAIT</span>
+          <span class="bp-name">768px Balanced 2-Row Cover</span>
+        </div>
+        <span class="bp-size">2-Col Balance · 2-Col Feed</span>
+      </div>
+
+      <div class="device-frame frame-tablet-p">
+        <div class="waba-page">
+          <!-- Tablet Portrait Header -->
+          <div class="waba-header-wrap">
+            <div class="waba-header">
+              <div class="logo-group">
+                <span class="logo-word">WABA</span>
+                <span class="logo-dot"></span>
+                <span class="logo-sub">by WABAMI</span>
+              </div>
+              <nav class="header-nav">
+                <span class="active">홈</span>
+                <span>공간 룩북</span>
+                <span>케어 라운지</span>
+                <span>오브젝트</span>
+              </nav>
+              <div class="header-actions">
+                <span class="icon-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                </span>
+                <span class="icon-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  <span class="bag-dot"></span>
+                </span>
+                <span class="upload-pill">공간·룩북 올리기</span>
+                <span class="icon-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="page-body">
+            <!-- 2-Row Top Cover + 2-Col Curation -->
+            <div class="hero-stack">
+              <div class="lookbook-card">
+                <svg viewBox="0 0 720 400" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
+                  <defs>
+                    <linearGradient id="wallTP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EDE8DF"/><stop offset="100%" stop-color="#D7CFC0"/></linearGradient>
+                  </defs>
+                  <rect width="720" height="400" fill="url(#wallTP)"/>
+                  <rect x="0" y="275" width="720" height="125" fill="#C8BAA6"/>
+                  <rect x="110" y="175" width="380" height="102" rx="26" fill="#F8F5EE"/>
+                  <rect x="96" y="205" width="408" height="72" rx="20" fill="#EAE3D6"/>
+                  <ellipse cx="565" cy="285" rx="68" ry="22" fill="#E3DCF9"/>
+                  <circle cx="560" cy="264" r="18" fill="#A67B5B"/>
+                  <line x1="76" y1="70" x2="76" y2="275" stroke="#3A3A44" stroke-width="5"/>
+                  <path d="M48 75 Q76 34 104 75 Z" fill="#FFFDF8"/>
+                </svg>
+
+                <div class="lookbook-overlay-top">
+                  <span class="glass-pill">🐾 몽글 · 말티푸 · 3.8kg</span>
+                  <span class="glass-pill-dark">WABA LOOKBOOK · AI 연출 이미지</span>
+                </div>
+
+                <span class="pin-dot active" style="top: 48%; left: 36%;"></span>
+                <span class="pin-dot" style="top: 66%; left: 77%;"></span>
+                <span class="pin-dot" style="top: 32%; left: 11%;"></span>
+
+                <div class="active-pin-card" style="max-width:460px;">
+                  <div class="pin-thumb">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="2"><rect x="3" y="8" width="18" height="10" rx="4"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
+                  </div>
+                  <div class="pin-meta">
+                    <div class="pin-brand">WABAMI LIVING · 몽글 착용</div>
+                    <div class="pin-title">클라우드 방수 패브릭 펫 소파 (아이보리)</div>
+                    <div class="pin-price">₩189,000</div>
+                  </div>
+                  <span class="circle-arrow">→</span>
+                </div>
+              </div>
+
+              <!-- Row 2 Left: Care Lounge -->
+              <div class="care-card">
+                <div class="care-visual">
+                  <div class="care-visual-top">
+                    <div class="care-tags">
+                      <span class="care-tag">#슬개골케어</span>
+                      <span class="care-tag">#리빙동선</span>
+                    </div>
+                    <span class="logo-dot" style="width:9px;height:9px;"></span>
+                  </div>
+                  <div>
+                    <div class="care-title">소형견 슬개골 부담을 줄이는<br/>거실 러그 &amp; 스텝 배치 공식</div>
+                    <div class="care-sub">마찰 계수와 단차 높이에 따른 관절 하중 분석</div>
+                  </div>
+                </div>
+                <div class="care-footer">
+                  <div class="author-row">
+                    <div class="avatar-circle">김</div>
+                    <div>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:12px;font-weight:700;">김다은 수의사</span>
+                        <span class="vet-badge">✓ 수의사 공식 검증</span>
+                      </div>
+                      <div style="font-size:10px;color:var(--waba-faint);">정형외과 전문 케어 멘토</div>
+                    </div>
+                  </div>
+                  <span class="icon-btn" style="background:var(--waba-subtle);border:none;">→</span>
+                </div>
+              </div>
+
+              <!-- Row 2 Right: Reward Banner -->
+              <div class="reward-card">
+                <div class="reward-glow"></div>
+                <div style="position:relative;z-index:1;">
+                  <div class="reward-badge-row">
+                    <span class="reward-pill">5% 리워드 적립</span>
+                    <span class="reward-eyebrow">WABA REWARD</span>
+                  </div>
+                  <div class="reward-title">내 공간에 와바미 제품을 태그하면<br/>구매 발생 시 포인트가 쌓입니다</div>
+                  <div class="reward-desc">공간을 기록하는 것만으로 리빙 크리에이터가 되는 가장 감각적인 방법.</div>
+                </div>
+                <span class="reward-cta" style="position:relative;z-index:1;">크리에이터 체험단 보기 ›</span>
+              </div>
+            </div>
+
+            <!-- Section: Living & Care Objects (2-Col Balanced) -->
+            <div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;">
+                <div>
+                  <div class="sec-eyebrow">VERIFIED LIVING ESSENTIALS</div>
+                  <div class="sec-title">지금 가장 많이 태그된 리빙 &amp; 케어 오브젝트</div>
+                </div>
+                <span class="sec-link">전체 오브젝트 보기 →</span>
+              </div>
+              <div class="obj-grid">
+                <div class="prod-card">
+                  <div class="prod-thumb">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="1.8"><path d="M4 14h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Z"/><path d="M6 14V9a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v5"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name">논슬립 부클레 펫 스텝 2단</div>
+                    <div class="prod-meta">
+                      <span class="prod-price">₩79,000</span>
+                      <span class="tag-count">🏷 태그 142회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+                <div class="prod-card">
+                  <div class="prod-thumb">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="1.8"><circle cx="12" cy="14" r="6"/><path d="M9 6h6"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name">세라믹 원목 높이조절 식기</div>
+                    <div class="prod-meta">
+                      <span class="prod-price">₩54,000</span>
+                      <span class="tag-count">🏷 태그 98회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Best Mentor & Life Snap (2-Col Balanced) -->
+            <div>
+              <div style="margin-bottom:14px;">
+                <div class="sec-eyebrow">CURATED LOOKBOOK &amp; SPACES</div>
+                <div class="sec-title">베스트 멘토 &amp; 라이프 스냅</div>
+              </div>
+              <div class="feed-grid">
+                <div class="snap-card">
+                  <div class="snap-img" style="height:190px;background:linear-gradient(145deg,#EAE3D7,#D3C7B6);">
+                    <span class="snap-pill">AI 룩북 · 거실</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">채광 좋은 24평 화이트 우드 펫 리빙룸</div>
+                    <div class="snap-meta"><span>코코네 · 말티즈</span><span>♥ 128 · 💬 19</span></div>
+                  </div>
+                </div>
+                <div class="snap-card">
+                  <div class="snap-img" style="height:190px;background:linear-gradient(145deg,#DFD9EE,#C5BCE0);">
+                    <span class="snap-pill">멘토 추천 · 케어존</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">노령견을 위한 미끄럼 방지 동선 리모델링</div>
+                    <div class="snap-meta"><span>보리집사 · 푸들</span><span>♥ 94 · 💬 14</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guideline-card" style="width:768px;">
+        <div class="guideline-title">Tablet Portrait (768px) Spec</div>
+        <ul class="guideline-list">
+          <li><strong>Header:</strong> 풀 Pill 헤더 복원 (`home / 공간 룩북 / 케어 라운지 / 오브젝트`), 좌우 여백 `24px`, CTA 버튼 텍스트 유지</li>
+          <li><strong>2-Row Top Cover:</strong> Row 1은 풀와이드 룩북(`400px`)으로 핀 인터랙션 가독성 확보, Row 2는 `1.35fr : 1fr` 2열(`Care Lounge` + `WABA Reward`) 균형 배치</li>
+          <li><strong>Objects &amp; Feed:</strong> 3열 대신 `repeat(2, 1fr)` 2열 균형 그리드로 상품명 말줄임 및 카드 눌림 방지</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. TABLET LANDSCAPE ARTBOARD (1024px)
+    ============================================================ -->
+    <section class="artboard-wrap" id="artboard-tablet-landscape">
+      <div class="artboard-meta">
+        <div class="artboard-label">
+          <span class="bp-pill">TABLET LANDSCAPE</span>
+          <span class="bp-name">1024px PC Structure + Compact Margins</span>
+        </div>
+        <span class="bp-size">12-Col Hero · 3-Col Feed</span>
+      </div>
+
+      <div class="device-frame frame-tablet-l">
+        <div class="waba-page">
+          <!-- Tablet Landscape Header -->
+          <div class="waba-header-wrap">
+            <div class="waba-header">
+              <div class="logo-group">
+                <span class="logo-word">WABA</span>
+                <span class="logo-dot"></span>
+                <span class="logo-sub">by WABAMI</span>
+              </div>
+              <nav class="header-nav">
+                <span class="active">홈</span>
+                <span>공간 룩북</span>
+                <span>케어 라운지</span>
+                <span>멘토 Q&amp;A</span>
+                <span>오브젝트</span>
+              </nav>
+              <div class="header-actions">
+                <span class="icon-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                </span>
+                <span class="icon-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  <span class="bag-dot"></span>
+                </span>
+                <span class="upload-pill">공간·룩북 올리기</span>
+                <span class="icon-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="page-body">
+            <!-- PC 12-Col Structure (8:4) -->
+            <div class="hero-stack">
+              <div class="lookbook-card">
+                <svg viewBox="0 0 640 460" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
+                  <defs>
+                    <linearGradient id="wallTL" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EDE8DF"/><stop offset="100%" stop-color="#D7CFC0"/></linearGradient>
+                  </defs>
+                  <rect width="640" height="460" fill="url(#wallTL)"/>
+                  <rect x="0" y="320" width="640" height="140" fill="#C8BAA6"/>
+                  <rect x="96" y="210" width="350" height="110" rx="26" fill="#F8F5EE"/>
+                  <rect x="82" y="242" width="378" height="78" rx="20" fill="#EAE3D6"/>
+                  <ellipse cx="520" cy="332" rx="64" ry="20" fill="#E3DCF9"/>
+                  <circle cx="515" cy="312" r="17" fill="#A67B5B"/>
+                  <line x1="68" y1="88" x2="68" y2="320" stroke="#3A3A44" stroke-width="5"/>
+                  <path d="M40 92 Q68 50 96 92 Z" fill="#FFFDF8"/>
+                </svg>
+
+                <div class="lookbook-overlay-top">
+                  <span class="glass-pill">🐾 몽글 · 말티푸 · 3.8kg</span>
+                  <span class="glass-pill-dark">WABA LOOKBOOK · AI 연출 이미지</span>
+                </div>
+
+                <span class="pin-dot active" style="top: 50%; left: 40%;"></span>
+                <span class="pin-dot" style="top: 68%; left: 79%;"></span>
+                <span class="pin-dot" style="top: 34%; left: 11%;"></span>
+
+                <div class="active-pin-card" style="max-width:420px;">
+                  <div class="pin-thumb">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="2"><rect x="3" y="8" width="18" height="10" rx="4"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
+                  </div>
+                  <div class="pin-meta">
+                    <div class="pin-brand">WABAMI LIVING · 몽글 착용</div>
+                    <div class="pin-title">클라우드 방수 패브릭 펫 소파</div>
+                    <div class="pin-price">₩189,000</div>
+                  </div>
+                  <span class="circle-arrow">→</span>
+                </div>
+              </div>
+
+              <div class="hero-right-col">
+                <div class="care-card">
+                  <div class="care-visual" style="min-height:0;">
+                    <div class="care-visual-top">
+                      <div class="care-tags">
+                        <span class="care-tag">#슬개골케어</span>
+                        <span class="care-tag">#동선</span>
+                      </div>
+                      <span class="logo-dot" style="width:9px;height:9px;"></span>
+                    </div>
+                    <div>
+                      <div class="care-title" style="font-size:16px;">소형견 슬개골 부담을 줄이는<br/>거실 러그 &amp; 스텝 배치</div>
+                      <div class="care-sub">마찰 계수와 단차 높이에 따른 관절 하중</div>
+                    </div>
+                  </div>
+                  <div class="care-footer" style="padding:9px 14px;">
+                    <div class="author-row">
+                      <div class="avatar-circle" style="width:28px;height:28px;font-size:11px;">김</div>
+                      <div>
+                        <div style="display:flex;align-items:center;gap:4px;">
+                          <span style="font-size:11px;font-weight:700;">김다은 수의사</span>
+                          <span class="vet-badge" style="font-size:9px;">✓ 검증</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="icon-btn" style="width:28px;height:28px;background:var(--waba-subtle);border:none;">→</span>
+                  </div>
+                </div>
+
+                <div class="reward-card" style="padding:14px 16px;">
+                  <div class="reward-glow"></div>
+                  <div style="position:relative;z-index:1;">
+                    <div class="reward-badge-row">
+                      <span class="reward-pill">5% 리워드 적립</span>
+                      <span class="reward-eyebrow">WABA REWARD</span>
+                    </div>
+                    <div class="reward-title" style="font-size:13px;">와바미 제품 태그 시 구매 포인트 적립</div>
+                  </div>
+                  <span class="reward-cta" style="position:relative;z-index:1;font-size:10px;padding:6px 12px;">크리에이터 체험단 보기 ›</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Living & Care Objects (3-Col Compact) -->
+            <div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;">
+                <div>
+                  <div class="sec-eyebrow">VERIFIED LIVING ESSENTIALS</div>
+                  <div class="sec-title">지금 가장 많이 태그된 리빙 &amp; 케어 오브젝트</div>
+                </div>
+                <span class="sec-link">전체 오브젝트 보기 →</span>
+              </div>
+              <div class="obj-grid">
+                <div class="prod-card">
+                  <div class="prod-thumb" style="width:64px;height:64px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="1.8"><path d="M4 14h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4Z"/><path d="M6 14V9a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v5"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name" style="font-size:13px;">논슬립 부클레 펫 스텝</div>
+                    <div class="prod-meta">
+                      <span class="prod-price" style="font-size:12px;">₩79,000</span>
+                      <span class="tag-count">🏷 142회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle" style="width:30px;height:30px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+                <div class="prod-card">
+                  <div class="prod-thumb" style="width:64px;height:64px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="1.8"><circle cx="12" cy="14" r="6"/><path d="M9 6h6"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name" style="font-size:13px;">세라믹 원목 높이조절 식기</div>
+                    <div class="prod-meta">
+                      <span class="prod-price" style="font-size:12px;">₩54,000</span>
+                      <span class="tag-count">🏷 98회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle" style="width:30px;height:30px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+                <div class="prod-card">
+                  <div class="prod-thumb" style="width:64px;height:64px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7B5CFA" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 9h8"/></svg>
+                  </div>
+                  <div class="prod-info">
+                    <div class="prod-name" style="font-size:13px;">워셔블 오가닉 펫 러그</div>
+                    <div class="prod-meta">
+                      <span class="prod-price" style="font-size:12px;">₩112,000</span>
+                      <span class="tag-count">🏷 87회</span>
+                    </div>
+                  </div>
+                  <span class="bag-circle" style="width:30px;height:30px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1E" stroke-width="2"><path d="M6 7h12l1 12H5L6 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Best Mentor & Life Snap (3-Col Feed) -->
+            <div>
+              <div style="margin-bottom:14px;">
+                <div class="sec-eyebrow">CURATED LOOKBOOK &amp; SPACES</div>
+                <div class="sec-title">베스트 멘토 &amp; 라이프 스냅</div>
+              </div>
+              <div class="feed-grid">
+                <div class="snap-card">
+                  <div class="snap-img" style="height:175px;background:linear-gradient(145deg,#EAE3D7,#D3C7B6);">
+                    <span class="snap-pill">AI 룩북 · 거실</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">채광 좋은 24평 화이트 우드 펫 리빙룸</div>
+                    <div class="snap-meta"><span>코코네 · 말티즈</span><span>♥ 128</span></div>
+                  </div>
+                </div>
+                <div class="snap-card">
+                  <div class="snap-img" style="height:175px;background:linear-gradient(145deg,#DFD9EE,#C5BCE0);">
+                    <span class="snap-pill">멘토 추천 · 케어존</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">노령견을 위한 미끄럼 방지 동선 리모델링</div>
+                    <div class="snap-meta"><span>보리집사 · 푸들</span><span>♥ 94</span></div>
+                  </div>
+                </div>
+                <div class="snap-card">
+                  <div class="snap-img" style="height:175px;background:linear-gradient(145deg,#DCE8E2,#C1D5CB);">
+                    <span class="snap-pill">리빙 스냅 · 휴식존</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">창가 햇살 아래 냥이와 강아지의 공존</div>
+                    <div class="snap-meta"><span>루이맘 · 비숑</span><span>♥ 82</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guideline-card" style="width:1024px;">
+        <div class="guideline-title">Tablet Landscape (1024px) Spec</div>
+        <ul class="guideline-list">
+          <li><strong>PC Structure Preserved:</strong> `8 : 4` 12컬럼 히어로 구조 유지, 좌우 컨테이너 여백을 `24px`로 컴팩트화하여 콘텐츠 영역 최대화</li>
+          <li><strong>Hero Ratio Tuning:</strong> 룩북 높이 `460px` + 우측 `Care Lounge` / `WABA Reward` 높이 매칭으로 세로 스크롤 압박 최소화</li>
+          <li><strong>3-Col Grid:</strong> 리빙 오브젝트(`64px` 썸네일) 및 베스트 멘토 &amp; 라이프 스냅 피드 모두 `repeat(3, 1fr)` 3열 고정</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const wraps = document.querySelectorAll('.artboard-wrap');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        wraps.forEach(w => w.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        wraps.forEach(w => {
+          w.classList.toggle('is-target', w.id === 'artboard-' + mode);
+        });
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['mobile', 'tablet-portrait', 'tablet-landscape'].includes(hash)) {
+        setView(hash);
+      }
+    });
+  </script>
+</body>
+</html>

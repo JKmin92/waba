@@ -5,15 +5,19 @@ import {
     Badge,
     Box,
     Button,
+    Flex,
     Grid,
     Heading,
     HStack,
+    Switch,
     Text,
     VStack,
 } from "@chakra-ui/react";
-import { Edit3, Plus } from "lucide-react";
+import { Edit3, Plus, Sparkles } from "lucide-react";
 import { LuSparkles, LuUser, LuUserRound } from "react-icons/lu";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 import { User } from "@/interface";
 
@@ -22,6 +26,7 @@ export interface UserProfileData extends User {
     bookmark_count: number;
     like_count: number;
     draft_count: number;
+    auto_journal_enabled?: boolean;
 }
 
 interface ProfileSectionProps {
@@ -48,6 +53,59 @@ export default function ProfileSection({
     onOpenEditProfile,
 }: ProfileSectionProps) {
     const router = useRouter();
+    const [autoJournalEnabled, setAutoJournalEnabled] = useState<boolean>(
+        Boolean(profile?.auto_journal_enabled)
+    );
+    const [isUpdatingAutoJournal, setIsUpdatingAutoJournal] = useState(false);
+
+    useEffect(() => {
+        if (profile?.auto_journal_enabled !== undefined) {
+            setAutoJournalEnabled(Boolean(profile.auto_journal_enabled));
+        }
+    }, [profile?.auto_journal_enabled]);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchAutoJournalSetting = async () => {
+            try {
+                const res = await axiosInstance.get('/user/settings/auto-journal');
+                if (isMounted && res.data !== undefined) {
+                    const enabledVal = res.data?.enabled ?? res.data?.auto_journal_enabled;
+                    if (typeof enabledVal === 'boolean') {
+                        setAutoJournalEnabled(enabledVal);
+                    }
+                }
+            } catch {
+                // ignore if endpoint not ready yet
+            }
+        };
+        fetchAutoJournalSetting();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const handleToggleAutoJournal = async (checked: boolean) => {
+        if (isUpdatingAutoJournal) return;
+        const prev = autoJournalEnabled;
+        setAutoJournalEnabled(checked);
+        setIsUpdatingAutoJournal(true);
+        try {
+            await axiosInstance.patch('/user/settings/auto-journal', { enabled: checked });
+            toaster.create({
+                title: checked ? '자동 수첩 기록이 켜졌습니다' : '자동 수첩 기록이 꺼졌습니다',
+                type: checked ? 'success' : 'info',
+            });
+        } catch (err: any) {
+            setAutoJournalEnabled(prev);
+            toaster.create({
+                title: err?.response?.data?.message || '설정 변경에 실패했습니다.',
+                type: 'error',
+            });
+        } finally {
+            setIsUpdatingAutoJournal(false);
+        }
+    };
 
     return (
         <Box
@@ -241,6 +299,59 @@ export default function ProfileSection({
                     </VStack>
                 </HStack>
             </Grid>
+
+            {/* AI 자동 수첩 기록 전역 설정 바 */}
+            <Flex
+                mt={6}
+                pt={4}
+                borderTop="1px solid"
+                borderColor="blackAlpha.50"
+                align={{ base: "flex-start", sm: "center" }}
+                justify="space-between"
+                gap={4}
+                flexWrap="wrap"
+            >
+                <HStack gap={2.5} align="flex-start" flex={1} minW="240px">
+                    <Box
+                        mt={0.5}
+                        w="28px"
+                        h="28px"
+                        borderRadius="xl"
+                        bg="waba.purpleLight"
+                        color="waba.purple"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        flexShrink={0}
+                    >
+                        <Sparkles size={14} />
+                    </Box>
+                    <Box>
+                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                            게시글 작성 시 건강 수첩 AI 자동 기록
+                        </Text>
+                        <Text fontSize="12px" color="waba.faint" mt={0.5} lineHeight="relaxed">
+                            ON 설정 시 게시글을 올릴 때 병원·건강 내용을 AI가 감지하면 묻지 않고 자동으로 수첩에 기록합니다. (글쓰기 화면에서 건별로 끄거나 켤 수 있습니다)
+                        </Text>
+                    </Box>
+                </HStack>
+
+                <Switch.Root
+                    colorPalette="purple"
+                    size="md"
+                    checked={autoJournalEnabled}
+                    disabled={isUpdatingAutoJournal}
+                    onCheckedChange={(e) => handleToggleAutoJournal(e.checked)}
+                >
+                    <Switch.HiddenInput />
+                    <Switch.Control>
+                        <Switch.Thumb />
+                    </Switch.Control>
+                    <Switch.Label fontSize="12px" fontWeight="700" color={autoJournalEnabled ? "waba.purple" : "waba.faint"}>
+                        {autoJournalEnabled ? "ON" : "OFF"}
+                    </Switch.Label>
+                </Switch.Root>
+            </Flex>
         </Box>
     );
 }

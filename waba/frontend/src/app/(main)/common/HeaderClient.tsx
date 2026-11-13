@@ -34,24 +34,6 @@ export default function HeaderClient() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    const [isLogin, setIsLogin] = useState(false);
-    const [currentUser, setCurrentUser] = useState<any>(null);
-
-    useEffect(() => {
-        // 첫 마운트 시 로그인 여부 및 회원 정보 확인
-        setIsLogin(isAuthenticated());
-        setCurrentUser(getUserInfo());
-
-        // auth-change 이벤트 수신 시 실시간으로 isLogin 및 회원정보 갱신
-        const handleAuthChange = () => {
-            setIsLogin(isAuthenticated());
-            setCurrentUser(getUserInfo());
-        };
-
-        window.addEventListener('auth-change', handleAuthChange);
-        return () => window.removeEventListener('auth-change', handleAuthChange);
-    }, []);
-
     useEffect(() => {
         // 첫 마운트 시 로그인 여부 및 회원 정보 확인
         setIsLogin(isAuthenticated());
@@ -94,7 +76,7 @@ export default function HeaderClient() {
                 top={{ base: 2, md: 4 }}
                 left="50%"
                 transform="translateX(-50%)"
-                w="calc(100% - 1.5rem)"
+                w={{ base: 'calc(100% - 16px)', md: 'calc(100% - 1.5rem)' }}
                 maxW="1280px"
                 zIndex={50}
                 bg="rgba(255, 255, 255, 0.92)"
@@ -103,11 +85,11 @@ export default function HeaderClient() {
                 border="1px solid"
                 borderColor="waba.border"
                 boxShadow="0 12px 36px -6px rgba(26, 28, 30, 0.08), 0 0 0 1px rgba(232, 232, 238, 0.8)"
-                px={{ base: 4, md: 7 }}
-                py={{ base: 2.5, md: 3 }}
+                px={{ base: 3.5, md: 5, lg: 7 }}
+                py={{ base: 2, md: 3 }}
                 transition="all 0.2s"
             >
-                <Flex align="center" justify="space-between">
+                <Flex align="center" justify="space-between" minW={0}>
                     {/* Left: Brand Logo (Clean WABA + Signature Purple Dot) */}
                     <Link
                         href="/"
@@ -137,10 +119,11 @@ export default function HeaderClient() {
                     {/* Center: 3대 핵심 메인 GNB (홈 | 커뮤니티 | 스토어) */}
                     <HStack
                         as="nav"
-                        gap={8}
+                        gap={{ md: 5, lg: 8 }}
                         display={{ base: 'none', md: 'flex' }}
-                        fontSize="14px"
+                        fontSize={{ md: '13px', lg: '14px' }}
                         fontWeight="700"
+                        whiteSpace="nowrap"
                     >
                         {/* 1) 홈 */}
                         <Box
@@ -223,7 +206,7 @@ export default function HeaderClient() {
                     </HStack>
 
                     {/* Right: 유틸리티 & 액션 버튼 */}
-                    <HStack gap={{ base: 1.5, md: 2.5 }}>
+                    <HStack gap={{ base: 1, sm: 1.5, md: 2, lg: 2.5 }} flexShrink={0}>
                         {/* 검색 버튼 (스포트라이트 모달 오픈) */}
                         <IconButton
                             aria-label="검색"
@@ -265,18 +248,41 @@ export default function HeaderClient() {
                             />
                         </Box>
 
-                        {/* 데스크톱 CTA 버튼: 공간·룩북 올리기 */}
-                        <Box display={{ base: 'none', md: 'block' }}>
+                        {/* 모바일 미니 CTA 버튼: + 올리기 */}
+                        <Box display={{ base: 'block', md: 'none' }} flexShrink={0}>
                             {isLogin ? (
                                 <Button
                                     onClick={() => router.push('/post/register')}
                                     bg="waba.charcoal"
                                     color="white"
                                     borderRadius="full"
-                                    px={4}
-                                    h="38px"
+                                    px={2.5}
+                                    h="30px"
+                                    fontSize="11px"
+                                    fontWeight="700"
+                                    _hover={{ bg: 'waba.purple' }}
+                                    transition="all 0.15s"
+                                    gap={1}
+                                >
+                                    <Plus size={12} />
+                                    올리기
+                                </Button>
+                            ) : null}
+                        </Box>
+
+                        {/* 데스크톱/태블릿 CTA 버튼: 공간·룩북 올리기 */}
+                        <Box display={{ base: 'none', md: 'block' }} flexShrink={0}>
+                            {isLogin ? (
+                                <Button
+                                    onClick={() => router.push('/post/register')}
+                                    bg="waba.charcoal"
+                                    color="white"
+                                    borderRadius="full"
+                                    px={{ md: 3.5, lg: 4 }}
+                                    h={{ md: '34px', lg: '38px' }}
                                     fontSize="12px"
                                     fontWeight="700"
+                                    whiteSpace="nowrap"
                                     _hover={{ bg: 'waba.purple' }}
                                     transition="all 0.15s"
                                     boxShadow="sm"

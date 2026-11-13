@@ -44,6 +44,15 @@ export default function PostEditClient({ postId }: { postId: string }) {
             formData.append('title', data.title);
             formData.append('selected_pets', JSON.stringify(data.selectedPets || []));
             formData.append('tags', JSON.stringify(data.tags || []));
+            if (data.auto_journal !== undefined) {
+                formData.append('auto_journal', String(Boolean(data.auto_journal)));
+            }
+            if (data.auto_journal && data.auto_journal_pet_id) {
+                formData.append('auto_journal_pet_id', data.auto_journal_pet_id);
+            }
+            if (data.auto_journal && data.auto_journal_journey_id) {
+                formData.append('auto_journal_journey_id', data.auto_journal_journey_id);
+            }
 
             let fileIndex = 0;
             const formattedBlocks = data.blocks.map((b) => {
@@ -67,10 +76,24 @@ export default function PostEditClient({ postId }: { postId: string }) {
 
             const res = await axiosInstance.put(`/post/${postId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 45000,
             });
 
             if (res.data?.success) {
-                toaster.create({ title: '게시글이 수정되었습니다.', type: 'success' });
+                const journalResult = res.data?.auto_journal_result;
+                if (journalResult?.updated === true) {
+                    toaster.create({
+                        title: '게시글이 수정되었고, AI 건강 수첩에도 변경 내용이 이어서 기록되었습니다.',
+                        type: 'success',
+                    });
+                } else if (journalResult?.created === true) {
+                    toaster.create({
+                        title: '게시글이 수정되었고, AI 건강 수첩에 새 기록이 추가되었습니다.',
+                        type: 'success',
+                    });
+                } else {
+                    toaster.create({ title: '게시글이 수정되었습니다.', type: 'success' });
+                }
                 router.push(`/post/${postId}`);
             } else {
                 throw new Error(res.data?.message || '수정에 실패했습니다.');

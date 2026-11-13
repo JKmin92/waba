@@ -37,6 +37,8 @@ import {
     Share2,
     Layers,
     Clock,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react';
 import { Pet } from '@/interface';
 import axiosInstance from '@/utils/api';
@@ -154,6 +156,11 @@ export default function PetHistoryModal({
     const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
     const [isSavingRecord, setIsSavingRecord] = useState(false);
 
+    // AI 자동 입력 상태
+    const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+    const [aiMemoText, setAiMemoText] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
+
     // 룩북 글 연결 선택기 팝업 상태
     const [isPostPickerOpen, setIsPostPickerOpen] = useState(false);
 
@@ -250,6 +257,83 @@ export default function PetHistoryModal({
         setFormJourneyId('');
         setSelectedPostIds([]);
         setEditingHistoryId(null);
+        setAiMemoText('');
+    };
+
+    // AI 추출 결과를 작성 폼 필드에 자동 반영
+    const applyAiExtractedResult = (data: any) => {
+        const extracted = data?.event || data?.events?.[0] || data?.extracted || data;
+        if (!extracted) return;
+
+        const rawDate = extracted.event_date || extracted.date;
+        if (rawDate && typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+            setFormDate(rawDate.slice(0, 10));
+        }
+
+        if (extracted.category && Object.keys(CATEGORY_MAP).includes(extracted.category)) {
+            setFormCategory(extracted.category as PetHistoryCategory);
+        }
+
+        const extractedTitle = extracted.title || extracted.summary || extracted.notes || extracted.description;
+        if (extractedTitle) {
+            setFormTitle(String(extractedTitle));
+        }
+
+        const extractedNotes = extracted.notes || extracted.description;
+        if (extractedNotes) {
+            setFormDescription(String(extractedNotes));
+        }
+
+        if (extracted.hospital_name) {
+            setFormHospital(String(extracted.hospital_name));
+        }
+
+        if (extracted.weight_kg !== null && extracted.weight_kg !== undefined && extracted.weight_kg !== '') {
+            setFormWeight(String(extracted.weight_kg));
+        }
+    };
+
+    // 한 줄 메모로 AI 추출
+    const handleAiTextExtract = async () => {
+        if (!pet) return;
+        if (!aiMemoText.trim()) {
+            toaster.create({ title: '진료 메모를 입력해주세요.', type: 'error' });
+            return;
+        }
+
+        setIsAiLoading(true);
+        try {
+            const res = await axiosInstance.post(
+                '/user/ai/extract-health-event',
+                { content: aiMemoText.trim(), pet_id: pet.id },
+                { timeout: 45000 }
+            );
+
+            const resData = res.data;
+            if (resData?.has_event === false) {
+                toaster.create({
+                    title: '건강·진료 내용을 찾지 못했습니다.',
+                    description: '날짜, 병원명, 증상 또는 체중 등 구체적인 내용을 적어주세요.',
+                    type: 'info',
+                });
+                return;
+            }
+
+            applyAiExtractedResult(resData);
+            setIsAiPanelOpen(false);
+            toaster.create({
+                title: '✨ 메모에서 진료 내용을 자동으로 채웠습니다!',
+                description: '내용을 확인·수정한 뒤 저장하기를 눌러주세요.',
+                type: 'success',
+            });
+        } catch (err: any) {
+            toaster.create({
+                title: err?.response?.data?.message || 'AI 메모 추출에 실패했습니다.',
+                type: 'error',
+            });
+        } finally {
+            setIsAiLoading(false);
+        }
     };
 
     // 기록 저장 핸들러
@@ -586,6 +670,82 @@ export default function PetHistoryModal({
                                 </Flex>
 
                                 <VStack gap={3} align="stretch">
+                                    {/* ✨ AI 자동 입력 (접이식 카드) */}
+                                    <Box
+                                        bg="white"
+                                        border="1px solid"
+                                        borderColor={isAiPanelOpen ? 'waba.purple' : '#E8E8EE'}
+                                        rounded="2xl"
+                                        overflow="hidden"
+                                        transition="all 0.2s"
+                                    >
+                                        <Flex
+                                            px={3.5}
+                                            py={2.5}
+                                            align="center"
+                                            justify="space-between"
+                                            cursor="pointer"
+                                            bg={isAiPanelOpen ? 'waba.purpleLight' : '#FAFAFC'}
+                                            onClick={() => setIsAiPanelOpen((prev) => !prev)}
+                                        >
+                                            <HStack gap={2}>
+                                                <Sparkles size={14} color="#7B5CFA" />
+                                                <Text fontSize="12px" fontWeight="800" color="waba.purple">
+                                                    ✨ AI 메모 자동 입력
+                                                </Text>
+                                                <Text fontSize="11px" color="fg.subtle" display={{ base: 'none', sm: 'inline' }}>
+                                                    (한 줄 메모로 날짜·분류·병원·체중 자동 채우기)
+                                                </Text>
+                                            </HStack>
+                                            <HStack gap={1} color="waba.purple" fontSize="11px" fontWeight="bold">
+                                                <Text>{isAiPanelOpen ? '접기' : '열기'}</Text>
+                                                {isAiPanelOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                            </HStack>
+                                        </Flex>
+
+                                        {isAiPanelOpen && (
+                                            <VStack gap={2} p={3.5} align="stretch" borderTop="1px solid" borderColor="#F0F0F4">
+                                                <Text fontSize="11px" color="fg.subtle">
+                                                    진료·증상 내용을 한 줄 적으면 날짜·분류·병원·체중을 자동으로 채워줘요.
+                                                </Text>
+
+                                                {/* 한 줄 메모로 채우기 */}
+                                                <Flex gap={2}>
+                                                    <Input
+                                                        size="sm"
+                                                        bg="#F8F8FA"
+                                                        rounded="xl"
+                                                        fontSize="xs"
+                                                        placeholder="예: 어제 닥터펫 동물병원에서 종합백신 3차 접종, 체중 3.5kg"
+                                                        value={aiMemoText}
+                                                        onChange={(e) => setAiMemoText(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                                                                e.preventDefault();
+                                                                handleAiTextExtract();
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        bg="waba.purple"
+                                                        color="white"
+                                                        rounded="xl"
+                                                        px={4}
+                                                        fontSize="xs"
+                                                        fontWeight="bold"
+                                                        loading={isAiLoading}
+                                                        _hover={{ bg: '#6845E8' }}
+                                                        onClick={handleAiTextExtract}
+                                                        flexShrink={0}
+                                                    >
+                                                        AI 추출
+                                                    </Button>
+                                                </Flex>
+                                            </VStack>
+                                        )}
+                                    </Box>
+
                                     {/* Line 1: 일자 + 분류 + 병원명 */}
                                     <Flex gap={2.5} flexWrap="wrap">
                                         <Box flex={1} minW="130px">

@@ -40,7 +40,7 @@ export const getPostDatePath = (dateInput) => {
 // 3. Process with sharp and save to public/{YY}/{MM}/{DD}/{HH}/{mm}/{postId}/
 // Rule compliance: max width 1500px, withoutEnlargement: true, 72 DPI, .rotate(), WebP (82 quality)
 // uniqueNames=true (게시글 수정 시): 기존 이미지 파일(1.webp, 2.webp...)을 덮어쓰지 않도록 고유 파일명 사용
-export const processAndSavePostImages = async ({ postId, createdAt, files = [], contentBlocks = [], uniqueNames = false }) => {
+export const processAndSavePostImages = async ({ postId, createdAt, files = [], contentBlocks = [], uniqueNames = false, sensitivityByFileIndex = {} }) => {
     const { yy, mm, dd, hh, min } = getPostDatePath(createdAt);
     const postDir = path.join(PUBLIC_BASE_DIR, yy, mm, dd, hh, min, postId);
 
@@ -67,9 +67,11 @@ export const processAndSavePostImages = async ({ postId, createdAt, files = [], 
 
         if (block.type === 'image') {
             let finalImageUrl = block.image_url || block.previewUrl || '';
+            let isSensitive = Boolean(block.is_sensitive);
 
             // Check if there is an uploaded file for this block
             if (block.fileIndex !== undefined && files[block.fileIndex]) {
+                isSensitive = Boolean(sensitivityByFileIndex[block.fileIndex]);
                 const file = files[block.fileIndex];
                 const fileName = uniqueNames ? `e${Date.now()}_${imageOrder}.webp` : `${imageOrder}.webp`;
                 const destFilePath = path.join(postDir, fileName);
@@ -100,6 +102,7 @@ export const processAndSavePostImages = async ({ postId, createdAt, files = [], 
                 ...block,
                 image_url: finalImageUrl,
                 previewUrl: finalImageUrl,
+                is_sensitive: isSensitive,
                 sort_order: imageOrder
             });
 

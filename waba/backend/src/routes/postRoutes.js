@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/main', postController.getMainPostList);
 router.get('/boards', postController.getBoardList);
 router.post('/parse-url', postController.parseUrlMetadata);
+router.post('/moderate-image', verifyToken, uploadPostImages, postController.moderateImage);
 router.get('/draft', verifyToken, postController.getUserDraft);
 router.post('/draft', verifyToken, uploadPostImages, postController.saveDraft);
 router.delete('/draft/:postId', verifyToken, postController.deleteDraft);

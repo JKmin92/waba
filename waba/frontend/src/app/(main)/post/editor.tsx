@@ -13,9 +13,11 @@ import {
     IconButton,
     Image,
     Input,
+    NativeSelect,
     Portal,
     Separator,
     Stack,
+    Switch,
     Text,
     VStack,
     CloseButton,
@@ -48,125 +50,31 @@ import { isAuthenticated, getUserInfo } from '@/utils/authUtils';
 import MemberModal from '../member/MemberModal';
 import { useRouter } from 'next/navigation';
 import axiosInstance from '@/utils/api';
+import {
+    EditorImagePin,
+    EditorImageBlock,
+    EditorTextBlock,
+    EditorBlock,
+    PostEditorData,
+    EditorProps,
+    ParsedExternalMetadata,
+    DRAFT_STORAGE_KEY,
+} from './editor-components/types';
+import EditorBlockList from './editor-components/EditorBlockList';
+import AutoJournalCard from './editor-components/AutoJournalCard';
+import { FeedPreviewPane, FullPreviewModal } from './editor-components/FeedPreviewPane';
+import PinRegistrationModal from './editor-components/PinRegistrationModal';
 
-// =============================================================================
-// Type Definitions
-// =============================================================================
-
-export interface EditorImagePin {
-    pin_id: string;
-    pin_type: 'INTERNAL_PRODUCT' | 'EXTERNAL_PRODUCT' | 'PET';
-    is_official?: boolean;
-    product_id?: string;
-    product_name: string;
-    brand_name?: string;
-    price?: number;
-    product_url?: string;
-    thumbnail_url?: string;
-    pet_id?: string;
-    pos_x: number; // percentage 0 - 100
-    pos_y: number; // percentage 0 - 100
-    pin_option_memo?: string;
-}
-
-export interface EditorImageBlock {
-    id: string;
-    type: 'image';
-    image_id?: number;
-    previewUrl: string;
-    image_url?: string;
-    file?: File;
-    fileIndex?: number;
-    caption?: string;
-    pins: EditorImagePin[];
-}
-
-export interface EditorTextBlock {
-    id: string;
-    type: 'text';
-    content: string;
-    format: 'p' | 'h2' | 'h3' | 'quote';
-}
-
-export type EditorBlock = EditorTextBlock | EditorImageBlock;
-
-export interface PostEditorData {
-    postId?: string;
-    board_id: string;
-    title: string;
-    blocks: EditorBlock[];
-    selectedPets: string[];
-    tags: string[];
-}
-
-export interface EditorProps {
-    mode?: 'create' | 'edit';
-    postId?: string;
-    initialData?: Partial<PostEditorData>;
-    onSubmit?: (data: PostEditorData, draftPostId?: string) => Promise<void> | void;
-    onSaveDraft?: (data: PostEditorData, draftPostId?: string) => Promise<string | undefined> | void;
-    isSubmitting?: boolean;
-}
-
-const DRAFT_STORAGE_KEY = 'waba_post_draft';
-
-// =============================================================================
-// Helper: Auto-resizing Textarea (No fixed height, No internal scrollbars)
-// =============================================================================
-function AutoResizeTextarea({
-    value,
-    onChange,
-    placeholder,
-}: {
-    value: string;
-    onChange: (val: string) => void;
-    placeholder?: string;
-}) {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-    const resize = () => {
-        const el = textareaRef.current;
-        if (!el) return;
-        el.style.height = 'auto';
-        el.style.height = `${el.scrollHeight}px`;
-    };
-
-    useEffect(() => {
-        resize();
-    }, [value]);
-
-    return (
-        <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => {
-                onChange(e.target.value);
-                resize();
-            }}
-            placeholder={placeholder}
-            rows={1}
-            style={{
-                width: '100%',
-                height: 'auto',
-                overflow: 'hidden',
-                resize: 'none',
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontSize: '16px',
-                fontWeight: 400,
-                lineHeight: 1.85,
-                color: '#141416',
-                padding: '4px 0',
-                margin: 0,
-                display: 'block',
-                fontFamily: 'inherit',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-            }}
-        />
-    );
-}
+export type {
+    EditorImagePin,
+    EditorImageBlock,
+    EditorTextBlock,
+    EditorBlock,
+    PostEditorData,
+    EditorProps,
+    ParsedExternalMetadata,
+};
+export { DRAFT_STORAGE_KEY };
 
 export default function Editor({
     mode = 'create',
@@ -189,7 +97,14 @@ export default function Editor({
     const [userPetsList, setUserPetsList] = useState<any[]>([]);
     const [selectedPets, setSelectedPets] = useState<string[]>(initialData?.selectedPets || []);
 
+    // AI 건강 수첩 자동 기록 건별 설정 상태
+    const [autoJournal, setAutoJournal] = useState<boolean>(false);
+    const [autoJournalPetId, setAutoJournalPetId] = useState<string>(initialData?.selectedPets?.[0] || '');
+    const [autoJournalJourneyId, setAutoJournalJourneyId] = useState<string>('');
+    const [petJourneys, setPetJourneys] = useState<any[]>([]);
+
     // 4. In-stream Unified Blocks Flow (Clean slate: starts with 1 empty text canvas)
+    const [isModeratingImages, setIsModeratingImages] = useState(false);
     const [blocks, setBlocks] = useState<EditorBlock[]>(() => {
         if (initialData?.blocks && initialData.blocks.length > 0) {
             return initialData.blocks;
@@ -230,13 +145,9 @@ export default function Editor({
 
     // External URL Metadata Parsing State
     const [externalUrlInput, setExternalUrlInput] = useState('');
+    const [analyzedExternalUrl, setAnalyzedExternalUrl] = useState('');
     const [isParsingUrl, setIsParsingUrl] = useState(false);
-    const [parsedMetadata, setParsedMetadata] = useState<{
-        product_name: string;
-        brand_name: string;
-        price: number;
-        thumbnail_url?: string;
-    } | null>(null);
+    const [parsedMetadata, setParsedMetadata] = useState<ParsedExternalMetadata | null>(null);
     const [manualExternalFallback, setManualExternalFallback] = useState(false);
 
     // Selected Pet Pin State
@@ -277,6 +188,21 @@ export default function Editor({
             }
         };
         fetchUserPets();
+
+        // Fetch User's Global Auto-Journal Setting as Default
+        const fetchAutoJournalSetting = async () => {
+            if (!isAuthenticated()) return;
+            try {
+                const res = await axiosInstance.get('/user/settings/auto-journal');
+                const enabledVal = res.data?.enabled ?? res.data?.auto_journal_enabled;
+                if (typeof enabledVal === 'boolean') {
+                    setAutoJournal(enabledVal);
+                }
+            } catch {
+                // ignore
+            }
+        };
+        fetchAutoJournalSetting();
 
         // Fetch Official Wabami Products for Pinning
         fetchOfficialProducts('');
@@ -334,11 +260,61 @@ export default function Editor({
         const handleAuthChange = () => {
             setCurrentUser(getUserInfo());
             fetchUserPets();
+
+        // Fetch User's Global Auto-Journal Setting as Default
+        const fetchAutoJournalSetting = async () => {
+            if (!isAuthenticated()) return;
+            try {
+                const res = await axiosInstance.get('/user/settings/auto-journal');
+                const enabledVal = res.data?.enabled ?? res.data?.auto_journal_enabled;
+                if (typeof enabledVal === 'boolean') {
+                    setAutoJournal(enabledVal);
+                }
+            } catch {
+                // ignore
+            }
+        };
+        fetchAutoJournalSetting();
             checkDrafts();
         };
         window.addEventListener('auth-change', handleAuthChange);
         return () => window.removeEventListener('auth-change', handleAuthChange);
     }, [mode]);
+
+    // Sync default autoJournalPetId when selectedPets or userPetsList changes
+    useEffect(() => {
+        if (selectedPets.length > 0 && (!autoJournalPetId || !selectedPets.includes(autoJournalPetId))) {
+            setAutoJournalPetId(selectedPets[0]);
+        } else if (!autoJournalPetId && userPetsList.length > 0) {
+            setAutoJournalPetId(userPetsList[0].id);
+        }
+    }, [selectedPets, userPetsList]);
+
+    // Fetch journeys for selected autoJournalPetId
+    useEffect(() => {
+        if (!autoJournalPetId || !isAuthenticated()) {
+            setPetJourneys([]);
+            setAutoJournalJourneyId('');
+            return;
+        }
+        let isMounted = true;
+        const fetchJourneys = async () => {
+            try {
+                const res = await axiosInstance.get(`/user/pets/${autoJournalPetId}/journeys`);
+                if (isMounted && res.data) {
+                    const list = Array.isArray(res.data) ? res.data : (res.data.journeys || []);
+                    setPetJourneys(list);
+                }
+            } catch {
+                if (isMounted) setPetJourneys([]);
+            }
+        };
+        fetchJourneys();
+        setAutoJournalJourneyId('');
+        return () => {
+            isMounted = false;
+        };
+    }, [autoJournalPetId]);
 
     // Autosave Simulation
     useEffect(() => {
@@ -419,6 +395,7 @@ export default function Editor({
             .map((p) => String(p.pet_id));
 
         const mergedSelectedPets = Array.from(new Set([...selectedPets, ...petPinIds]));
+        const shouldAutoJournal = mergedSelectedPets.length > 0 && autoJournal;
 
         const payload: PostEditorData = {
             postId: currentPostId || undefined,
@@ -427,6 +404,9 @@ export default function Editor({
             blocks,
             selectedPets: mergedSelectedPets,
             tags,
+            auto_journal: shouldAutoJournal,
+            auto_journal_pet_id: shouldAutoJournal ? (autoJournalPetId || mergedSelectedPets[0] || null) : null,
+            auto_journal_journey_id: shouldAutoJournal && autoJournalJourneyId ? autoJournalJourneyId : null,
         };
         const draftObj = { data: payload, savedAt: new Date().toISOString() };
         if (typeof window !== 'undefined') {
@@ -464,47 +444,108 @@ export default function Editor({
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsModeratingImages(true);
+        toaster.create({
+            title: '이미지 확인 중...',
+            type: 'info',
+        });
 
         try {
-            const { optimizedFile, previewUrl } = await processImageClient(file);
+            const processed = await Promise.all(files.map((file) => processImageClient(file)));
 
-            const newImageBlock: EditorImageBlock = {
-                id: `block-image-${Date.now()}`,
-                type: 'image',
-                previewUrl,
-                file: optimizedFile,
-                caption: '',
-                pins: [],
-            };
+            let moderationResults: Array<{ blocked?: boolean; is_sensitive?: boolean }> = [];
+            try {
+                const formData = new FormData();
+                processed.forEach(({ optimizedFile }) => {
+                    formData.append('images', optimizedFile);
+                });
+                const res = await axiosInstance.post('/post/moderate-image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 15000,
+                });
+                moderationResults = res.data?.results || res.data?.data?.results || [];
+            } catch {
+                // Fail-open: API 통신 오류/타임아웃 시 정상 첨부 (등록 시 서버에서 재검사)
+                moderationResults = [];
+            }
 
-            // Seamless continuation text block below the newly inserted image
-            const newContinuationTextBlock: EditorTextBlock = {
-                id: `block-text-${Date.now() + 1}`,
-                type: 'text',
-                content: '',
-                format: 'p',
-            };
+            let hasBlocked = false;
+            let hasSensitive = false;
+            const blocksToInsert: EditorBlock[] = [];
+            const baseTimestamp = Date.now();
 
-            setBlocks((prev) => {
-                if (insertIndexTarget !== null && insertIndexTarget >= 0) {
-                    const next = [...prev];
-                    next.splice(insertIndexTarget + 1, 0, newImageBlock, newContinuationTextBlock);
-                    return next;
+            processed.forEach(({ optimizedFile, previewUrl }, idx) => {
+                const result = moderationResults[idx];
+                if (result?.blocked === true) {
+                    hasBlocked = true;
+                    URL.revokeObjectURL(previewUrl);
+                    return;
                 }
-                return [...prev, newImageBlock, newContinuationTextBlock];
+
+                const isSensitive = Boolean(result?.is_sensitive);
+                if (isSensitive) {
+                    hasSensitive = true;
+                }
+
+                const newImageBlock: EditorImageBlock = {
+                    id: `block-image-${baseTimestamp}-${idx}`,
+                    type: 'image',
+                    previewUrl,
+                    file: optimizedFile,
+                    caption: '',
+                    is_sensitive: isSensitive,
+                    pins: [],
+                };
+
+                // Seamless continuation text block below the newly inserted image
+                const newContinuationTextBlock: EditorTextBlock = {
+                    id: `block-text-${baseTimestamp}-${idx}-next`,
+                    type: 'text',
+                    content: '',
+                    format: 'p',
+                };
+
+                blocksToInsert.push(newImageBlock, newContinuationTextBlock);
             });
 
-            toaster.create({
-                title: '사진이 추가되었습니다.',
-                type: 'success',
-            });
+            if (blocksToInsert.length > 0) {
+                setBlocks((prev) => {
+                    if (insertIndexTarget !== null && insertIndexTarget >= 0) {
+                        const next = [...prev];
+                        next.splice(insertIndexTarget + 1, 0, ...blocksToInsert);
+                        return next;
+                    }
+                    return [...prev, ...blocksToInsert];
+                });
+            }
+
+            if (hasBlocked) {
+                toaster.create({
+                    title: '선정적이거나 부적절한 이미지는 첨부할 수 없습니다.',
+                    type: 'error',
+                });
+            }
+            if (hasSensitive) {
+                toaster.create({
+                    title: '일부 이미지가 민감한 이미지로 분류되어 게시 시 가림 처리됩니다.',
+                    type: 'warning',
+                });
+            } else if (!hasBlocked && blocksToInsert.length > 0) {
+                toaster.create({
+                    title: '사진이 추가되었습니다.',
+                    type: 'success',
+                });
+            }
         } catch (err) {
             toaster.create({
                 title: '이미지 처리 중 오류가 발생했습니다.',
                 type: 'error',
             });
+        } finally {
+            setIsModeratingImages(false);
         }
     };
 
@@ -613,6 +654,7 @@ export default function Editor({
         setSelectedOfficialProduct(null);
         setProductSearchKeyword('');
         setExternalUrlInput('');
+        setAnalyzedExternalUrl('');
         setParsedMetadata(null);
         setManualExternalFallback(false);
         setSelectedPetForPin(null);
@@ -623,19 +665,23 @@ export default function Editor({
     };
 
     const handleParseExternalUrl = async () => {
-        if (!externalUrlInput.trim()) {
+        const trimmedInput = externalUrlInput.trim();
+        if (!trimmedInput) {
             toaster.create({ title: '외부 쇼핑몰 URL을 입력해주세요.', type: 'error' });
             return;
         }
 
         setIsParsingUrl(true);
+        setAnalyzedExternalUrl('');
         setParsedMetadata(null);
         try {
-            const res = await axiosInstance.post('/post/parse-url', { url: externalUrlInput.trim() });
+            const res = await axiosInstance.post('/post/parse-url', { url: trimmedInput });
             if (res.data?.success) {
+                const resolvedUrl = (res.data.url || trimmedInput).trim();
                 if (res.data.url) {
                     setExternalUrlInput(res.data.url);
                 }
+                setAnalyzedExternalUrl(resolvedUrl);
                 setParsedMetadata({
                     product_name: res.data.product_name,
                     brand_name: res.data.brand_name || (res.data.partners_url ? '쿠팡' : '외부 제휴'),
@@ -651,9 +697,11 @@ export default function Editor({
                     type: 'success',
                 });
             } else {
+                const resolvedUrl = (res.data?.partners_url || res.data?.url || trimmedInput).trim();
                 if (res.data?.partners_url || res.data?.url) {
                     setExternalUrlInput(res.data.partners_url || res.data.url);
                 }
+                setAnalyzedExternalUrl(resolvedUrl);
                 setManualExternalFallback(true);
                 setParsedMetadata({
                     product_name: '',
@@ -670,16 +718,14 @@ export default function Editor({
                     type: res.data?.partners_url ? 'success' : 'info',
                 });
             }
-        } catch (e) {
-            setManualExternalFallback(true);
-            setParsedMetadata({
-                product_name: '',
-                brand_name: '외부 제휴몰',
-                price: 0,
-            });
+        } catch (e: any) {
+            setAnalyzedExternalUrl('');
+            setManualExternalFallback(false);
+            setParsedMetadata(null);
+            const serverMessage = e?.response?.data?.message;
             toaster.create({
-                title: 'URL 분석에 실패했습니다. 직접 입력해주세요.',
-                type: 'info',
+                title: serverMessage || 'URL 분석에 실패했습니다. 허용된 쇼핑몰 링크인지 확인해주세요.',
+                type: 'error',
             });
         } finally {
             setIsParsingUrl(false);
@@ -710,6 +756,10 @@ export default function Editor({
                 pin_option_memo: pinOptionMemo.trim(),
             };
         } else if (pinTypeTab === 'EXTERNAL_PRODUCT') {
+            if (!analyzedExternalUrl || externalUrlInput.trim() !== analyzedExternalUrl) {
+                toaster.create({ title: "외부 링크 입력 후 'URL 분석'을 먼저 완료해주세요.", type: 'error' });
+                return;
+            }
             if (!parsedMetadata?.product_name?.trim()) {
                 toaster.create({ title: '상품명을 입력해주세요.', type: 'error' });
                 return;
@@ -846,6 +896,7 @@ export default function Editor({
     // =========================================================================
 
     const handlePublishClick = async () => {
+        if (isModeratingImages) return;
         if (!isAuthenticated()) {
             setLoginModalOpen(true);
             return;
@@ -863,6 +914,7 @@ export default function Editor({
             .map((p) => String(p.pet_id));
 
         const mergedSelectedPets = Array.from(new Set([...selectedPets, ...petPinIds]));
+        const shouldAutoJournal = mergedSelectedPets.length > 0 && autoJournal;
 
         const payload: PostEditorData = {
             postId: currentPostId || undefined,
@@ -871,6 +923,9 @@ export default function Editor({
             blocks,
             selectedPets: mergedSelectedPets,
             tags,
+            auto_journal: shouldAutoJournal,
+            auto_journal_pet_id: shouldAutoJournal ? (autoJournalPetId || mergedSelectedPets[0] || null) : null,
+            auto_journal_journey_id: shouldAutoJournal && autoJournalJourneyId ? autoJournalJourneyId : null,
         };
 
         if (onSubmit) {
@@ -1037,7 +1092,8 @@ export default function Editor({
                             fontSize="13px"
                             fontWeight="700"
                             onClick={handlePublishClick}
-                            loading={isSubmitting}
+                            loading={isSubmitting || isModeratingImages}
+                            disabled={isSubmitting || isModeratingImages}
                             boxShadow="0 4px 14px rgba(26,28,30,0.18)"
                         >
                             {mode === 'edit' ? '수정완료' : '발행하기'}
@@ -1325,356 +1381,17 @@ export default function Editor({
                         </Box>
 
                         {/* Point 1: Continuous Story Writing Canvas with AutoResizeTextarea (No fixed height, No scrollbars) */}
-                        <VStack gap={4} align="stretch">
-                            {blocks.map((block, index) => {
-                                if (block.type === 'text') {
-                                    return (
-                                        <Box key={block.id} position="relative" w="100%">
-                                            <AutoResizeTextarea
-                                                value={block.content}
-                                                onChange={(val) => updateTextBlock(block.id, val)}
-                                                placeholder={
-                                                    index === 0
-                                                        ? "자유롭게 이야기를 시작해보세요. 엔터를 누르면 자연스럽게 줄바꿈되며 높이가 자동 조절됩니다. 상단의 [+ 사진 삽입] 버튼으로 사진과 상품 핀을 넣을 수 있습니다."
-                                                        : "이어지는 이야기를 작성해보세요..."
-                                                }
-                                            />
-                                        </Box>
-                                    );
-                                }
-
-                                if (block.type === 'image') {
-                                    return (
-                                        <Box key={block.id} my={4}>
-                                            <Box
-                                                position="relative"
-                                                rounded="24px"
-                                                overflow="hidden"
-                                                border="1px solid"
-                                                borderColor="waba.border"
-                                                bg="waba.subtle"
-                                                cursor="crosshair"
-                                                role="group"
-                                                onClick={(e) => handleImageClickToPin(e, block.id)}
-                                            >
-                                                {/* Uploaded Image */}
-                                                <Image
-                                                    src={block.previewUrl}
-                                                    alt="에디터 삽입 이미지"
-                                                    w="100%"
-                                                    h="auto"
-                                                    display="block"
-                                                />
-
-
-
-                                                {/* Click-to-Pin Guide Pill */}
-                                                <Box
-                                                    position="absolute"
-                                                    top={4}
-                                                    left={4}
-                                                    bg="rgba(255, 255, 255, 0.92)"
-                                                    backdropFilter="blur(8px)"
-                                                    color="waba.charcoal"
-                                                    fontSize="11px"
-                                                    fontWeight="700"
-                                                    px={3}
-                                                    py={1}
-                                                    rounded="full"
-                                                    boxShadow="sm"
-                                                    pointerEvents="none"
-                                                >
-                                                    📍 사진을 클릭하여 상품/반려동물 핀(+)을 태그하세요
-                                                </Box>
-
-                                                {/* Dropped Pins */}
-                                                {block.pins.map((pin, pinIdx) => {
-                                                    const isPet = pin.pin_type === 'PET';
-                                                    const pinBg = isPet ? '#7046B7' : pin.is_official ? '#6338A9' : '#141416';
-                                                    const isActive = activePinId === pin.pin_id;
-
-                                                    // 4방향 경계 감지 스마트 배치 (Smart Adaptive Placement)
-                                                    const isTopArea = pin.pos_y < 24;
-                                                    const isRightArea = pin.pos_x > 68;
-                                                    const isLeftArea = pin.pos_x < 32;
-
-                                                    return (
-                                                        <Box
-                                                            key={pin.pin_id}
-                                                            position="absolute"
-                                                            left={`${pin.pos_x}%`}
-                                                            top={`${pin.pos_y}%`}
-                                                            transform="translate(-50%, -50%)"
-                                                            zIndex={isActive ? 35 : 20}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setActivePinId((prev) => (prev === pin.pin_id ? null : pin.pin_id));
-                                                            }}
-                                                        >
-                                                            {/* Numbered Pin Circle Button */}
-                                                            <Box
-                                                                as="button"
-                                                                w="30px"
-                                                                h="30px"
-                                                                rounded="full"
-                                                                bg={pinBg}
-                                                                color="white"
-                                                                fontSize="12px"
-                                                                fontWeight="800"
-                                                                display="flex"
-                                                                alignItems="center"
-                                                                justifyContent="center"
-                                                                border="2.5px solid white"
-                                                                boxShadow={
-                                                                    isActive
-                                                                        ? '0 0 0 3px rgba(99, 56, 169, 0.45), 0 6px 18px rgba(0,0,0,0.35)'
-                                                                        : '0 4px 14px rgba(0,0,0,0.3)'
-                                                                }
-                                                                cursor="pointer"
-                                                                transition="all 0.15s cubic-bezier(0.4, 0, 0.2, 1)"
-                                                                transform={isActive ? 'scale(1.18)' : 'scale(1)'}
-                                                                _hover={{ transform: 'scale(1.15)' }}
-                                                            >
-                                                                {pinIdx + 1}
-                                                            </Box>
-
-                                                            {/* Smart Adaptive Popover Card (클릭 시에만 뜸) */}
-                                                            {isActive && (
-                                                                <Box
-                                                                    position="absolute"
-                                                                    top={isTopArea ? '36px' : 'auto'}
-                                                                    bottom={!isTopArea ? '36px' : 'auto'}
-                                                                    left={isRightArea ? 'auto' : isLeftArea ? '0' : '50%'}
-                                                                    right={isRightArea ? '0' : 'auto'}
-                                                                    transform={!isRightArea && !isLeftArea ? 'translateX(-50%)' : 'none'}
-                                                                    bg="rgba(255, 255, 255, 0.96)"
-                                                                    backdropFilter="blur(16px)"
-                                                                    p={3.5}
-                                                                    rounded="18px"
-                                                                    border="1px solid"
-                                                                    borderColor="waba.border"
-                                                                    boxShadow="0 12px 32px rgba(0,0,0,0.22)"
-                                                                    minW="210px"
-                                                                    maxW="260px"
-                                                                    zIndex={40}
-                                                                    cursor="default"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    {/* Header: Type Label + Close */}
-                                                                    <Flex justify="space-between" align="center" mb={1.5}>
-                                                                        <HStack gap={1.5}>
-                                                                            <Box
-                                                                                w="16px"
-                                                                                h="16px"
-                                                                                rounded="full"
-                                                                                bg={pinBg}
-                                                                                color="white"
-                                                                                fontSize="9px"
-                                                                                fontWeight="800"
-                                                                                display="flex"
-                                                                                alignItems="center"
-                                                                                justifyContent="center"
-                                                                            >
-                                                                                {pinIdx + 1}
-                                                                            </Box>
-                                                                            <Text fontSize="11px" fontWeight="700" color="waba.purple">
-                                                                                {isPet ? '반려동물 태그' : pin.brand_name || (pin.is_official ? '와바미 공식' : '외부 제휴')}
-                                                                            </Text>
-                                                                            {pin.is_official && (
-                                                                                <Box bg="waba.purple" color="white" fontSize="9px" fontWeight="800" px={1.5} py={0.2} rounded="full">
-                                                                                    5% 적립
-                                                                                </Box>
-                                                                            )}
-                                                                        </HStack>
-                                                                        <CloseButton
-                                                                            size="2xs"
-                                                                            rounded="full"
-                                                                            color="gray.400"
-                                                                            _hover={{ color: 'red.500', bg: 'red.50' }}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setActivePinId(null);
-                                                                            }}
-                                                                        />
-                                                                    </Flex>
-
-                                                                    {/* Product / Pet Name */}
-                                                                    <Text fontSize="13px" fontWeight="700" color="waba.charcoal" lineClamp={2} mb={1}>
-                                                                        {pin.product_name}
-                                                                    </Text>
-
-                                                                    {/* Price if available */}
-                                                                    {pin.price !== undefined && pin.price > 0 && (
-                                                                        <Text fontSize="12px" fontWeight="700" color="waba.purple" mb={2}>
-                                                                            {Number(pin.price).toLocaleString()}원
-                                                                        </Text>
-                                                                    )}
-
-                                                                    {/* Delete Action Button */}
-                                                                    <Button
-                                                                        size="xs"
-                                                                        w="100%"
-                                                                        mt={1.5}
-                                                                        variant="subtle"
-                                                                        color="red.600"
-                                                                        bg="red.50"
-                                                                        _hover={{ bg: 'red.100' }}
-                                                                        rounded="full"
-                                                                        fontSize="11px"
-                                                                        fontWeight="700"
-                                                                        h="28px"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            removePinFromImage(block.id, pin.pin_id, e);
-                                                                            setActivePinId(null);
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 size={12} style={{ marginRight: 4 }} />
-                                                                        핀 삭제하기
-                                                                    </Button>
-                                                                </Box>
-                                                            )}
-                                                        </Box>
-                                                    );
-                                                })}
-
-                                                {/* Hover Toolbar: Order & Delete */}
-                                                <HStack
-                                                    position="absolute"
-                                                    bottom={3}
-                                                    right={3}
-                                                    bg="rgba(20, 20, 22, 0.85)"
-                                                    backdropFilter="blur(8px)"
-                                                    rounded="full"
-                                                    px={2.5}
-                                                    py={1}
-                                                    gap={1}
-                                                    zIndex={15}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <IconButton
-                                                        aria-label="위로 이동"
-                                                        size="xs"
-                                                        variant="ghost"
-                                                        color="white"
-                                                        _hover={{ bg: 'whiteAlpha.300' }}
-                                                        onClick={() => moveImageBlock(index, 'up')}
-                                                        disabled={index === 0}
-                                                    >
-                                                        <ChevronUp size={14} />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        aria-label="아래로 이동"
-                                                        size="xs"
-                                                        variant="ghost"
-                                                        color="white"
-                                                        _hover={{ bg: 'whiteAlpha.300' }}
-                                                        onClick={() => moveImageBlock(index, 'down')}
-                                                        disabled={index === blocks.length - 1}
-                                                    >
-                                                        <ChevronDown size={14} />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        aria-label="사진 삭제"
-                                                        size="xs"
-                                                        variant="ghost"
-                                                        color="red.300"
-                                                        _hover={{ bg: 'whiteAlpha.300', color: 'red.400' }}
-                                                        onClick={() => removeImageBlock(block.id)}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </IconButton>
-                                                </HStack>
-                                            </Box>
-
-                                            {/* Tagged Pins Chip List below the image */}
-                                            {block.pins.length > 0 && (
-                                                <Box mt={2.5} px={1}>
-                                                    <Flex align="center" gap={1.5} flexWrap="wrap">
-                                                        <Text fontSize="11px" fontWeight="700" color="waba.muted" mr={1}>
-                                                            사진 속 태그 ({block.pins.length}):
-                                                        </Text>
-                                                        {block.pins.map((pin, pIdx) => {
-                                                            const isSelected = activePinId === pin.pin_id;
-                                                            const isPet = pin.pin_type === 'PET';
-                                                            const chipBg = isPet ? '#7046B7' : pin.is_official ? '#6338A9' : '#141416';
-                                                            return (
-                                                                <HStack
-                                                                    key={pin.pin_id}
-                                                                    bg={isSelected ? 'purple.50' : 'white'}
-                                                                    border="1px solid"
-                                                                    borderColor={isSelected ? 'purple.300' : 'waba.border'}
-                                                                    px={2.5}
-                                                                    py={1}
-                                                                    rounded="full"
-                                                                    gap={1.5}
-                                                                    fontSize="11px"
-                                                                    fontWeight="600"
-                                                                    cursor="pointer"
-                                                                    transition="all 0.15s ease"
-                                                                    boxShadow="xs"
-                                                                    _hover={{ borderColor: 'purple.300', bg: 'purple.50' }}
-                                                                    onClick={() => setActivePinId(isSelected ? null : pin.pin_id)}
-                                                                >
-                                                                    <Box
-                                                                        w="16px"
-                                                                        h="16px"
-                                                                        rounded="full"
-                                                                        bg={chipBg}
-                                                                        color="white"
-                                                                        fontSize="9px"
-                                                                        fontWeight="800"
-                                                                        display="flex"
-                                                                        alignItems="center"
-                                                                        justifyContent="center"
-                                                                        flexShrink={0}
-                                                                    >
-                                                                        {pIdx + 1}
-                                                                    </Box>
-                                                                    <Text color="waba.charcoal" maxW="160px" truncate>
-                                                                        {pin.product_name}
-                                                                    </Text>
-                                                                    <CloseButton
-                                                                        size="2xs"
-                                                                        rounded="full"
-                                                                        color="gray.400"
-                                                                        _hover={{ color: 'red.500', bg: 'red.100' }}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            removePinFromImage(block.id, pin.pin_id, e);
-                                                                            if (activePinId === pin.pin_id) setActivePinId(null);
-                                                                        }}
-                                                                    />
-                                                                </HStack>
-                                                            );
-                                                        })}
-                                                    </Flex>
-                                                </Box>
-                                            )}
-
-                                            {/* Caption Input */}
-                                            <Flex justify="space-between" align="center" mt={2} px={1}>
-                                                <Input
-                                                    value={block.caption || ''}
-                                                    onChange={(e) => updateImageCaption(block.id, e.target.value)}
-                                                    placeholder="• 사진에 대한 캡션을 입력하세요..."
-                                                    fontSize="13px"
-                                                    color="waba.muted"
-                                                    border="none"
-                                                    outline="none"
-                                                    px={0}
-                                                    _focus={{ outline: 'none' }}
-                                                />
-                                                <Text fontSize="12px" color="waba.faint" whiteSpace="nowrap">
-                                                    핀 {block.pins.length}개 연동됨
-                                                </Text>
-                                            </Flex>
-                                        </Box>
-                                    );
-                                }
-                                return null;
-                            })}
-                        </VStack>
+                        <EditorBlockList
+                            blocks={blocks}
+                            activePinId={activePinId}
+                            onSetActivePinId={setActivePinId}
+                            onUpdateTextBlock={updateTextBlock}
+                            onUpdateImageCaption={updateImageCaption}
+                            onMoveImageBlock={moveImageBlock}
+                            onRemoveImageBlock={removeImageBlock}
+                            onImageClickToPin={handleImageClickToPin}
+                            onRemovePinFromImage={removePinFromImage}
+                        />
 
                         {/* Bottom Tag Bar */}
                         <Box pt={8} mt={6} borderTop="1px solid" borderColor="waba.subtle">
@@ -1758,333 +1475,36 @@ export default function Editor({
                         flexDirection="column"
                         gap={6}
                     >
-                        {/* 1) Live Feed Preview */}
-                        <Box
-                            bg="white"
-                            rounded="24px"
-                            border="1px solid"
-                            borderColor="waba.border"
-                            p={5}
-                            boxShadow="0 8px 32px -4px rgba(26,28,30,0.04)"
-                        >
-                            <Flex justify="space-between" align="center" mb={4}>
-                                <HStack gap={2}>
-                                    <Layers size={17} color="#6338A9" />
-                                    <Heading fontSize="15px" fontWeight="700" color="waba.charcoal">
-                                        피드 실시간 미리보기
-                                    </Heading>
-                                </HStack>
-                                <Text fontSize="11px" fontWeight="800" color="waba.muted" letterSpacing="0.08em">
-                                    100% SYNC
-                                </Text>
-                            </Flex>
+                        {/* 0) ✨ 건강 수첩 자동 기록 카드 (내 반려동물을 1마리 이상 태그했을 때만 노출) */}
+                        {selectedPets.length > 0 && (
+                            <AutoJournalCard
+                                autoJournal={autoJournal}
+                                onAutoJournalChange={setAutoJournal}
+                                autoJournalPetId={autoJournalPetId}
+                                onAutoJournalPetIdChange={setAutoJournalPetId}
+                                autoJournalJourneyId={autoJournalJourneyId}
+                                onAutoJournalJourneyIdChange={setAutoJournalJourneyId}
+                                userPetsList={userPetsList}
+                                petJourneys={petJourneys}
+                            />
+                        )}
 
-                            <Box rounded="20px" border="1px solid" borderColor="waba.border" overflow="hidden" bg="#FAFAFC">
-                                {/* Thumbnail Container */}
-                                <Box
-                                    position="relative"
-                                    h="190px"
-                                    w="100%"
-                                    bg="waba.subtle"
-                                    display="flex"
-                                    alignItems="center"
-                                    justifyContent="center"
-                                    overflow="hidden"
-                                >
-                                    {firstImagePreview ? (
-                                        <Image
-                                            src={firstImagePreview}
-                                            alt="미리보기 썸네일"
-                                            w="100%"
-                                            h="100%"
-                                            objectFit="cover"
-                                        />
-                                    ) : (
-                                        <VStack gap={2} color="waba.faint" py={6}>
-                                            <ImageIcon size={32} />
-                                            <Text fontSize="12px" fontWeight="600">
-                                                사진을 추가하면 대표 썸네일로 표시됩니다
-                                            </Text>
-                                        </VStack>
-                                    )}
-                                    <HStack position="absolute" top={3} left={3} gap={1.5}>
-                                        <Box
-                                            bg="rgba(20, 20, 22, 0.8)"
-                                            backdropFilter="blur(6px)"
-                                            color="white"
-                                            fontSize="11px"
-                                            fontWeight="700"
-                                            px={2.5}
-                                            py={0.8}
-                                            rounded="full"
-                                        >
-                                            {boardId === 'SNAP'
-                                                ? '일상 스냅'
-                                                : boardId === 'LOOKBOOK'
-                                                    ? '공식 룩북'
-                                                    : boardId === 'CARE_LOUNGE'
-                                                        ? '케어 라운지'
-                                                        : '궁금증 Q&A'}
-                                        </Box>
-                                        {productPinsCount > 0 && (
-                                            <Box
-                                                bg="rgba(99, 56, 169, 0.85)"
-                                                backdropFilter="blur(6px)"
-                                                color="white"
-                                                fontSize="11px"
-                                                fontWeight="700"
-                                                px={2}
-                                                py={0.8}
-                                                rounded="full"
-                                            >
-                                                상품 {productPinsCount}개
-                                            </Box>
-                                        )}
-                                    </HStack>
-                                </Box>
-
-                                {/* Meta Info & Title */}
-                                <Box p={4} bg="white">
-                                    <Flex justify="space-between" align="center" mb={2}>
-                                        <HStack gap={2}>
-                                            <Box
-                                                w="24px"
-                                                h="24px"
-                                                rounded="full"
-                                                bg="waba.purpleLight"
-                                                color="waba.purple"
-                                                fontSize="11px"
-                                                fontWeight="800"
-                                                display="flex"
-                                                alignItems="center"
-                                                justifyContent="center"
-                                            >
-                                                {currentUser?.nickname ? currentUser.nickname[0].toUpperCase() : 'W'}
-                                            </Box>
-                                            <Text fontSize="12px" fontWeight="600" color="waba.charcoal">
-                                                @{currentUser?.nickname || '크리에이터'}
-                                            </Text>
-                                        </HStack>
-                                        <Box
-                                            bg="waba.purpleLight"
-                                            color="waba.purple"
-                                            fontSize="10px"
-                                            fontWeight="800"
-                                            px={2}
-                                            py={0.5}
-                                            rounded="full"
-                                        >
-                                            STYLE MENTOR
-                                        </Box>
-                                    </Flex>
-                                    <Heading
-                                        fontSize="15px"
-                                        fontWeight="700"
-                                        color="waba.charcoal"
-                                        lineClamp={2}
-                                        mb={3}
-                                    >
-                                        {title || '제목을 입력하면 여기에 실시간으로 반영됩니다'}
-                                    </Heading>
-
-                                    {/* Point 2: Tagged Items List STRICTLY EXCLUDES PETS! */}
-                                    <Box pt={3} borderTop="1px solid" borderColor="waba.subtle">
-                                        <Text fontSize="11px" fontWeight="600" color="waba.muted" mb={2}>
-                                            연동 상품 ({productPinsCount})
-                                        </Text>
-                                        {productPinsCount === 0 ? (
-                                            <Text fontSize="11px" color="waba.faint" fontStyle="italic">
-                                                사진 위를 클릭해 상품 핀을 추가해보세요
-                                            </Text>
-                                        ) : (
-                                            <VStack gap={1.5} align="stretch">
-                                                {allProductPins.slice(0, 3).map((pin, i) => (
-                                                    <Flex
-                                                        key={pin.pin_id}
-                                                        justify="space-between"
-                                                        align="center"
-                                                        p={2}
-                                                        bg="waba.subtle"
-                                                        rounded="12px"
-                                                        fontSize="12px"
-                                                    >
-                                                        <HStack gap={2} overflow="hidden">
-                                                            <Box
-                                                                w="18px"
-                                                                h="18px"
-                                                                rounded="full"
-                                                                bg={pin.is_official ? 'waba.purple' : 'waba.charcoal'}
-                                                                color="white"
-                                                                fontSize="10px"
-                                                                fontWeight="800"
-                                                                display="flex"
-                                                                alignItems="center"
-                                                                justifyContent="center"
-                                                                flexShrink={0}
-                                                            >
-                                                                {i + 1}
-                                                            </Box>
-                                                            <Text fontWeight="600" color="waba.charcoal" truncate>
-                                                                {pin.product_name}
-                                                            </Text>
-                                                        </HStack>
-                                                        <Text
-                                                            fontSize="11px"
-                                                            fontWeight="700"
-                                                            color={pin.is_official ? 'waba.purple' : 'waba.muted'}
-                                                            flexShrink={0}
-                                                        >
-                                                            {pin.is_official ? '5% 적립' : '제휴 링크'}
-                                                        </Text>
-                                                    </Flex>
-                                                ))}
-                                            </VStack>
-                                        )}
-                                    </Box>
-                                </Box>
-                            </Box>
-                        </Box>
-
-                        {/* 2) Creator Reward Calculator Card */}
-                        <Box
-                            bg="white"
-                            rounded="24px"
-                            border="1px solid"
-                            borderColor="waba.border"
-                            p={5}
-                            boxShadow="0 8px 32px -4px rgba(26,28,30,0.04)"
-                        >
-                            <Flex justify="space-between" align="center" mb={4}>
-                                <HStack gap={2}>
-                                    <Coins size={18} color="#6338A9" />
-                                    <Heading fontSize="15px" fontWeight="700" color="waba.charcoal">
-                                        리워드 혜택 계산기
-                                    </Heading>
-                                </HStack>
-                                <Box
-                                    bg="waba.purpleLight"
-                                    color="waba.purple"
-                                    fontSize="10px"
-                                    fontWeight="800"
-                                    px={2}
-                                    py={0.5}
-                                    rounded="full"
-                                >
-                                    실시간 적립
-                                </Box>
-                            </Flex>
-
-                            <Box bg="purple.50/40" p={4} rounded="18px" border="1px solid" borderColor="purple.100" mb={4}>
-                                <Text fontSize="12px" color="waba.muted" mb={1}>
-                                    현재 예상 적립 포인트
-                                </Text>
-                                <HStack align="baseline" gap={1} color="waba.purple">
-                                    <Text fontSize="32px" fontWeight="800" letterSpacing="-0.03em">
-                                        +{calculatedPoints.toLocaleString()}
-                                    </Text>
-                                    <Text fontSize="18px" fontWeight="700">
-                                        P
-                                    </Text>
-                                </HStack>
-                            </Box>
-
-                            <VStack gap={2.5} fontSize="13px" mb={4}>
-                                <Flex justify="space-between" w="100%" color="waba.muted">
-                                    <Text>기본 에디토리얼 작성</Text>
-                                    <Text fontWeight="700" color="waba.charcoal">
-                                        +{totalImagesCount >= 1 ? '500' : '0'}P
-                                    </Text>
-                                </Flex>
-                                <Flex justify="space-between" w="100%" color="waba.muted">
-                                    <Text>연동 상품 {productPinsCount}개 태그 완료</Text>
-                                    <Text fontWeight="700" color="waba.charcoal">
-                                        +{(productPinsCount * 200).toLocaleString()}P
-                                    </Text>
-                                </Flex>
-                                {isMultiSpecies && (
-                                    <Flex justify="space-between" w="100%" color="waba.muted">
-                                        <Text>다종 합사 가중치 (+20%)</Text>
-                                        <Text fontWeight="700" color="waba.purple">
-                                            +600P
-                                        </Text>
-                                    </Flex>
-                                )}
-                            </VStack>
-
-                            <Box p={3} bg="waba.subtle" rounded="14px" display="flex" gap={2.5} alignItems="center">
-                                <Sparkles size={16} color="#6338A9" />
-                                <Text fontSize="12px" color="waba.muted" lineHeight="1.4">
-                                    공식 룩북 승격 시 <strong style={{ color: '#141416' }}>+10,000P</strong> 및 앰버서더 배지가 지급됩니다.
-                                </Text>
-                            </Box>
-                        </Box>
-
-                        {/* 3) Publish Readiness Checklist Card */}
-                        <Box
-                            bg="white"
-                            rounded="24px"
-                            border="1px solid"
-                            borderColor="waba.border"
-                            p={5}
-                            boxShadow="0 8px 32px -4px rgba(26,28,30,0.04)"
-                        >
-                            <Flex justify="space-between" align="center" mb={3}>
-                                <Heading fontSize="15px" fontWeight="700" color="waba.charcoal">
-                                    발행 준비 완료도
-                                </Heading>
-                                <Text fontSize="15px" fontWeight="800" color="waba.purple">
-                                    {readinessPercentage}%
-                                </Text>
-                            </Flex>
-
-                            <Box w="100%" bg="waba.subtle" h="8px" rounded="full" overflow="hidden" mb={4}>
-                                <Box
-                                    bg="waba.purple"
-                                    h="100%"
-                                    rounded="full"
-                                    transition="width 0.4s ease"
-                                    w={`${readinessPercentage}%`}
-                                />
-                            </Box>
-
-                            <VStack gap={2.5} align="stretch" fontSize="13px">
-                                <HStack gap={2} color={isTitleValid ? 'waba.charcoal' : 'waba.muted'}>
-                                    {isTitleValid ? (
-                                        <CheckCircle2 size={16} color="#10B981" />
-                                    ) : (
-                                        <Circle size={16} color="#9E9DA6" />
-                                    )}
-                                    <Text fontWeight={isTitleValid ? '600' : '400'}>제목 5자 이상 입력</Text>
-                                </HStack>
-
-                                <HStack gap={2} color={isContentValid ? 'waba.charcoal' : 'waba.muted'}>
-                                    {isContentValid ? (
-                                        <CheckCircle2 size={16} color="#10B981" />
-                                    ) : (
-                                        <Circle size={16} color="#9E9DA6" />
-                                    )}
-                                    <Text fontWeight={isContentValid ? '600' : '400'}>본문 내용 30자 이상 충족</Text>
-                                </HStack>
-
-                                <HStack gap={2} color={isImageValid ? 'waba.charcoal' : 'waba.muted'}>
-                                    {isImageValid ? (
-                                        <CheckCircle2 size={16} color="#10B981" />
-                                    ) : (
-                                        <Circle size={16} color="#9E9DA6" />
-                                    )}
-                                    <Text fontWeight={isImageValid ? '600' : '400'}>고화질 사진 1장 이상 첨부</Text>
-                                </HStack>
-
-                                <HStack gap={2} color={isPinValid ? 'waba.charcoal' : 'waba.muted'}>
-                                    {isPinValid ? (
-                                        <CheckCircle2 size={16} color="#10B981" />
-                                    ) : (
-                                        <Circle size={16} color="#9E9DA6" />
-                                    )}
-                                    <Text fontWeight={isPinValid ? '600' : '400'}>상품 핀 최소 1개 이상 태깅</Text>
-                                </HStack>
-                            </VStack>
-                        </Box>
+                        <FeedPreviewPane
+                            boardId={boardId}
+                            title={title}
+                            currentUser={currentUser}
+                            firstImagePreview={firstImagePreview}
+                            allProductPins={allProductPins}
+                            productPinsCount={productPinsCount}
+                            totalImagesCount={totalImagesCount}
+                            calculatedPoints={calculatedPoints}
+                            isMultiSpecies={isMultiSpecies}
+                            readinessPercentage={readinessPercentage}
+                            isTitleValid={isTitleValid}
+                            isContentValid={isContentValid}
+                            isImageValid={isImageValid}
+                            isPinValid={isPinValid}
+                        />
                     </Box>
                 </Flex>
             </Container>
@@ -2092,420 +1512,38 @@ export default function Editor({
             {/* ================================================================= */}
             {/* 4. PIN TAG DIALOG MODAL (Clean UX, Search, URL Parser, Pets API) */}
             {/* ================================================================= */}
-            <Dialog.Root open={pinModalOpen} onOpenChange={(e) => setPinModalOpen(e.open)} placement="center" size="md">
-                <Portal>
-                    <Dialog.Backdrop backdropFilter="blur(10px)" bg="blackAlpha.500" />
-                    <Dialog.Positioner>
-                        <Dialog.Content rounded="28px" p={6} bg="white">
-                            <Dialog.Header p={0} mb={4}>
-                                <Flex justify="space-between" align="center">
-                                    <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
-                                        📌 사진 위 상품 / 반려동물 핀 태깅
-                                    </Dialog.Title>
-                                    <CloseButton size="sm" rounded="full" onClick={() => setPinModalOpen(false)} />
-                                </Flex>
-                                <Text fontSize="12px" color="waba.muted" mt={1}>
-                                    선택한 위치 (가로: {pinCoords.x}%, 세로: {pinCoords.y}%)
-                                </Text>
-                            </Dialog.Header>
-
-                            <Dialog.Body p={0}>
-                                <VStack gap={4} align="stretch">
-                                    {/* Tab Selector */}
-                                    <Box>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
-                                            핀 유형 선택
-                                        </Text>
-                                        <HStack gap={2}>
-                                            <Button
-                                                flex="1"
-                                                size="sm"
-                                                rounded="full"
-                                                fontSize="12px"
-                                                fontWeight="700"
-                                                bg={pinTypeTab === 'INTERNAL_PRODUCT' ? 'waba.purple' : 'waba.subtle'}
-                                                color={pinTypeTab === 'INTERNAL_PRODUCT' ? 'white' : 'waba.charcoal'}
-                                                onClick={() => setPinTypeTab('INTERNAL_PRODUCT')}
-                                            >
-                                                ✨ 와바미 공식 (5% 적립)
-                                            </Button>
-                                            <Button
-                                                flex="1"
-                                                size="sm"
-                                                rounded="full"
-                                                fontSize="12px"
-                                                fontWeight="600"
-                                                bg={pinTypeTab === 'EXTERNAL_PRODUCT' ? 'waba.charcoal' : 'waba.subtle'}
-                                                color={pinTypeTab === 'EXTERNAL_PRODUCT' ? 'white' : 'waba.charcoal'}
-                                                onClick={() => setPinTypeTab('EXTERNAL_PRODUCT')}
-                                            >
-                                                🔗 외부 쇼핑몰 제휴
-                                            </Button>
-                                            <Button
-                                                flex="1"
-                                                size="sm"
-                                                rounded="full"
-                                                fontSize="12px"
-                                                fontWeight="600"
-                                                bg={pinTypeTab === 'PET' ? 'purple.700' : 'waba.subtle'}
-                                                color={pinTypeTab === 'PET' ? 'white' : 'waba.charcoal'}
-                                                onClick={() => setPinTypeTab('PET')}
-                                            >
-                                                🐾 반려동물 태그
-                                            </Button>
-                                        </HStack>
-                                    </Box>
-
-                                    {/* TAB 1: 와바미 공식 상품 */}
-                                    {pinTypeTab === 'INTERNAL_PRODUCT' && (
-                                        <Box>
-                                            <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
-                                                와바미 상품 검색 &amp; 선택
-                                            </Text>
-                                            <HStack gap={2} mb={3}>
-                                                <Input
-                                                    value={productSearchKeyword}
-                                                    onChange={(e) => {
-                                                        setProductSearchKeyword(e.target.value);
-                                                        fetchOfficialProducts(e.target.value);
-                                                    }}
-                                                    placeholder="와바미 상품명 또는 키워드 검색 (예: 워터볼, 매트, 캣폴...)"
-                                                    fontSize="13px"
-                                                    rounded="full"
-                                                    borderColor="waba.border"
-                                                />
-                                                <IconButton
-                                                    aria-label="상품 검색"
-                                                    size="sm"
-                                                    rounded="full"
-                                                    bg="waba.purple"
-                                                    color="white"
-                                                    onClick={() => fetchOfficialProducts(productSearchKeyword)}
-                                                    loading={isSearchingProducts}
-                                                >
-                                                    <Search size={15} />
-                                                </IconButton>
-                                            </HStack>
-
-                                            <VStack gap={1.5} align="stretch" maxH="220px" overflowY="auto" pr={1}>
-                                                {officialProducts.length === 0 ? (
-                                                    <Text fontSize="12px" color="waba.faint" textAlign="center" py={4}>
-                                                        검색된 와바미 상품이 없습니다.
-                                                    </Text>
-                                                ) : (
-                                                    officialProducts.map((p) => {
-                                                        const isSelected = selectedOfficialProduct?.id === p.id;
-                                                        return (
-                                                            <Box
-                                                                key={p.id}
-                                                                as="button"
-                                                                onClick={() => setSelectedOfficialProduct(p)}
-                                                                display="flex"
-                                                                justifyContent="space-between"
-                                                                alignItems="center"
-                                                                p={2.5}
-                                                                bg={isSelected ? 'purple.50' : 'waba.subtle'}
-                                                                border="1px solid"
-                                                                borderColor={isSelected ? 'waba.purple' : 'transparent'}
-                                                                rounded="14px"
-                                                                fontSize="12px"
-                                                                textAlign="left"
-                                                                _hover={{ bg: 'purple.50' }}
-                                                            >
-                                                                <HStack gap={2.5} overflow="hidden">
-                                                                    {p.thumbnail_url && (
-                                                                        <Image
-                                                                            src={p.thumbnail_url}
-                                                                            alt={p.name}
-                                                                            w="36px"
-                                                                            h="36px"
-                                                                            rounded="8px"
-                                                                            objectFit="cover"
-                                                                        />
-                                                                    )}
-                                                                    <Box>
-                                                                        <Text fontWeight="700" color="waba.charcoal" truncate>
-                                                                            {p.name}
-                                                                        </Text>
-                                                                        <Text fontSize="11px" color="waba.muted" truncate>
-                                                                            {p.summary || '와바미 라이프스타일 셀렉션'}
-                                                                        </Text>
-                                                                    </Box>
-                                                                </HStack>
-                                                                <HStack gap={2} flexShrink={0}>
-                                                                    <Text fontWeight="800" color="waba.purple">
-                                                                        {Number(p.sale_price).toLocaleString()}원
-                                                                    </Text>
-                                                                    {isSelected && <CheckCircle size={16} color="#6338A9" />}
-                                                                </HStack>
-                                                            </Box>
-                                                        );
-                                                    })
-                                                )}
-                                            </VStack>
-                                        </Box>
-                                    )}
-
-                                    {/* TAB 2: 외부 쇼핑몰 제휴 */}
-                                    {pinTypeTab === 'EXTERNAL_PRODUCT' && (
-                                        <Box>
-                                            <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
-                                                외부 쇼핑몰 URL 입력 및 메타데이터 가져오기
-                                            </Text>
-                                            <HStack gap={2} mb={3}>
-                                                <Input
-                                                    value={externalUrlInput}
-                                                    onChange={(e) => setExternalUrlInput(e.target.value)}
-                                                    placeholder="예: https://smartstore.naver.com/... 또는 쿠팡 링크"
-                                                    fontSize="13px"
-                                                    rounded="full"
-                                                    borderColor="waba.border"
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    bg="waba.charcoal"
-                                                    color="white"
-                                                    _hover={{ bg: 'waba.charcoalHover' }}
-                                                    rounded="full"
-                                                    px={4}
-                                                    fontSize="12px"
-                                                    fontWeight="700"
-                                                    onClick={handleParseExternalUrl}
-                                                    loading={isParsingUrl}
-                                                    flexShrink={0}
-                                                >
-                                                    <LinkIcon size={14} />
-                                                    URL 분석
-                                                </Button>
-                                            </HStack>
-
-                                            {parsedMetadata && !manualExternalFallback && (
-                                                <Box p={3.5} bg="purple.50/50" rounded="16px" border="1px solid" borderColor="purple.200" mb={3}>
-                                                    <Flex justify="space-between" align="center" mb={2}>
-                                                        <HStack gap={1.5} color="waba.purple" fontSize="12px" fontWeight="700">
-                                                            <CheckCircle2 size={15} />
-                                                            <Text>메타데이터 자동 추출 완료</Text>
-                                                        </HStack>
-                                                        <Button
-                                                            size="2xs"
-                                                            variant="ghost"
-                                                            color="waba.muted"
-                                                            onClick={() => setManualExternalFallback(true)}
-                                                        >
-                                                            직접 수정
-                                                        </Button>
-                                                    </Flex>
-                                                    <HStack gap={3}>
-                                                        {parsedMetadata.thumbnail_url && (
-                                                            <Image
-                                                                src={parsedMetadata.thumbnail_url}
-                                                                alt={parsedMetadata.product_name}
-                                                                w="48px"
-                                                                h="48px"
-                                                                rounded="10px"
-                                                                objectFit="cover"
-                                                            />
-                                                        )}
-                                                        <Box overflow="hidden">
-                                                            <Text fontSize="13px" fontWeight="700" color="waba.charcoal" truncate>
-                                                                {parsedMetadata.product_name}
-                                                            </Text>
-                                                            <HStack gap={2} fontSize="12px" color="waba.muted">
-                                                                <Text>{parsedMetadata.brand_name}</Text>
-                                                                {parsedMetadata.price > 0 && (
-                                                                    <Text fontWeight="700" color="waba.charcoal">
-                                                                        {parsedMetadata.price.toLocaleString()}원
-                                                                    </Text>
-                                                                )}
-                                                            </HStack>
-                                                        </Box>
-                                                    </HStack>
-                                                </Box>
-                                            )}
-
-                                            {(!parsedMetadata || manualExternalFallback) && (
-                                                <VStack gap={3} align="stretch" p={3.5} bg="waba.subtle" rounded="16px">
-                                                    <Box>
-                                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1}>
-                                                            상품명 (직접 입력)
-                                                        </Text>
-                                                        <Input
-                                                            value={parsedMetadata?.product_name || ''}
-                                                            onChange={(e) =>
-                                                                setParsedMetadata({
-                                                                    ...parsedMetadata,
-                                                                    product_name: e.target.value,
-                                                                    brand_name: parsedMetadata?.brand_name || '외부 제휴',
-                                                                    price: parsedMetadata?.price || 0,
-                                                                })
-                                                            }
-                                                            placeholder="예: 방수 스크래치프루프 라운드 소파"
-                                                            fontSize="13px"
-                                                            bg="white"
-                                                            rounded="12px"
-                                                        />
-                                                    </Box>
-                                                    <HStack gap={2}>
-                                                        <Box flex="1">
-                                                            <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1}>
-                                                                브랜드 / 판매처
-                                                            </Text>
-                                                            <Input
-                                                                value={parsedMetadata?.brand_name || ''}
-                                                                onChange={(e) =>
-                                                                    setParsedMetadata({
-                                                                        ...parsedMetadata,
-                                                                        product_name: parsedMetadata?.product_name || '',
-                                                                        brand_name: e.target.value,
-                                                                        price: parsedMetadata?.price || 0,
-                                                                    })
-                                                                }
-                                                                placeholder="예: 쿠팡, 오늘의집"
-                                                                fontSize="13px"
-                                                                bg="white"
-                                                                rounded="12px"
-                                                            />
-                                                        </Box>
-                                                        <Box flex="1">
-                                                            <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1}>
-                                                                가격 (원)
-                                                            </Text>
-                                                            <Input
-                                                                type="number"
-                                                                value={parsedMetadata?.price || ''}
-                                                                onChange={(e) =>
-                                                                    setParsedMetadata({
-                                                                        ...parsedMetadata,
-                                                                        product_name: parsedMetadata?.product_name || '',
-                                                                        brand_name: parsedMetadata?.brand_name || '외부 제휴',
-                                                                        price: Number(e.target.value) || 0,
-                                                                    })
-                                                                }
-                                                                placeholder="0"
-                                                                fontSize="13px"
-                                                                bg="white"
-                                                                rounded="12px"
-                                                            />
-                                                        </Box>
-                                                    </HStack>
-                                                </VStack>
-                                            )}
-                                        </Box>
-                                    )}
-
-                                    {/* TAB 3: 반려동물 태그 */}
-                                    {pinTypeTab === 'PET' && (
-                                        <Box>
-                                            <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
-                                                나의 등록된 반려동물 선택
-                                            </Text>
-                                            {userPetsList.length === 0 ? (
-                                                <Box p={4} bg="waba.subtle" rounded="16px" textAlign="center">
-                                                    <Text fontSize="12px" color="waba.muted">
-                                                        등록된 반려동물이 없습니다. 마이페이지에서 먼저 아이를 등록해주세요.
-                                                    </Text>
-                                                </Box>
-                                            ) : (
-                                                <VStack gap={2} align="stretch">
-                                                    {userPetsList.map((pet) => {
-                                                        const isSelected = selectedPetForPin?.id === pet.id;
-                                                        const speciesIcon = pet.species === 'CAT' ? '🐱' : pet.species === 'DOG' ? '🐶' : pet.species === 'RABBIT' ? '🐰' : '🐾';
-                                                        return (
-                                                            <Box
-                                                                key={pet.id}
-                                                                as="button"
-                                                                onClick={() => setSelectedPetForPin(pet)}
-                                                                display="flex"
-                                                                justifyContent="space-between"
-                                                                alignItems="center"
-                                                                p={3}
-                                                                bg={isSelected ? 'purple.50' : 'waba.subtle'}
-                                                                border="1px solid"
-                                                                borderColor={isSelected ? 'purple.400' : 'transparent'}
-                                                                rounded="16px"
-                                                                textAlign="left"
-                                                                _hover={{ bg: 'purple.50' }}
-                                                            >
-                                                                <HStack gap={3}>
-                                                                    <Avatar.Root size="sm">
-                                                                        {pet.current_avatar_url ? (
-                                                                            <Avatar.Image src={pet.current_avatar_url} />
-                                                                        ) : (
-                                                                            <Avatar.Fallback>{speciesIcon}</Avatar.Fallback>
-                                                                        )}
-                                                                    </Avatar.Root>
-                                                                    <Box>
-                                                                        <HStack gap={1.5}>
-                                                                            <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
-                                                                                {pet.name}
-                                                                            </Text>
-                                                                            <Text fontSize="11px" color="waba.purple" fontWeight="600">
-                                                                                {pet.species}
-                                                                            </Text>
-                                                                        </HStack>
-                                                                        <Text fontSize="12px" color="waba.muted">
-                                                                            {pet.breed}
-                                                                            {pet.latest_weight_kg !== null && pet.latest_weight_kg !== undefined && Number(pet.latest_weight_kg) > 0
-                                                                                ? ` · ${Number(pet.latest_weight_kg).toFixed(1)}kg`
-                                                                                : ''}
-                                                                        </Text>
-                                                                    </Box>
-                                                                </HStack>
-                                                                {isSelected && <CheckCircle size={18} color="#6338A9" />}
-                                                            </Box>
-                                                        );
-                                                    })}
-                                                </VStack>
-                                            )}
-                                        </Box>
-                                    )}
-
-                                    {/* Common Pin Memo */}
-                                    <Box pt={2}>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1.5}>
-                                            사용자 팁 / 코멘트 (선택)
-                                        </Text>
-                                        <Input
-                                            value={pinOptionMemo}
-                                            onChange={(e) => setPinOptionMemo(e.target.value)}
-                                            placeholder="예: 4.8kg 아이도 흔들림 없이 편안하게 쉬어요"
-                                            rounded="14px"
-                                            fontSize="13px"
-                                            borderColor="waba.border"
-                                        />
-                                    </Box>
-                                </VStack>
-                            </Dialog.Body>
-
-                            <Dialog.Footer p={0} mt={6}>
-                                <HStack justify="flex-end" w="100%" gap={2}>
-                                    <Button
-                                        variant="outline"
-                                        rounded="full"
-                                        size="sm"
-                                        borderColor="waba.border"
-                                        onClick={() => setPinModalOpen(false)}
-                                    >
-                                        취소
-                                    </Button>
-                                    <Button
-                                        bg="waba.purple"
-                                        color="white"
-                                        _hover={{ bg: 'waba.purpleHover' }}
-                                        rounded="full"
-                                        size="sm"
-                                        px={5}
-                                        fontWeight="700"
-                                        onClick={handleSavePin}
-                                    >
-                                        핀 등록 완료
-                                    </Button>
-                                </HStack>
-                            </Dialog.Footer>
-                        </Dialog.Content>
-                    </Dialog.Positioner>
-                </Portal>
-            </Dialog.Root>
+            <PinRegistrationModal
+                open={pinModalOpen}
+                onClose={() => {
+                    setPinModalOpen(false);
+                    setAnalyzedExternalUrl('');
+                }}
+                pinCoords={pinCoords}
+                pinTypeTab={pinTypeTab}
+                onPinTypeTabChange={setPinTypeTab}
+                productSearchKeyword={productSearchKeyword}
+                onProductSearchKeywordChange={setProductSearchKeyword}
+                onFetchOfficialProducts={fetchOfficialProducts}
+                isSearchingProducts={isSearchingProducts}
+                officialProducts={officialProducts}
+                selectedOfficialProduct={selectedOfficialProduct}
+                onSelectOfficialProduct={setSelectedOfficialProduct}
+                externalUrlInput={externalUrlInput}
+                onExternalUrlInputChange={setExternalUrlInput}
+                analyzedExternalUrl={analyzedExternalUrl}
+                isParsingUrl={isParsingUrl}
+                onParseExternalUrl={handleParseExternalUrl}
+                parsedMetadata={parsedMetadata}
+                onParsedMetadataChange={setParsedMetadata}
+                manualExternalFallback={manualExternalFallback}
+                onManualExternalFallbackChange={setManualExternalFallback}
+                userPetsList={userPetsList}
+                selectedPetForPin={selectedPetForPin}
+                onSelectPetForPin={setSelectedPetForPin}
+                pinOptionMemo={pinOptionMemo}
+                onPinOptionMemoChange={setPinOptionMemo}
+                onSavePin={handleSavePin}
+            />
 
             {/* ================================================================= */}
             {/* 5. DRAFT MANAGEMENT MODAL (Point 3)                              */}
@@ -2605,60 +1643,12 @@ export default function Editor({
             {/* ================================================================= */}
             {/* 6. FULL PREVIEW MODAL                                             */}
             {/* ================================================================= */}
-            <Dialog.Root open={previewModalOpen} onOpenChange={(e) => setPreviewModalOpen(e.open)} placement="center" size="xl">
-                <Portal>
-                    <Dialog.Backdrop backdropFilter="blur(12px)" bg="blackAlpha.600" />
-                    <Dialog.Positioner>
-                        <Dialog.Content rounded="28px" maxW="900px" maxH="90vh" overflowY="auto" p={8} bg="white">
-                            <Flex justify="space-between" align="center" mb={6}>
-                                <HStack gap={2}>
-                                    <Eye size={18} color="#6338A9" />
-                                    <Heading fontSize="18px" fontWeight="800">
-                                        에디토리얼 미리보기
-                                    </Heading>
-                                </HStack>
-                                <CloseButton size="sm" rounded="full" onClick={() => setPreviewModalOpen(false)} />
-                            </Flex>
-
-                            <Heading fontSize="26px" fontWeight="800" color="waba.charcoal" mb={4}>
-                                {title || '제목 없음'}
-                            </Heading>
-
-                            <VStack gap={6} align="stretch">
-                                {blocks.map((b, idx) => {
-                                    if (b.type === 'text') {
-                                        if (!b.content.trim()) return null;
-                                        return (
-                                            <Text
-                                                key={`prev-${idx}`}
-                                                fontSize="15px"
-                                                lineHeight="1.85"
-                                                color="waba.charcoal"
-                                                whiteSpace="pre-wrap"
-                                            >
-                                                {b.content}
-                                            </Text>
-                                        );
-                                    }
-                                    if (b.type === 'image') {
-                                        return (
-                                            <Box key={`prev-img-${idx}`} rounded="20px" overflow="hidden">
-                                                <Image src={b.previewUrl} alt="미리보기 사진" w="100%" rounded="20px" />
-                                                {b.caption && (
-                                                    <Text fontSize="12px" color="waba.muted" mt={2} fontStyle="italic">
-                                                        • {b.caption}
-                                                    </Text>
-                                                )}
-                                            </Box>
-                                        );
-                                    }
-                                    return null;
-                                })}
-                            </VStack>
-                        </Dialog.Content>
-                    </Dialog.Positioner>
-                </Portal>
-            </Dialog.Root>
+            <FullPreviewModal
+                open={previewModalOpen}
+                onOpenChange={setPreviewModalOpen}
+                title={title}
+                blocks={blocks}
+            />
         </Box>
     );
 }

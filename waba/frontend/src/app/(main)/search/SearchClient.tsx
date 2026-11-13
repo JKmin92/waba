@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
+import SensitiveImageOverlay from '../common/SensitiveImageOverlay';
 import {
     Avatar,
     Badge,
@@ -694,8 +695,16 @@ export default function SearchClient() {
                                     gap={{ base: 4, md: 6 }}
                                 >
                                     {sortedPosts.map((item) => {
-                                        const thumbnail = item.post_images?.find((img) => img.is_thumbnail)?.image_url
-                                            || item.post_images?.[0]?.image_url;
+                                        const thumbImgObj = item.post_images?.find((img) => img.is_thumbnail) || item.post_images?.[0];
+                                        const thumbnail = thumbImgObj?.image_url;
+                                        const firstImgBlock = item.post.content?.find(
+                                            (c): c is { type: 'image'; image_id: number; is_sensitive?: boolean | number } => c.type === 'image'
+                                        );
+                                        const isSensitive = Boolean(
+                                            item.post.thumbnail_is_sensitive ||
+                                            thumbImgObj?.is_sensitive ||
+                                            firstImgBlock?.is_sensitive
+                                        );
                                         const productPinsCount = item.product_pins?.filter((p) => p.pin_type !== 'PET').length || 0;
                                         const mainPet = item.post_pets?.[0];
 
@@ -721,18 +730,21 @@ export default function SearchClient() {
                                                 {/* 썸네일 이미지 및 뱃지 */}
                                                 <Box position="relative" w="full" pt="75%" bg="#F4F4F6" overflow="hidden">
                                                     {thumbnail ? (
-                                                        <Image
-                                                            src={thumbnail}
-                                                            alt={item.post.title}
-                                                            position="absolute"
-                                                            top={0}
-                                                            left={0}
-                                                            w="full"
-                                                            h="full"
-                                                            objectFit="cover"
-                                                            transition="transform 0.3s"
-                                                            _hover={{ transform: 'scale(1.03)' }}
-                                                        />
+                                                        <>
+                                                            <Image
+                                                                src={thumbnail}
+                                                                alt={item.post.title}
+                                                                position="absolute"
+                                                                top={0}
+                                                                left={0}
+                                                                w="full"
+                                                                h="full"
+                                                                objectFit="cover"
+                                                                transition="transform 0.3s"
+                                                                _hover={{ transform: 'scale(1.03)' }}
+                                                            />
+                                                            <SensitiveImageOverlay isSensitive={isSensitive} compact />
+                                                        </>
                                                     ) : (
                                                         <Box
                                                             position="absolute"
