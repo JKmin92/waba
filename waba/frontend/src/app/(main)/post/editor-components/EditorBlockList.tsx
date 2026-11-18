@@ -24,10 +24,12 @@ function AutoResizeTextarea({
     value,
     onChange,
     placeholder,
+    autoFocus = false,
 }: {
     value: string;
     onChange: (val: string) => void;
     placeholder?: string;
+    autoFocus?: boolean;
 }) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -41,6 +43,12 @@ function AutoResizeTextarea({
     useEffect(() => {
         resize();
     }, [value]);
+
+    useEffect(() => {
+        if (autoFocus && textareaRef.current) {
+            textareaRef.current.focus();
+        }
+    }, [autoFocus]);
 
     return (
         <textarea
@@ -63,7 +71,7 @@ function AutoResizeTextarea({
                 fontSize: '16px',
                 fontWeight: 400,
                 lineHeight: 1.85,
-                color: '#141416',
+                color: 'var(--waba-ink, #141416)',
                 padding: '4px 0',
                 margin: 0,
                 display: 'block',
@@ -78,6 +86,7 @@ function AutoResizeTextarea({
 interface EditorBlockListProps {
     blocks: EditorBlock[];
     activePinId: string | null;
+    autoFocusBlockId?: string | null;
     onSetActivePinId: React.Dispatch<React.SetStateAction<string | null>>;
     onUpdateTextBlock: (id: string, content: string) => void;
     onUpdateImageCaption: (id: string, caption: string) => void;
@@ -85,11 +94,13 @@ interface EditorBlockListProps {
     onRemoveImageBlock: (id: string) => void;
     onImageClickToPin: (e: React.MouseEvent<HTMLDivElement>, blockId: string) => void;
     onRemovePinFromImage: (blockId: string, pinId: string, e: React.MouseEvent) => void;
+    onAppendTextBlock?: () => void;
 }
 
 export default function EditorBlockList({
     blocks,
     activePinId,
+    autoFocusBlockId,
     onSetActivePinId,
     onUpdateTextBlock,
     onUpdateImageCaption,
@@ -97,19 +108,24 @@ export default function EditorBlockList({
     onRemoveImageBlock,
     onImageClickToPin,
     onRemovePinFromImage,
+    onAppendTextBlock,
 }: EditorBlockListProps) {
+    const lastBlock = blocks[blocks.length - 1];
+    const isLastBlockImage = lastBlock?.type === 'image';
+
     return (
-        <VStack gap={4} align="stretch">
+        <VStack gap={4} align="stretch" minW={0}>
             {blocks.map((block, index) => {
                 if (block.type === 'text') {
                     return (
                         <Box key={block.id} position="relative" w="100%">
                             <AutoResizeTextarea
                                 value={block.content}
+                                autoFocus={autoFocusBlockId === block.id}
                                 onChange={(val) => onUpdateTextBlock(block.id, val)}
                                 placeholder={
                                     index === 0
-                                        ? "자유롭게 이야기를 시작해보세요. 엔터를 누르면 자연스럽게 줄바꿈되며 높이가 자동 조절됩니다. 상단의 [+ 사진 삽입] 버튼으로 사진과 상품 핀을 넣을 수 있습니다."
+                                        ? "자유롭게 이야기를 시작해보세요. 엔터를 누르면 자연스럽게 줄바꿈되며 높이가 자동 조절됩니다. 상단의 [+ 사진 추가] 버튼으로 사진과 상품 핀을 넣을 수 있습니다."
                                         : "이어지는 이야기를 작성해보세요..."
                                 }
                             />
@@ -446,6 +462,25 @@ export default function EditorBlockList({
                 }
                 return null;
             })}
+
+            {/* 마지막 블록이 이미지일 때만 빈 영역 클릭 시 새 텍스트 블록 추가 + 포커스 */}
+            {isLastBlockImage && onAppendTextBlock && (
+                <Box
+                    onClick={onAppendTextBlock}
+                    minH="96px"
+                    w="100%"
+                    cursor="text"
+                    borderRadius="16px"
+                    px={2}
+                    py={3}
+                    transition="background 0.15s"
+                    _hover={{ bg: 'var(--waba-surface)' }}
+                >
+                    <Text fontSize="14px" color="var(--waba-ink-3)">
+                        여기를 클릭해 사진 아래에 이어지는 이야기를 작성하세요...
+                    </Text>
+                </Box>
+            )}
         </VStack>
     );
 }

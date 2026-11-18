@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA — Master Design System (7 Core Pages · Light &amp; Dark Mode)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --surface: #FAFBFD;
+      --card: #FFFFFF;
+      --ink: #111115;
+      --ink-2: #4E4E58;
+      --ink-3: #8E8E98;
+      --line: #EAEAEF;
+      --purple: #6338A9;
+      --purple-soft: #F6EBFB;
+      --purple-text: #6338A9;
+      --purple-border: #E5D4F3;
+      --studio-bg: #ECECF2;
+      --green-bg: #ECFDF5;
+      --green-ink: #059669;
+      --blue-bg: #EFF6FF;
+      --blue-ink: #2563EB;
+      --red-bg: #FEF2F2;
+      --red-ink: #DC2626;
+      --glass-btn: rgba(255,255,255,0.92);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F1014;
+      --surface: #171921;
+      --card: #14161D;
+      --ink: #F4F5F8;
+      --ink-2: #A5A8B8;
+      --ink-3: #727688;
+      --line: #262936;
+      --purple: #6338A9;
+      --purple-soft: #261A3A;
+      --purple-text: #A984EE;
+      --purple-border: #3B285B;
+      --studio-bg: #090A0D;
+      --green-bg: rgba(16, 185, 129, 0.14);
+      --green-ink: #34D399;
+      --blue-bg: rgba(59, 130, 246, 0.16);
+      --blue-ink: #60A5FA;
+      --red-bg: rgba(239, 68, 68, 0.16);
+      --red-ink: #F87171;
+      --glass-btn: rgba(20,22,29,0.88);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--studio-bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    /* Studio Topbar */
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .studio-tabs {
+      display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 999px; border: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .studio-tab {
+      border: none; background: transparent; color: var(--ink-2);
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: var(--purple); color: #fff; }
+    .theme-toggle {
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+      font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    .canvas { padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 40px; }
+    .artboard { width: 1440px; display: none; flex-direction: column; gap: 10px; }
+    .artboard.is-active { display: flex; }
+    .art-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: var(--purple); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+
+    .frame-pc {
+      width: 1440px; background: var(--bg); border-radius: 20px; overflow: hidden;
+      border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,0.14);
+    }
+
+    body.capture-mode .studio-bar { display: none; }
+    body.capture-mode .canvas { padding: 20px; }
+
+    /* Master Shell & Left Sidebar */
+    .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 920px; background: var(--bg); }
+    .left-rail {
+      border-right: 1px solid var(--line); padding: 26px 18px 22px;
+      display: flex; flex-direction: column; justify-content: space-between; background: var(--bg);
+    }
+    .brand-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--ink); }
+    .brand-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); }
+    .side-nav { display: grid; gap: 4px; margin-top: 26px; }
+    .side-item {
+      padding: 11px 12px; border-radius: 13px; font-size: 14px; font-weight: 600;
+      color: var(--ink-2); display: flex; align-items: center; gap: 11px;
+    }
+    .side-item.on { background: var(--purple-soft); color: var(--purple-text); font-weight: 700; }
+    .cta-upload {
+      margin-top: 18px; height: 44px; border-radius: 14px; background: var(--purple); color: #fff;
+      font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 8px 20px rgba(99, 56, 169, 0.28);
+    }
+    .pet-widget {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 10px;
+    }
+    .pet-widget-top { display: flex; align-items: center; gap: 10px; }
+    .pet-widget-top img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--card); }
+    .pet-widget-note { background: var(--card); border-radius: 10px; padding: 7px 10px; font-size: 11px; color: var(--ink-2); border: 1px solid var(--line); }
+
+    /* Common UI */
+    .page-pad { padding: 24px 36px 44px; display: flex; flex-direction: column; gap: 22px; background: var(--bg); }
+    .top-controls { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+    .ul-tabs { display: flex; gap: 24px; }
+    .ul-tab { font-size: 14px; font-weight: 600; color: var(--ink-3); position: relative; padding-bottom: 12px; margin-bottom: -13px; }
+    .ul-tab.on { color: var(--ink); font-weight: 800; }
+    .ul-tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: var(--purple); border-radius: 999px; }
+
+    .pill-btn {
+      height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--card); font-size: 12px; font-weight: 600; color: var(--ink-2);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .pill-btn.primary { background: var(--purple); color: #fff; border-color: var(--purple); }
+    .search-pill {
+      width: 240px; height: 34px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+      padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3);
+    }
+    .badge-purple {
+      display: inline-block; background: var(--purple-soft); color: var(--purple-text);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); }
+    .chip.on { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+    /* Cards */
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .snap-media { height: 215px; position: relative; overflow: hidden; flex-shrink: 0; }
+    .snap-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .snap-pill {
+      position: absolute; top: 12px; left: 12px; background: var(--glass-btn); backdrop-filter: blur(8px);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; color: var(--ink);
+    }
+    .bookmark-btn {
+      position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%;
+      background: var(--glass-btn); display: flex; align-items: center; justify-content: center; color: var(--ink);
+    }
+    .card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
+    .author-mini { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-weight: 600; }
+    .author-mini img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+
+    /* Page 1: Home A-1 */
+    .e1-hero-row { display: grid; grid-template-columns: 1.85fr 1fr; gap: 18px; height: 320px; }
+    .cinematic-spot { position: relative; border-radius: 24px; overflow: hidden; }
+    .cinematic-spot img.bg-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cinematic-grad { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,16,20,0.08) 0%, rgba(15,16,20,0.85) 100%); }
+    .cinematic-top { position: absolute; top: 18px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+    .cinematic-bottom { position: absolute; left: 22px; right: 22px; bottom: 20px; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; color: #fff; }
+    .avatar-stack { display: flex; align-items: center; }
+    .avatar-stack img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; margin-left: -8px; }
+    .avatar-stack img:first-child { margin-left: 0; }
+    .e1-right-stack { display: flex; flex-direction: column; gap: 14px; height: 320px; }
+    .e1-pet-box {
+      flex: 1; background: linear-gradient(145deg, var(--card) 0%, var(--purple-soft) 100%);
+      border: 1px solid var(--purple-border); border-radius: 20px; padding: 16px 18px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .e1-hot-qa {
+      flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .qa-reply-box {
+      background: var(--surface); border-radius: 12px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-2);
+    }
+    .qa-reply-box img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+
+    /* Page 3: Detail */
+    .detail-editorial { max-width: 820px; width: 100%; margin: 0 auto; display: grid; gap: 20px; }
+    .pin-hero-box { position: relative; border-radius: 22px; overflow: hidden; height: 390px; }
+    .pin-hero-box img.main-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .map-pin {
+      position: absolute; padding: 6px 12px; border-radius: 999px;
+      background: rgba(17,17,21,0.86); color: #fff; font-size: 11px; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid rgba(255,255,255,0.7);
+    }
+    .linked-journey {
+      background: linear-gradient(135deg, var(--purple-soft) 0%, var(--surface) 100%);
+      border: 1px solid var(--purple-border); border-radius: 18px; padding: 16px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .comment-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 20px; display: grid; gap: 12px; }
+    .comment-item { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; }
+    .comment-item.pinned { background: var(--purple-soft); border-color: var(--purple-border); }
+
+    /* Page 5: Notebook Detail & Page 7: Mypage */
+    .tl-item {
+      display: grid; grid-template-columns: 96px 1fr auto; gap: 16px; align-items: center;
+      padding: 15px 18px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line);
+    }
+    .tl-item.ai { background: var(--purple-soft); border-color: var(--purple-border); }
+  </style>
+</head>
+<body data-theme="light">
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="pill">WABA MASTER DESIGN</span>
+      <span style="font-size:13px;font-weight:700;">전체 7개 페이지 통합 마스터 시안</span>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="home" onclick="setPage('home')">1. 메인</button>
+      <button class="studio-tab" data-target="board" onclick="setPage('board')">2. 커뮤니티</button>
+      <button class="studio-tab" data-target="detail" onclick="setPage('detail')">3. 글 상세</button>
+      <button class="studio-tab" data-target="nb-list" onclick="setPage('nb-list')">4. 수첩 리스트</button>
+      <button class="studio-tab" data-target="nb-detail" onclick="setPage('nb-detail')">5. 수첩 상세</button>
+      <button class="studio-tab" data-target="register" onclick="setPage('register')">6. 글 작성</button>
+      <button class="studio-tab" data-target="mypage" onclick="setPage('mypage')">7. 마이페이지</button>
+    </div>
+    <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙 다크 모드</button>
+  </header>
+
+  <main class="canvas" id="app"></main>
+
+  <script>
+    const ICONS = {
+      home: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>',
+      comm: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      care: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>',
+      book: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+      user: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      bm: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+      bmFill: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+    };
+
+    const IMG = {
+      mong: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=800&q=80',
+      bori: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&q=80',
+      rui: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&q=80',
+      koko: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&q=80',
+      mochi: 'https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=600&q=80',
+      dubu: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?w=600&q=80',
+      mom: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=200&q=80',
+      cat2: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=200&q=80'
+    };
+
+    function sidebar(active) {
+      const items = [
+        ['home', '홈', ICONS.home],
+        ['comm', '커뮤니티', ICONS.comm],
+        ['care', '케어 저니', ICONS.care],
+        ['book', '건강 수첩', ICONS.book],
+        ['user', '마이페이지', ICONS.user]
+      ];
+      return `
+        <aside class="left-rail">
+          <div>
+            <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+            <nav class="side-nav">
+              ${items.map(([k, label, icon]) => `<div class="side-item ${active === k ? 'on' : ''}">${icon} ${label}</div>`).join('')}
+            </nav>
+            <div class="cta-upload">+ 올리기</div>
+          </div>
+          <div class="pet-widget">
+            <div class="pet-widget-top">
+              <img src="${IMG.mong}" alt="몽글" />
+              <div>
+                <div style="font-size:13px;font-weight:800;">몽글 <span style="font-size:11px;font-weight:600;color:var(--ink-3);">3.8kg</span></div>
+                <div style="font-size:11px;color:var(--purple-text);font-weight:600;">✓ 접종 D-12</div>
+              </div>
+            </div>
+            <div class="pet-widget-note">최근: <strong>발톱 깎기 완료</strong></div>
+          </div>
+        </aside>
+      `;
+    }
+
+    const pages = [
+      {
+        id: 'home',
+        badge: '1. 메인 페이지 (/)',
+        desc: '진화안 A-1 기준 — 풀블리드 시네마틱 스포트라이트 + Q&A/스냅 분리',
+        side: 'home',
+        content: `
+          <div class="top-controls">
+            <div class="ul-tabs"><span class="ul-tab on">전체</span><span class="ul-tab">인기 스냅</span><span class="ul-tab">건강 Q&amp;A</span><span class="ul-tab">케어 저니 · 치료기</span></div>
+            <div style="display:flex;gap:10px;align-items:center;"><span class="pill-btn">인기순 ▾</span><div class="search-pill">🔍 사진, 질문, 케어 저니 검색</div></div>
+          </div>
+          <section class="e1-hero-row">
+            <article class="cinematic-spot">
+              <img class="bg-photo" src="${IMG.bori}" alt="" />
+              <div class="cinematic-grad"></div>
+              <div class="cinematic-top">
+                <span style="background:var(--purple);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;">TODAY'S SPOTLIGHT · DAY 56</span>
+                <span style="background:rgba(255,255,255,0.2);backdrop-filter:blur(10px);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;">76% 목표 달성</span>
+              </div>
+              <div class="cinematic-bottom">
+                <div>
+                  <h2 style="font-size:23px;font-weight:800;line-height:1.3;">노령견 디스크 수술 없이<br/>수중 재활 8주차 극복 기록</h2>
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                    <div class="avatar-stack"><img src="${IMG.bori}" /><img src="${IMG.koko}" /><img src="${IMG.mochi}" /></div>
+                    <span style="font-size:12px;opacity:0.9;">보리집사 외 128명 응원 중 · ♥ 342</span>
+                  </div>
+                </div>
+                <span style="background:#fff;color:#111115;font-size:12px;font-weight:700;padding:9px 16px;border-radius:999px;">케어 저니 보기 →</span>
+              </div>
+            </article>
+            <div class="e1-right-stack">
+              <div class="e1-pet-box">
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:11px;font-weight:800;color:var(--purple-text);">내 펫 AI 수첩</span><span style="font-size:11px;color:var(--ink-3);">오늘 1/3 완료</span></div>
+                <div style="font-size:16px;font-weight:800;line-height:1.35;">몽글이 산책 &amp; 체중<br/>3.8kg 안정 유지 중</div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--ink-2);">다음 종합백신 D-12</span><span style="font-weight:700;color:var(--purple-text);">기록하기 →</span></div>
+              </div>
+              <div class="e1-hot-qa">
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:11px;font-weight:800;">🔥 실시간 핫 Q&amp;A</span><span style="font-size:11px;color:var(--purple-text);font-weight:700;">답변 28개</span></div>
+                <div style="font-size:14px;font-weight:700;line-height:1.4;">유산균 급여 후 묽은 변 3일째, 중단해야 할까요?</div>
+                <div style="font-size:11px;color:var(--ink-3);">김다은 수의사 외 4명 답변 작성 중...</div>
+              </div>
+            </div>
+          </section>
+          <section>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><h3 style="font-size:16px;font-weight:800;">💬 지금 답변이 활발한 건강 Q&amp;A</h3><span style="font-size:12px;color:var(--ink-3);">Q&amp;A 전체보기 →</span></div>
+            <div class="grid-2">
+              <article class="card" style="padding:18px;display:grid;gap:10px;">
+                <div style="display:flex;justify-content:space-between;"><span class="badge-purple">관절 · 슬개골</span><span style="font-size:11px;color:var(--ink-3);">18분 전</span></div>
+                <div style="font-size:15px;font-weight:700;">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</div>
+                <div class="qa-reply-box"><img src="${IMG.koko}" /><div><strong style="color:var(--purple-text);">✓ 김다은 수의사:</strong> 평지 위주 15~20분씩 나누어 걷는 것이 좋습니다.</div></div>
+              </article>
+              <article class="card" style="padding:18px;display:grid;gap:10px;">
+                <div style="display:flex;justify-content:space-between;"><span class="badge-purple">식단 · 눈물</span><span style="font-size:11px;color:var(--ink-3);">42분 전</span></div>
+                <div style="font-size:15px;font-weight:700;">눈물 자국 잡으려고 가수분해 사료로 바꿨는데 효과 언제부터 보나요?</div>
+                <div class="qa-reply-box"><img src="${IMG.mochi}" /><div><strong>모찌네:</strong> 저희 아이는 3주차부터 눈에 띄게 눈물량이 줄어들기 시작했어요!</div></div>
+              </article>
+            </div>
+          </section>
+          <section>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><h3 style="font-size:16px;font-weight:800;">📸 라이프 스냅</h3><span style="font-size:12px;color:var(--ink-3);">스냅 전체보기 →</span></div>
+            <div class="grid-3">
+              <article class="card"><div class="snap-media"><img src="${IMG.mong}" /><span class="snap-pill">🐾 몽글 · 말티푸</span><span class="bookmark-btn">${ICONS.bm}</span></div><div style="padding:14px 16px;display:grid;gap:8px;"><div style="font-size:14px;font-weight:700;">햇살 가득한 오후, 창가 쿠션에서 낮잠 자는 몽글이</div><div class="card-meta"><span class="author-mini"><img src="${IMG.mom}" /> 몽글맘</span><span>♥ 128 · 💬 14</span></div></div></article>
+              <article class="card"><div class="snap-media"><img src="${IMG.rui}" /><span class="snap-pill">🐈 루이 · 코숏</span><span class="bookmark-btn">${ICONS.bm}</span></div><div style="padding:14px 16px;display:grid;gap:8px;"><div style="font-size:14px;font-weight:700;">음수량 늘리려고 창가마다 도자기 물그릇 배치해둔 후기</div><div class="card-meta"><span class="author-mini"><img src="${IMG.cat2}" /> 루이맘</span><span>♥ 112 · 💬 8</span></div></div></article>
+              <article class="card"><div class="snap-media"><img src="${IMG.dubu}" /><span class="snap-pill">🐶 두부 · 카발리에</span><span class="bookmark-btn">${ICONS.bm}</span></div><div style="padding:14px 16px;display:grid;gap:8px;"><div style="font-size:14px;font-weight:700;">비 오는 날 실내 노즈워크 매트로 에너지 발산하는 두부</div><div class="card-meta"><span class="author-mini"><img src="${IMG.mochi}" /> 두부네</span><span>♥ 96 · 💬 11</span></div></div></article>
+            </div>
+          </section>
+        `
+      },
+      {
+        id: 'board',
+        badge: '2. 커뮤니티 리스트 (/board/[id])',
+        desc: '3열 동일 높이 균일 그리드 (이미지 글 + 텍스트 전용 글 동일 높이)',
+        side: 'comm',
+        content: `
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+            <div><div style="font-size:11px;font-weight:800;color:var(--purple-text);">WABA COMMUNITY</div><h1 style="font-size:24px;font-weight:800;margin-top:2px;">커뮤니티 탐색</h1></div>
+            <div style="display:flex;gap:10px;align-items:center;"><span class="pill-btn">최신순 ▾</span><span class="pill-btn" style="background:var(--surface);">⊞ 그리드 | ☰ 리스트</span><div class="search-pill">🔍 글 제목, 태그, 견종 검색</div></div>
+          </div>
+          <div class="top-controls">
+            <div class="ul-tabs"><span class="ul-tab on">전체</span><span class="ul-tab">인기 스냅</span><span class="ul-tab">건강 Q&amp;A</span><span class="ul-tab">케어 저니</span><span class="ul-tab">자유수다</span></div>
+            <span style="font-size:12px;color:var(--ink-3);">총 1,428개의 글</span>
+          </div>
+          <div class="grid-3">
+            <article class="card" style="display:flex;flex-direction:column;height:100%;"><div class="snap-media"><img src="${IMG.mong}" /><span class="snap-pill">🐾 몽글 · 말티푸</span><span class="bookmark-btn">${ICONS.bm}</span></div><div style="padding:16px;display:flex;flex-direction:column;justify-content:space-between;flex:1;gap:10px;"><div style="font-size:15px;font-weight:700;line-height:1.45;">햇살 가득한 오후, 거실 창가 쿠션에서 낮잠 자는 몽글이</div><div class="card-meta"><span class="author-mini"><img src="${IMG.mom}" /> 몽글맘</span><span>♥ 128 · 💬 14</span></div></div></article>
+            <article class="card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between;height:100%;gap:12px;">
+              <div style="display:grid;gap:10px;"><div style="display:flex;justify-content:space-between;"><span class="badge-purple">건강 Q&amp;A · 수의사 답변</span><span style="font-size:11px;color:var(--ink-3);">18분 전</span></div><div style="font-size:16px;font-weight:800;line-height:1.4;">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</div><p style="font-size:13px;color:var(--ink-2);line-height:1.55;">어제 정기검진에서 슬개골 2기 진단을 받았어요. 경사진 길만 피하면 되는지 조언 부탁드려요!</p></div>
+              <div style="display:grid;gap:10px;"><div style="background:var(--surface);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--ink-2);"><strong style="color:var(--purple-text);">✓ 김다은 수의사:</strong> 평지 위주 15~20분씩 나누어 걸어주세요.</div><div class="card-meta"><span class="author-mini"><img src="${IMG.koko}" /> 코코네</span><span>♥ 64 · 💬 28</span></div></div>
+            </article>
+            <article class="card" style="display:flex;flex-direction:column;height:100%;"><div class="snap-media"><img src="${IMG.bori}" /><span class="snap-pill">🐕 보리 · 재활</span><span class="bookmark-btn">${ICONS.bm}</span></div><div style="padding:16px;display:flex;flex-direction:column;justify-content:space-between;flex:1;gap:10px;"><div style="font-size:15px;font-weight:700;line-height:1.45;">노령견 디스크 수술 없이 수중 재활 8주차 극복 기록</div><div class="card-meta"><span class="author-mini"><img src="${IMG.bori}" /> 보리집사</span><span>♥ 342 · 💬 68</span></div></div></article>
+            <article class="card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between;height:100%;gap:12px;">
+              <div style="display:grid;gap:10px;"><div style="display:flex;justify-content:space-between;"><span class="badge-purple">케어 저니 · DAY 21</span><span style="font-size:11px;color:var(--ink-3);">42분 전</span></div><div style="font-size:16px;font-weight:800;line-height:1.4;">아토피 피부염 3주간 식단·목욕 케어 일지 공유합니다</div><p style="font-size:13px;color:var(--ink-2);line-height:1.55;">가수분해 단일 단백질 사료와 주 2회 약용 샴푸 스파를 병행했더니 긁는 횟수가 줄었어요.</p></div>
+              <div style="display:grid;gap:10px;"><div style="background:var(--surface);border-radius:12px;padding:10px 12px;display:flex;gap:6px;"><span class="badge-purple">#아토피케어</span><span class="badge-purple">#치료기</span></div><div class="card-meta"><span class="author-mini"><img src="${IMG.mochi}" /> 모찌네</span><span>♥ 91 · 💬 19</span></div></div>
+            </article>
+            <article class="card" style="display:flex;flex-direction:column;height:100%;"><div class="snap-media"><img src="${IMG.rui}" /><span class="snap-pill">🐈 루이 · 코숏</span><span class="bookmark-btn">${ICONS.bm}</span></div><div style="padding:16px;display:flex;flex-direction:column;justify-content:space-between;flex:1;gap:10px;"><div style="font-size:15px;font-weight:700;line-height:1.45;">음수량 늘리려고 창가마다 도자기 물그릇 배치해둔 후기</div><div class="card-meta"><span class="author-mini"><img src="${IMG.cat2}" /> 루이맘</span><span>♥ 112 · 💬 8</span></div></div></article>
+            <article class="card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between;height:100%;gap:12px;">
+              <div style="display:grid;gap:10px;"><div style="display:flex;justify-content:space-between;"><span class="badge-purple" style="background:var(--surface);color:var(--ink);">자유수다 · 질문</span><span style="font-size:11px;color:var(--ink-3);">1시간 전</span></div><div style="font-size:16px;font-weight:800;line-height:1.4;">비 오는 날 산책 못 나갈 때 집에서 어떤 노즈워크 해주시나요?</div><p style="font-size:13px;color:var(--ink-2);line-height:1.55;">연속 사흘째 실내에만 있으니 아이가 심심해하네요. 간단하게 에너지 뺄 수 있는 놀이 팁 궁금해요!</p></div>
+              <div style="display:grid;gap:10px;"><div style="background:var(--surface);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--ink-2);">💬 <strong>두부네:</strong> 종이컵 3개 엎어두고 간식 숨기기 추천해요!</div><div class="card-meta"><span class="author-mini"><img src="${IMG.dubu}" /> 초코맘</span><span>♥ 47 · 💬 24</span></div></div>
+            </article>
+          </div>
+        `
+      },
+      {
+        id: 'detail',
+        badge: '3. 포스트 상세 (/post/[id])',
+        desc: '중앙 단일 컬럼(820px) + 핀 이미지 + 하단 넓은 댓글 & 작성자 고정 댓글(최대 2개)',
+        side: 'comm',
+        content: `
+          <div class="detail-editorial">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--ink-3);">커뮤니티 &gt; <strong style="color:var(--purple-text);">인기 스냅 · 케어 저니</strong></span><div style="display:flex;gap:8px;"><span class="pill-btn">♥ 128</span><span class="pill-btn">🔖 저장</span><span class="pill-btn">↗ 공유</span></div></div>
+            <div><h1 style="font-size:25px;font-weight:800;line-height:1.35;">햇살 가득한 오후, 거실 창가 쿠션에서 낮잠 자는 몽글이</h1><div style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--ink-2);"><img src="${IMG.mom}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" /><strong>몽글맘</strong><span class="badge-purple">🐾 몽글 · 말티푸 · 3세</span><span style="color:var(--ink-3);">2026.11.18</span></div></div>
+            <div class="pin-hero-box"><img class="main-img" src="${IMG.mong}" /><span class="map-pin" style="top:42%;left:48%;">🐾 몽글 (말티푸 3.8kg)</span><span class="map-pin" style="bottom:22%;left:24%;">🏷 외부쇼핑몰 · 부클레 스텝 ↗</span></div>
+            <p style="font-size:15px;line-height:1.8;color:var(--ink-2);">최근 슬개골 관리 때문에 거실 소파 앞에 미끄럼 방지 러그랑 2단 스텝을 새로 배치해 줬어요. 발톱 정리도 오늘 무사히 마쳐서 기분이 좋습니다!</p>
+            <div class="linked-journey"><div><div style="font-size:11px;font-weight:800;color:var(--purple-text);">연결된 케어 저니 · 태그된 아이템</div><div style="font-size:15px;font-weight:800;margin-top:4px;">몽글이 슬개골 &amp; 발톱 케어 루틴 (DAY 14) · 부클레 스텝</div></div><span class="pill-btn primary">저니 보기 →</span></div>
+            <section class="comment-panel">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-size:16px;font-weight:800;">💬 댓글 및 수의사 답변 (14)</div><span class="badge-purple">📌 고정 댓글 2/2</span></div>
+              <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:var(--ink-3);">따뜻한 댓글이나 질문을 남겨보세요...</span><span class="pill-btn primary">댓글 등록</span></div>
+              <div class="comment-item pinned"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="background:var(--purple);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;">📌 작성자가 고정한 댓글</span><span class="pill-btn" style="height:26px;font-size:11px;">고정 해제</span></div><div style="font-size:12px;"><strong style="color:var(--purple-text);">✓ 김다은 수의사</strong> · 정형외과 <span style="color:var(--ink-3);margin-left:6px;">10분 전</span></div><div style="font-size:13px;line-height:1.6;">스텝과 러그 배치가 아주 이상적이네요! 발바닥 털도 주기적으로 정리해주면 미끄럼 예방에 큰 도움이 됩니다.</div></div>
+              <div class="comment-item pinned"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="background:var(--purple);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;">📌 작성자가 고정한 댓글</span><span class="pill-btn" style="height:26px;font-size:11px;">고정 해제</span></div><div style="font-size:12px;"><strong>몽글맘</strong> <span style="color:var(--purple-text);font-weight:700;">· 작성자</span> <span style="color:var(--ink-3);margin-left:6px;">8분 전</span></div><div style="font-size:13px;line-height:1.6;">많이 물어보시는 부클레 스텝 높이는 2단(28cm) 제품이고, 러그는 워셔블 160x210 사이즈입니다!</div></div>
+              <div class="comment-item"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;"><span><strong>코코네</strong> <span style="color:var(--ink-3);margin-left:6px;">5분 전</span></span><span class="pill-btn" style="height:26px;font-size:11px;">📌 고정하기</span></div><div style="font-size:13px;color:var(--ink-2);">몽글이 노란 옷 너무 잘 어울려요! 저도 스텝 정보 참고할게요 :)</div></div>
+            </section>
+          </div>
+        `
+      },
+      {
+        id: 'nb-list',
+        badge: '4. 건강 수첩 리스트',
+        desc: '전체·인기·스크랩 + 상태 필터(진행 중/완치/목표 달성) + 3종 상태 배지 & 스크랩',
+        side: 'book',
+        content: `
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;"><div><div style="font-size:11px;font-weight:800;color:var(--purple-text);">SHARED HEALTH NOTEBOOKS</div><h1 style="font-size:24px;font-weight:800;margin-top:2px;">건강 수첩 탐색</h1></div><div style="display:flex;gap:10px;"><div class="search-pill">🔍 증상, 케어 루틴, 견종 검색</div><span class="pill-btn primary">+ 내 수첩 만들기</span></div></div>
+          <div class="top-controls"><div class="ul-tabs"><span class="ul-tab on">전체 공유 수첩</span><span class="ul-tab">인기 수첩</span><span class="ul-tab">내가 스크랩한 수첩</span></div><span style="font-size:12px;color:var(--ink-3);">총 328개의 공유 수첩</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div class="chips"><span class="chip on">전체</span><span class="chip">슬개골·관절</span><span class="chip">피부·알러지</span><span class="chip">치아·위생</span><span class="chip">노령견 케어</span><span class="chip">다이어트</span></div>
+            <div class="chips" style="background:var(--surface);padding:3px;border-radius:999px;border:1px solid var(--line);"><span class="chip on" style="padding:5px 12px;font-size:11px;">상태: 전체</span><span class="chip" style="padding:5px 12px;font-size:11px;border:none;background:transparent;">진행 중</span><span class="chip" style="padding:5px 12px;font-size:11px;border:none;background:transparent;">완치</span><span class="chip" style="padding:5px 12px;font-size:11px;border:none;background:transparent;">목표 달성</span></div>
+          </div>
+          <div class="grid-3">
+            ${[
+              [IMG.mong, '슬개골·관절', '몽글 · 말티푸 3.8kg', '몽글이 슬개골 2기 비수술 루틴 8주 기록', '진행 중 · D+56', 'var(--purple-soft)', 'var(--purple-text)', '기록 14건', '몽글맘', '89', '142', true],
+              [IMG.bori, '노령견 케어', '보리 · 믹스 6.2kg', '12세 노령견 디스크 수중 재활 & 온찜질 노트', '완치 완료 · 총 42일', 'var(--green-bg)', 'var(--green-ink)', '기록 22건', '보리집사', '154', '342', false],
+              [IMG.mochi, '피부·알러지', '모찌 · 웰시코기 10.4kg', '아토피 피부염 3주간 가수분해 식단·보습 일지', '완치 완료 · 총 21일', 'var(--green-bg)', 'var(--green-ink)', '기록 9건', '모찌네', '67', '91', false],
+              [IMG.koko, '치아·위생', '코코 · 비숑 4.1kg', '예민한 강아지 발톱 깎기 & 양치 적응 타임라인', '진행 중 · D+35', 'var(--purple-soft)', 'var(--purple-text)', '기록 11건', '코코네', '112', '185', true],
+              [IMG.rui, '다이어트', '루이 · 코숏 3.9kg', '고양이 음수량 늘리기 & 4.5kg→3.9kg 감량 기록', '목표 달성 · 4.5→3.9kg', 'var(--blue-bg)', 'var(--blue-ink)', '기록 16건', '루이맘', '74', '112', false],
+              [IMG.dubu, '피부·알러지', '두부 · 카발리에 5.6kg', '눈물 자국 개선 4주 식이 테스트 & 귀 세정 기록', '목표 달성 · 눈물 80%↓', 'var(--blue-bg)', 'var(--blue-ink)', '기록 10건', '두부네', '58', '73', false]
+            ].map(([img, cat, pet, title, st, stBg, stInk, cnt, author, sc, lk, on]) => `
+              <article class="card" style="padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <div style="display:flex;align-items:center;gap:10px;"><img src="${img}" style="width:46px;height:46px;border-radius:14px;object-fit:cover;" /><div><span class="badge-purple" style="padding:2px 8px;font-size:10px;">${cat}</span><div style="font-size:12px;color:var(--ink-2);margin-top:3px;">${pet}</div></div></div>
+                  <span class="pill-btn" style="width:34px;height:34px;padding:0;justify-content:center;${on ? 'background:var(--purple-soft);border-color:var(--purple-border);color:var(--purple-text);' : ''}">${on ? ICONS.bmFill : ICONS.bm}</span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">${title}</div>
+                <div style="display:flex;gap:8px;font-size:11px;font-weight:700;"><span style="background:${stBg};color:${stInk};padding:4px 10px;border-radius:999px;">${st}</span><span style="background:var(--surface);color:var(--ink-2);padding:4px 10px;border-radius:999px;">${cnt}</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;"><span>by <strong>${author}</strong></span><span>스크랩 ${sc} · ♥ ${lk}</span></div>
+              </article>
+            `).join('')}
+          </div>
+        `
+      },
+      {
+        id: 'nb-detail',
+        badge: '5. 건강 수첩 상세',
+        desc: '상태 배지 + + 기록 직접 추가 + ✨ AI 자동 생성(원본 글) & 직접 기록(단독) 혼합 타임라인 + 댓글',
+        side: 'book',
+        content: `
+          <div class="detail-editorial" style="max-width:880px;">
+            <div style="font-size:12px;color:var(--ink-3);">건강 수첩 &gt; <strong style="color:var(--purple-text);">슬개골·관절</strong></div>
+            <section style="background:linear-gradient(135deg,var(--card) 0%,var(--purple-soft) 100%);border:1px solid var(--purple-border);border-radius:24px;padding:24px 28px;display:grid;gap:18px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <img src="${IMG.mong}" style="width:58px;height:58px;border-radius:18px;object-fit:cover;border:2px solid var(--card);" />
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple">슬개골·관절</span><span class="badge-purple">진행 중 · D+56</span><span style="font-size:12px;color:var(--ink-2);"><strong>몽글</strong> · 말티푸 · 3.8kg · by 몽글맘</span></div>
+                    <h1 style="font-size:22px;font-weight:800;margin-top:6px;">몽글이 슬개골 2기 비수술 루틴 8주 기록</h1>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-shrink:0;"><span class="pill-btn primary">+ 기록 직접 추가</span><span class="pill-btn">${ICONS.bm} 스크랩 (89)</span><span class="pill-btn">↗ 공유</span></div>
+              </div>
+              <div class="grid-3" style="gap:12px;">
+                <div class="card" style="padding:12px 14px;border-radius:14px;"><div style="font-size:11px;color:var(--ink-3);">진행 기간</div><div style="font-size:16px;font-weight:800;margin-top:2px;">D+56 (8주차)</div></div>
+                <div class="card" style="padding:12px 14px;border-radius:14px;"><div style="font-size:11px;color:var(--ink-3);">누적 기록</div><div style="font-size:16px;font-weight:800;margin-top:2px;">총 14건</div></div>
+                <div class="card" style="padding:12px 14px;border-radius:14px;"><div style="font-size:11px;color:var(--ink-3);">체중 변화</div><div style="font-size:16px;font-weight:800;margin-top:2px;color:var(--purple-text);">3.9kg → 3.8kg</div></div>
+              </div>
+            </section>
+            <section class="card" style="padding:22px 24px;display:grid;gap:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-size:16px;font-weight:800;">누적 케어 타임라인</div><span class="badge-purple">발톱 깎음 → 실패 → 성공</span></div>
+              <div class="tl-item ai"><div style="font-size:12px;font-weight:800;color:var(--purple-text);">2026.11.18<br/>DAY 56</div><div><div style="display:flex;gap:8px;align-items:center;"><span class="badge-purple">✨ AI 자동 생성</span><strong>발톱 깎기 성공 &amp; 미끄럼 방지 스텝 적응</strong></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">간식 보상과 함께 한 발씩 천천히 진행해 스트레스 없이 완료</div></div><span style="font-size:12px;font-weight:700;color:var(--purple-text);white-space:nowrap;">원본 글 →</span></div>
+              <div class="tl-item"><div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.10<br/>DAY 48</div><div><div style="display:flex;gap:8px;align-items:center;"><span class="badge-purple" style="background:var(--card);color:var(--ink-2);border:1px solid var(--line);">직접 기록</span><strong>체중 3.8kg 측정 및 관절 영양제 급여 체크</strong></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">저녁 식후 관절 영양제 1정 급여 완료, 산책 시 절뚝거림 없음</div></div><span style="font-size:11px;color:var(--ink-3);white-space:nowrap;">수첩 단독 메모</span></div>
+              <div class="tl-item"><div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.04<br/>DAY 42</div><div><div style="display:flex;gap:8px;align-items:center;"><span class="badge-purple">✨ AI 자동 생성</span><span class="badge-purple" style="background:var(--red-bg);color:var(--red-ink);">실패 · 재시도</span><strong>발톱 깎기 실패 (예민 반응)</strong></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">발 만지는 것을 거부해 2발만 정리 후 중단하고 발 터치 둔감화 훈련 시작</div></div><span style="font-size:12px;font-weight:700;color:var(--purple-text);white-space:nowrap;">원본 글 →</span></div>
+            </section>
+            <section class="comment-panel">
+              <div style="font-size:15px;font-weight:800;">💬 이 수첩에 대한 응원 &amp; 질문 (6)</div>
+              <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--ink-3);">수첩 작성자에게 응원이나 질문을 남겨보세요...</span><span class="pill-btn primary">등록</span></div>
+              <div class="comment-item"><div style="display:flex;justify-content:space-between;font-size:12px;"><strong>코코네</strong><span style="color:var(--ink-3);">15분 전</span></div><div style="font-size:13px;color:var(--ink-2);">실패했던 기록까지 솔직하게 쌓여 있어서 큰 힘이 되네요! 바로 스크랩했어요 :)</div></div>
+            </section>
+          </div>
+        `
+      },
+      {
+        id: 'register',
+        badge: '6. 글 작성 (/post/register)',
+        desc: '제목 위 카테고리 칩 + 본문 + + 사진 추가 + 우측 AI 건강 수첩 & 태그 설정',
+        side: 'comm',
+        content: `
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:16px;"><div style="font-size:17px;font-weight:800;">새 기록 작성</div><div style="display:flex;gap:10px;"><span class="pill-btn">임시저장</span><span class="pill-btn">미리보기</span><span class="pill-btn primary">발행하기</span></div></div>
+          <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:24px;align-items:start;">
+            <div class="card" style="padding:26px;display:grid;gap:18px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:var(--ink-3);">카테고리</span><span class="chip">일상 스냅</span><span class="chip">건강 Q&amp;A</span><span class="chip on">케어 저니</span><span class="chip">자유수다</span></div>
+              <div style="font-size:22px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:14px;">오늘 몽글이 발톱 깎기 성공한 비법 공유해요!</div>
+              <div style="position:relative;border-radius:18px;overflow:hidden;height:310px;"><img src="${IMG.mong}" style="width:100%;height:100%;object-fit:cover;display:block;" /><span style="position:absolute;bottom:14px;right:14px;background:rgba(17,17,21,0.85);color:#fff;font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;">📍 이미지 위 펫·링크 핀 추가</span></div>
+              <div style="font-size:14px;line-height:1.75;color:var(--ink-2);">지난번엔 몽글이가 무서워해서 실패했는데, 오늘은 간식을 조금씩 주면서 한 발씩 천천히 다듬어 주었더니 얌전히 잘 기다려 주었어요.</div>
+              <div><span class="pill-btn">+ 사진 추가</span></div>
+            </div>
+            <aside style="display:grid;gap:16px;">
+              <div style="background:linear-gradient(145deg,var(--card) 0%,var(--purple-soft) 100%);border:1px solid var(--purple-border);border-radius:20px;padding:18px 20px;display:grid;gap:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;font-weight:800;color:var(--purple-text);">✨ AI 건강 수첩 자동 기록</span><span style="width:42px;height:24px;border-radius:999px;background:var(--purple);position:relative;display:inline-block;"><span style="position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></span></div>
+                <div style="font-size:12px;color:var(--ink-2);line-height:1.5;">글을 발행하면 AI가 내용을 분석해 내 펫 건강 수첩 타임라인에 자동으로 기록합니다.</div>
+                <div style="background:var(--card);padding:10px 12px;border-radius:12px;border:1px solid var(--line);display:flex;justify-content:space-between;font-size:12px;"><span>반려동물 선택</span><strong>몽글 (말티푸) ▾</strong></div>
+                <div style="background:var(--card);padding:10px 12px;border-radius:12px;border:1px solid var(--line);display:flex;justify-content:space-between;font-size:12px;"><span>케어 저니 연결</span><strong>슬개골 &amp; 위생 루틴 ▾</strong></div>
+              </div>
+              <div class="card" style="padding:18px 20px;display:grid;gap:12px;"><div style="font-size:13px;font-weight:800;">태그 설정</div><div style="background:var(--surface);padding:9px 12px;border-radius:12px;font-size:12px;color:var(--ink-3);border:1px solid var(--line);">#태그를 입력하고 Enter를 누르세요</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><span class="badge-purple">#발톱관리</span><span class="badge-purple">#말티푸</span><span class="pill-btn" style="height:26px;font-size:11px;">+ 태그 추가</span></div></div>
+            </aside>
+          </div>
+        `
+      },
+      {
+        id: 'mypage',
+        badge: '7. 마이페이지 (/member/mypage)',
+        desc: '프로필 + 펫 스위처 + 건강 수첩 · 케어 저니 · 내 글·스크랩(스크랩 수첩 포함) · 설정',
+        side: 'user',
+        content: `
+          <section style="background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:22px 26px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:16px;"><img src="${IMG.mom}" style="width:62px;height:62px;border-radius:50%;object-fit:cover;" /><div><div style="font-size:20px;font-weight:800;">몽글맘 <span class="badge-purple" style="margin-left:6px;">베스트 집사</span></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">게시글 24 · 케어 저니 3 · 스크랩 수첩 5</div></div></div>
+            <div style="display:flex;gap:12px;">
+              <div style="background:var(--purple-soft);border:1.5px solid var(--purple);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><img src="${IMG.mong}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;" /><div><div style="font-size:13px;font-weight:800;">몽글</div><div style="font-size:11px;color:var(--purple-text);">말티푸 · 3.8kg</div></div></div>
+              <div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:10px;"><img src="${IMG.koko}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;" /><div><div style="font-size:13px;font-weight:700;">초코</div><div style="font-size:11px;color:var(--ink-3);">푸들 · 4.5kg</div></div></div>
+            </div>
+          </section>
+          <div class="top-controls"><div class="ul-tabs"><span class="ul-tab on">건강 수첩</span><span class="ul-tab">케어 저니</span><span class="ul-tab">내 글 · 스크랩 (수첩 포함)</span><span class="ul-tab">설정 (AI 자동 일지 ON)</span></div><span class="pill-btn primary">+ 수첩 직접 기록</span></div>
+          <section class="card" style="padding:22px 24px;display:grid;gap:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:16px;font-weight:800;">몽글이 AI 건강 수첩 타임라인</div><div style="font-size:12px;color:var(--ink-3);margin-top:2px;">커뮤니티 글과 직접 기록이 시간순으로 누적됩니다.</div></div><span class="badge-purple">✨ AI 자동 일지 ON</span></div>
+            <div class="tl-item ai"><div style="font-size:12px;font-weight:800;color:var(--purple-text);">2026.11.18<br/>오늘</div><div><div style="display:flex;gap:8px;align-items:center;"><span class="badge-purple">✨ AI 자동 생성</span><strong>발톱 깎기 성공</strong></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">간식 보상과 함께 한 발씩 천천히 진행해 스트레스 없이 완료</div></div><span style="font-size:12px;font-weight:700;color:var(--purple-text);">원본 글 →</span></div>
+            <div class="tl-item"><div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.10</div><div><div style="display:flex;gap:8px;align-items:center;"><span class="badge-purple" style="background:var(--card);color:var(--ink-2);border:1px solid var(--line);">직접 기록</span><strong>체중 3.8kg 측정 및 관절 영양제 급여</strong></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">저녁 식후 관절 영양제 1정 급여 완료</div></div><span style="font-size:11px;color:var(--ink-3);">수첩 단독 메모</span></div>
+            <div class="tl-item"><div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.04</div><div><div style="display:flex;gap:8px;align-items:center;"><span class="badge-purple">✨ AI 자동 생성</span><span class="badge-purple" style="background:var(--red-bg);color:var(--red-ink);">실패 · 재시도</span><strong>발톱 깎기 실패 (예민 반응)</strong></div><div style="font-size:12px;color:var(--ink-2);margin-top:4px;">발 만지는 것을 거부해 2발만 정리 후 중단</div></div><span style="font-size:12px;font-weight:700;color:var(--purple-text);">원본 글 →</span></div>
+          </section>
+        `
+      }
+    ];
+
+    document.getElementById('app').innerHTML = pages.map((p, idx) => `
+      <section class="artboard ${idx === 0 ? 'is-active' : ''}" id="artboard-${p.id}">
+        <div class="art-head">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;"><span class="pill">${p.badge}</span> ${p.desc}</div>
+        </div>
+        <div class="frame-pc">
+          <div class="shell">
+            ${sidebar(p.side)}
+            <main class="page-pad">${p.content}</main>
+          </div>
+        </div>
+      </section>
+    `).join('');
+
+    function setPage(id) {
+      document.querySelectorAll('.studio-tab').forEach(b => b.classList.toggle('active', b.dataset.target === id));
+      document.querySelectorAll('.artboard').forEach(a => a.classList.toggle('is-active', a.id === 'artboard-' + id));
+    }
+
+    function applyTheme(t) {
+      document.body.setAttribute('data-theme', t);
+      document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️ 라이트 모드' : '🌙 다크 모드';
+    }
+
+    function toggleTheme() {
+      const cur = document.body.getAttribute('data-theme');
+      applyTheme(cur === 'dark' ? 'light' : 'dark');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const raw = window.location.hash.replace('#', '');
+      if (raw) {
+        const [page, mode, cap] = raw.split(':');
+        if (page && document.getElementById('artboard-' + page)) setPage(page);
+        if (mode === 'dark') applyTheme('dark');
+        if (cap === 'cap' || mode === 'cap') document.body.classList.add('capture-mode');
+      }
+    });
+  </script>
+</body>
+</html>

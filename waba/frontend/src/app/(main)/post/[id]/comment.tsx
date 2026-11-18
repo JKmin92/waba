@@ -1,14 +1,14 @@
 'use client'
 
-import { Avatar, Box, Button, Dialog, FormatNumber, Heading, HStack, IconButton, Menu, Portal, Stack, Text, Textarea, VStack } from "@chakra-ui/react";
+import { Box, Button, Dialog, FormatNumber, Heading, HStack, IconButton, Menu, Portal, Stack, Text, Textarea, VStack } from "@chakra-ui/react";
 import { useState } from "react";
-import { Heart, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Heart, MoreHorizontal, Pencil, Pin, Trash2 } from "lucide-react";
 import { Comment as CommentType, User } from "@/interface";
 import { formatRelativeTime } from "@/utils/simpleUtils";
 import { isAuthenticated } from "@/utils/authUtils";
 import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
-import { LuUserRound } from "react-icons/lu";
+import UserAvatar from "../../common/UserAvatar";
 
 export interface CommentProps {
     postId: string;
@@ -39,6 +39,42 @@ export default function Comment({
     const [isSavingEdit, setIsSavingEdit] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
     const [isDeletingComment, setIsDeletingComment] = useState(false);
+    const [pinningCommentId, setPinningCommentId] = useState<string | null>(null);
+
+    const isPostViewerAuthor = Boolean(currentUser?.id && postAuthorId && currentUser.id === postAuthorId);
+    const pinnedCount = comments.filter((c) => Boolean(c.is_pinned)).length;
+
+    const handleTogglePinComment = async (commentId: string) => {
+        if (!isPostViewerAuthor || pinningCommentId) return;
+        setPinningCommentId(commentId);
+        try {
+            const res = await axiosInstance.patch(`/post/${postId}/comments/${commentId}/pin`);
+            if (Array.isArray(res.data?.comments)) {
+                onCommentsUpdate?.(res.data.comments, commentCount ?? res.data.comments.length);
+            } else {
+                const updatedComments = comments.map((c) =>
+                    c.id === commentId
+                        ? {
+                              ...c,
+                              is_pinned: !Boolean(c.is_pinned),
+                              pinned_at: !Boolean(c.is_pinned) ? new Date().toISOString() : null,
+                          }
+                        : c
+                );
+                onCommentsUpdate?.(updatedComments, commentCount ?? updatedComments.length);
+            }
+            const target = comments.find((c) => c.id === commentId);
+            toaster.create({
+                title: target && Boolean(target.is_pinned) ? '댓글 고정이 해제되었습니다.' : '댓글이 상단에 고정되었습니다.',
+                type: 'success',
+            });
+        } catch (error: any) {
+            const msg = error?.response?.data?.message || '고정 댓글은 최대 2개까지 설정할 수 있습니다.';
+            toaster.create({ title: msg, type: 'error' });
+        } finally {
+            setPinningCommentId(null);
+        }
+    };
 
     const handleCreateComment = async () => {
         if (!isAuthenticated()) {
@@ -135,8 +171,12 @@ export default function Comment({
         }
     };
 
-    // 정렬 로직
+    // 정렬 로직 (고정 댓글 최상단 우선)
     const sortedComments = [...comments].sort((a, b) => {
+        const pinnedA = Boolean(a.is_pinned) ? 1 : 0;
+        const pinnedB = Boolean(b.is_pinned) ? 1 : 0;
+        if (pinnedA !== pinnedB) return pinnedB - pinnedA;
+
         if (commentSort === 'popular') {
             const diff = (b.like_count || 0) - (a.like_count || 0);
             if (diff !== 0) return diff;
@@ -192,13 +232,26 @@ export default function Comment({
                 </Portal>
             </Dialog.Root>
 
-            {/* 상단 헤더: 댓글 개수 & 정렬 옵션 */}
-            <HStack justifyContent="space-between">
-                <HStack gap={2}>
-                    <Heading fontSize="xl">댓글</Heading>
-                    <Text fontSize="md" fontWeight="800" color="waba.purple">
+            {/* 상단 헤더: 댓글 개수 & 고정 댓글 배지 & 정렬 옵션 */}
+            <HStack justifyContent="space-between" flexWrap="wrap" gap={2}>
+                <HStack gap={2} flexWrap="wrap">
+                    <Heading fontSize="xl" color="var(--waba-ink)">댓글</Heading>
+                    <Text fontSize="md" fontWeight="800" color="var(--waba-purple-text)">
                         {displayCount}
                     </Text>
+                    <Box
+                        bg="var(--waba-purple-soft)"
+                        color="var(--waba-purple-text)"
+                        border="1px solid"
+                        borderColor="var(--waba-purple-border)"
+                        fontSize="11px"
+                        fontWeight="700"
+                        px="10px"
+                        py="3px"
+                        borderRadius="full"
+                    >
+                        📌 고정 댓글 {pinnedCount}/2
+                    </Box>
                 </HStack>
                 <HStack gap={1}>
                     <Button
@@ -237,19 +290,21 @@ export default function Comment({
             <Box
                 borderRadius="20px"
                 border="1px solid"
-                borderColor="waba.border"
-                bg="white"
+                borderColor="var(--waba-line)"
+                bg="var(--waba-card)"
                 p={4}
                 boxShadow="0 4px 16px rgba(0, 0, 0, 0.03)"
                 transition="all 0.2s"
-                _focusWithin={{ borderColor: 'waba.purple', boxShadow: '0 6px 20px rgba(90, 49, 244, 0.08)' }}
+                _focusWithin={{ borderColor: '#6338A9', boxShadow: '0 6px 20px rgba(99, 56, 169, 0.12)' }}
             >
                 <HStack align="flex-start" gap={3}>
-                    <Avatar.Root size="md" borderRadius="full" border="1px solid" borderColor="waba.border">
-                        {currentUser?.profile_image_url ? (
-                            <Avatar.Image src={currentUser.profile_image_url} alt={currentUser.nickname} />
-                        ) : (<LuUserRound />)}
-                    </Avatar.Root>
+                    <UserAvatar
+                        src={currentUser?.profile_image_url}
+                        alt={currentUser?.nickname || '프로필'}
+                        size="md"
+                        border="1px solid"
+                        borderColor="waba.border"
+                    />
                     <VStack flex={1} align="stretch" gap={3}>
                         <Textarea
                             border="none"
@@ -338,35 +393,52 @@ export default function Comment({
                         const commentUserId = item.user_id || item.author?.id;
                         const isMyComment = Boolean(currentUser?.id && commentUserId && currentUser.id === commentUserId);
                         const isPostAuthor = Boolean(postAuthorId && commentUserId && postAuthorId === commentUserId);
+                        const isPinned = Boolean(item.is_pinned);
 
                         return (
                             <Stack
                                 key={item.id}
-                                bg="white"
+                                bg={isPinned ? 'var(--waba-purple-soft)' : 'var(--waba-card)'}
                                 border="1px solid"
-                                borderColor="waba.border"
+                                borderColor={isPinned ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
                                 p={4}
                                 gap={3}
                                 borderRadius="20px"
                                 boxShadow="0 2px 8px rgba(0, 0, 0, 0.02)"
+                                minW={0}
                             >
-                                <HStack justifyContent="space-between" align="center">
-                                    <HStack alignItems="center" gap={3}>
-                                        <Avatar.Root size="sm" borderRadius="full">
-                                            {item.author?.profile_image_url && !item.is_anonymous ? (
-                                                <Avatar.Image src={item.author.profile_image_url} alt={item.author?.nickname || "프로필"} />
-                                            ) : (<LuUserRound />)}
-                                        </Avatar.Root>
-                                        <HStack gap={1.5} align="center">
-                                            <Heading fontSize="sm" fontWeight="700">
+                                {isPinned && (
+                                    <HStack gap={1.5}>
+                                        <Box
+                                            bg="#6338A9"
+                                            color="white"
+                                            fontSize="10px"
+                                            fontWeight="800"
+                                            px={2.5}
+                                            py={0.5}
+                                            borderRadius="full"
+                                        >
+                                            📌 작성자가 고정한 댓글
+                                        </Box>
+                                    </HStack>
+                                )}
+                                <HStack justifyContent="space-between" align="center" gap={2} flexWrap="wrap">
+                                    <HStack alignItems="center" gap={3} minW={0}>
+                                        <UserAvatar
+                                            src={!item.is_anonymous ? item.author?.profile_image_url : null}
+                                            alt={item.author?.nickname || "프로필"}
+                                            size="sm"
+                                        />
+                                        <HStack gap={1.5} align="center" flexWrap="wrap" minW={0}>
+                                            <Heading fontSize="sm" fontWeight="700" color="var(--waba-ink)">
                                                 @{item.author?.nickname || "익명 집사"}
                                             </Heading>
 
                                             {/* ⭐️ 게시글 원작성자 뱃지 (누구에게나 보임) */}
                                             {isPostAuthor && (
                                                 <Box
-                                                    bg="waba.purpleLight"
-                                                    color="waba.purple"
+                                                    bg="var(--waba-purple-soft)"
+                                                    color="var(--waba-purple-text)"
                                                     fontSize="10px"
                                                     fontWeight="800"
                                                     px={2}
@@ -380,27 +452,47 @@ export default function Comment({
                                             {/* ⭐️ 내가 쓴 댓글 뱃지 (오직 나에게만 보임) */}
                                             {isMyComment && (
                                                 <Box
-                                                    bg="blackAlpha.100"
-                                                    color="waba.charcoal"
+                                                    bg="var(--waba-surface)"
+                                                    color="var(--waba-ink-2)"
                                                     fontSize="10px"
                                                     fontWeight="800"
                                                     px={2}
                                                     py={0.5}
                                                     borderRadius="full"
                                                     border="1px solid"
-                                                    borderColor="blackAlpha.200"
+                                                    borderColor="var(--waba-line)"
                                                 >
                                                     내 댓글
                                                 </Box>
                                             )}
 
-                                            <Text fontSize="xs" color="waba.faint" ml={1}>
+                                            <Text fontSize="xs" color="var(--waba-ink-3)" ml={1}>
                                                 {formatRelativeTime(item.created_at)}
                                             </Text>
                                         </HStack>
                                     </HStack>
 
-                                    <HStack gap={2}>
+                                    <HStack gap={2} flexShrink={0}>
+                                        {isPostViewerAuthor && (
+                                            <Button
+                                                size="2xs"
+                                                variant="outline"
+                                                borderRadius="full"
+                                                px={2.5}
+                                                h="24px"
+                                                fontSize="11px"
+                                                fontWeight="700"
+                                                borderColor={isPinned ? '#6338A9' : 'var(--waba-line)'}
+                                                bg={isPinned ? '#6338A9' : 'var(--waba-surface)'}
+                                                color={isPinned ? 'white' : 'var(--waba-ink-2)'}
+                                                loading={pinningCommentId === item.id}
+                                                onClick={() => handleTogglePinComment(item.id)}
+                                                gap={1}
+                                            >
+                                                <Pin size={11} />
+                                                {isPinned ? '고정 해제' : '고정하기'}
+                                            </Button>
+                                        )}
                                         {isMyComment && (
                                             <Menu.Root positioning={{ placement: "bottom-end" }}>
                                                 <Menu.Trigger asChild>
@@ -494,7 +586,7 @@ export default function Comment({
                                         </HStack>
                                     </VStack>
                                 ) : (
-                                    <Text fontSize="14px" lineHeight="1.6" color="waba.charcoal" pl="42px">
+                                    <Text fontSize="14px" lineHeight="1.6" color="var(--waba-ink)" pl={{ base: 0, sm: '42px' }} wordBreak="break-word">
                                         {item.content}
                                     </Text>
                                 )}

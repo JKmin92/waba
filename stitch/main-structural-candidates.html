@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA Main — 3 Structural Layout Candidates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #18181B;
+      --ink-2: #52525B;
+      --ink-3: #8C8C96;
+      --line: #ECE9E2;
+      --warm: #FAF8F5;
+      --stone: #F3F0EA;
+      --purple: #7B5CFA;
+      --purple-soft: #F3EFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #E9E7E0;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: var(--stone); padding: 4px; border-radius: 999px; }
+    .studio-tab {
+      border: none; background: transparent; color: var(--ink-2);
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: var(--ink); color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .cand-wrap { width: 1440px; display: flex; flex-direction: column; gap: 12px; }
+    .cand-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .frame {
+      width: 1440px; background: #fff; border-radius: 18px; overflow: hidden;
+      border: 1px solid #DCD9D0; box-shadow: 0 24px 60px rgba(24,24,27,0.08);
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .cand-wrap { display: none; }
+    body.single-mode .cand-wrap.is-target { display: flex; }
+
+    /* Shared Minimal Header */
+    .hdr {
+      height: 64px; padding: 0 40px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; background: #fff;
+    }
+    .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.04em; display: flex; align-items: baseline; gap: 5px; }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); display: inline-block; }
+    .search-pill {
+      width: 280px; height: 36px; border-radius: 999px; background: var(--warm); border: 1px solid var(--line);
+      padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3);
+    }
+    .btn-primary {
+      height: 36px; padding: 0 16px; border-radius: 999px; background: var(--ink); color: #fff;
+      font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    /* ============================================================
+       STRUCTURE 1: Left Pet Hub Sidebar + Right Stories & Timeline
+    ============================================================ */
+    .s1-body {
+      display: grid; grid-template-columns: 320px 1fr; min-height: 820px; background: #FAF9F6;
+    }
+    .s1-sidebar {
+      background: #fff; border-right: 1px solid var(--line); padding: 24px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .pet-passport {
+      background: linear-gradient(145deg, #FAF8F5 0%, #F4F0FF 100%);
+      border: 1px solid #E7E1FA; border-radius: 18px; padding: 18px;
+      display: grid; gap: 14px;
+    }
+    .journey-mini {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+      display: grid; gap: 10px;
+    }
+    .s1-stream {
+      padding: 24px 36px 48px; display: flex; flex-direction: column; gap: 24px;
+    }
+    .story-strip {
+      display: flex; gap: 16px; overflow: hidden; padding-bottom: 4px;
+    }
+    .story-item { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 72px; }
+    .story-ring {
+      width: 64px; height: 64px; border-radius: 50%; padding: 3px;
+      background: linear-gradient(135deg, #7B5CFA, #D8B4FE);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .story-inner {
+      width: 100%; height: 100%; border-radius: 50%; background: #EFEAE0; border: 2px solid #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+    }
+    .s1-feed-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+    }
+    .timeline-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
+    }
+
+    /* ============================================================
+       STRUCTURE 2: Full-Width Masonry Pinboard (No Hero Box!)
+    ============================================================ */
+    .s2-subbar {
+      padding: 14px 32px; border-bottom: 1px solid var(--line); background: #fff;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    }
+    .chip-row { display: flex; gap: 8px; align-items: center; }
+    .chip {
+      padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      background: var(--warm); color: var(--ink-2); border: 1px solid var(--line);
+    }
+    .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .s2-masonry {
+      padding: 24px 32px 48px;
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; align-items: start;
+      background: #FAF9F7;
+    }
+    .pin-col { display: flex; flex-direction: column; gap: 16px; }
+    .pin-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    }
+    .care-inline-card {
+      background: #F4F0FF; border: 1px solid #E5DDFB; border-radius: 16px; padding: 18px;
+      display: grid; gap: 10px;
+    }
+
+    /* ============================================================
+       STRUCTURE 3: 50:50 Editorial Split (Awwwards Lookbook)
+    ============================================================ */
+    .s3-split {
+      display: grid; grid-template-columns: 46% 54%; min-height: 820px;
+    }
+    .s3-left {
+      position: relative; background: #EAE2D5; padding: 28px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      border-right: 1px solid var(--line);
+    }
+    .s3-right {
+      background: #FFFFFF; padding: 28px 40px 44px; display: flex; flex-direction: column; gap: 28px;
+    }
+    .journey-strip-row {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+    }
+    .s3-snap-2 {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    }
+    .mentor-list {
+      display: grid; gap: 10px;
+    }
+    .mentor-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-radius: 14px; background: var(--warm); border: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">WABA STRUCTURAL CANDIDATES</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">레이아웃 뼈대 자체를 바꾼 3가지 구조안</div>
+        <div style="font-size:12px;color:var(--ink-3);">반려동물 룩북 · 일상 · 건강 수첩 · 케어 저니 중심</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">All 3</button>
+      <button class="studio-tab" data-target="struct-1" onclick="setView('struct-1')">구조안 1 (사이드바+피드)</button>
+      <button class="studio-tab" data-target="struct-2" onclick="setView('struct-2')">구조안 2 (풀와이드 핀보드)</button>
+      <button class="studio-tab" data-target="struct-3" onclick="setView('struct-3')">구조안 3 (50:50 스플릿)</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+
+    <!-- ============================================================
+         STRUCTURE 1: Left Pet Hub Sidebar + Right Stories & Timeline
+    ============================================================ -->
+    <section class="cand-wrap" id="artboard-struct-1">
+      <div class="cand-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">구조안 1</span> 좌측 펫 허브 사이드바 + 우측 스토리 &amp; 타임라인 피드형
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">Threads / 펫 커뮤니티 대시보드 · 내 아이 건강 수첩 &amp; 케어 저니 상시 접근</span>
+      </div>
+      <div class="frame">
+        <header class="hdr">
+          <div class="logo">WABA<span class="dot"></span> <span style="font-size:11px;font-weight:500;color:var(--ink-3);">PET COMMUNITY</span></div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="search-pill">🔍 아이 이름, 케어 저니, 멘토 검색</div>
+            <span class="btn-primary">+ 오늘의 기록 올리기</span>
+          </div>
+        </header>
+
+        <div class="s1-body">
+          <!-- Sticky Left Rail -->
+          <aside class="s1-sidebar">
+            <div class="pet-passport">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:48px;height:48px;border-radius:50%;background:#E6DFD3;display:flex;align-items:center;justify-content:center;font-size:22px;">🐶</div>
+                <div>
+                  <div style="font-size:15px;font-weight:800;">몽글이 <span style="font-size:11px;font-weight:600;color:var(--purple);">말티푸 · 3세</span></div>
+                  <div style="font-size:11px;color:var(--ink-2);">최근 체중 3.8kg · 건강 수첩 양호</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">
+                <div style="background:#fff;padding:10px;border-radius:12px;">
+                  <div style="color:var(--ink-3);">다음 예방접종</div>
+                  <div style="font-weight:700;margin-top:2px;">D-12 종합백신</div>
+                </div>
+                <div style="background:#fff;padding:10px;border-radius:12px;">
+                  <div style="color:var(--ink-3);">이번 주 산책</div>
+                  <div style="font-weight:700;margin-top:2px;">5회 · 6.4km</div>
+                </div>
+              </div>
+              <span style="font-size:12px;font-weight:700;color:var(--purple);">건강 수첩 열어보기 →</span>
+            </div>
+
+            <div class="journey-mini">
+              <div style="font-size:12px;font-weight:800;color:var(--ink);">진행 중인 케어 저니</div>
+              <div style="padding:10px;border-radius:12px;background:var(--warm);">
+                <div style="font-size:10px;font-weight:700;color:var(--purple);">DAY 14 / 30</div>
+                <div style="font-size:13px;font-weight:700;margin-top:2px;">슬개골 부담 줄이는 거실 루틴</div>
+              </div>
+              <div style="padding:10px;border-radius:12px;background:var(--warm);">
+                <div style="font-size:10px;font-weight:700;color:var(--ink-3);">수의사 Q&amp;A</div>
+                <div style="font-size:13px;font-weight:700;margin-top:2px;">겨울철 건조한 발바닥 보습법</div>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:12px;font-weight:800;margin-bottom:10px;">추천 수의사 &amp; 베스트 멘토</div>
+              <div style="display:grid;gap:10px;font-size:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>김다은 수의사</strong> · 정형외과</span><span style="color:var(--purple);font-weight:700;">팔로우</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>코코네</strong> · 24평 펫 리빙</span><span style="color:var(--purple);font-weight:700;">팔로우</span></div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Right Main Stream -->
+          <div class="s1-stream">
+            <!-- Stories -->
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:12px;">오늘의 반려동물 스토리</div>
+              <div class="story-strip">
+                <div class="story-item"><div class="story-ring"><div class="story-inner">🐕</div></div><span style="font-size:11px;font-weight:600;">몽글이</span></div>
+                <div class="story-item"><div class="story-ring"><div class="story-inner">🐩</div></div><span style="font-size:11px;font-weight:600;">보리</span></div>
+                <div class="story-item"><div class="story-ring"><div class="story-inner">🐈</div></div><span style="font-size:11px;font-weight:600;">루이</span></div>
+                <div class="story-item"><div class="story-ring"><div class="story-inner">🐶</div></div><span style="font-size:11px;font-weight:600;">코코</span></div>
+                <div class="story-item"><div class="story-ring"><div class="story-inner">🐾</div></div><span style="font-size:11px;font-weight:600;">모찌</span></div>
+                <div class="story-item"><div class="story-ring"><div class="story-inner">🩺</div></div><span style="font-size:11px;font-weight:600;">김수의사</span></div>
+              </div>
+            </div>
+
+            <!-- 2-Col Large Photo Community Timeline -->
+            <div class="s1-feed-grid">
+              <article class="timeline-card">
+                <div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:#EDE7DC;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">코</div>
+                    <div><div style="font-size:13px;font-weight:700;">코코네 · 말티즈</div><div style="font-size:11px;color:var(--ink-3);">방금 전 · 거실 룩북</div></div>
+                  </div>
+                  <span style="background:var(--purple-soft);color:var(--purple);font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;">AI 룩북</span>
+                </div>
+                <div style="height:280px;background:linear-gradient(145deg,#EFE8DC,#D8CCBA);position:relative;"></div>
+                <div style="padding:14px 16px;">
+                  <div style="font-size:15px;font-weight:700;">햇살 잘 드는 창가에 몽글이 전용 낮잠 존을 만들었어요</div>
+                  <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">미끄럼 방지 러그를 깔아주니 훨씬 안정감 있게 뛰어놀아요.</div>
+                  <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--ink-2);font-weight:600;"><span>♥ 128</span><span>💬 19</span><span>🔖 저장</span></div>
+                </div>
+              </article>
+
+              <article class="timeline-card">
+                <div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:#E4DFF4;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--purple);">김</div>
+                    <div><div style="font-size:13px;font-weight:700;">김다은 수의사 <span style="color:var(--purple);">✓</span></div><div style="font-size:11px;color:var(--ink-3);">1시간 전 · 케어 라운지</div></div>
+                  </div>
+                  <span style="background:#F4F4F6;font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;">케어 저니</span>
+                </div>
+                <div style="height:280px;background:linear-gradient(145deg,#E2DDF0,#C9C0E2);"></div>
+                <div style="padding:14px 16px;">
+                  <div style="font-size:15px;font-weight:700;">노령견 관절을 지키는 식기 높이와 스텝 단차 가이드</div>
+                  <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">우리 아이 어깨 높이에 맞춘 3가지 집안 동선 체크리스트</div>
+                  <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--ink-2);font-weight:600;"><span>♥ 214</span><span>💬 32</span><span>🔖 저장</span></div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         STRUCTURE 2: Full-Width Masonry Pinboard (No Hero Box!)
+    ============================================================ -->
+    <section class="cand-wrap" id="artboard-struct-2">
+      <div class="cand-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill" style="background:var(--purple);">구조안 2</span> 풀와이드 매거진 핀보드형 (Pinterest / Behance)
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">상단 히어로 박스 완전 제거 · 첫 화면부터 5열 비정형 포토 보드 + 인라인 케어 저니</span>
+      </div>
+      <div class="frame">
+        <header class="hdr">
+          <div style="display:flex;align-items:center;gap:32px;">
+            <div class="logo">WABA<span class="dot"></span></div>
+            <div style="display:flex;gap:20px;font-size:13px;font-weight:600;color:var(--ink-2);">
+              <span style="color:var(--ink);font-weight:700;">탐색 보드</span><span>케어 저니</span><span>건강 수첩</span><span>멘토 Q&amp;A</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="search-pill" style="width:360px;">🔍 말티푸 거실, 노령견 케어, AI 룩북 검색</div>
+            <span class="btn-primary" style="background:var(--purple);">+ 핀 올리기</span>
+          </div>
+        </header>
+
+        <div class="s2-subbar">
+          <div class="chip-row">
+            <span class="chip on">✨ 오늘의 추천</span>
+            <span class="chip">🐾 반려동물 룩북</span>
+            <span class="chip">🩺 수의사 케어 라운지</span>
+            <span class="chip">📔 케어 저니 기록</span>
+            <span class="chip">🏡 펫 리빙 공간</span>
+          </div>
+          <span style="font-size:12px;color:var(--ink-3);">총 1,240개의 펫 라이프 기록</span>
+        </div>
+
+        <!-- 5-Col Masonry Pinboard -->
+        <div class="s2-masonry">
+          <div class="pin-col">
+            <div class="pin-card"><div style="height:270px;background:linear-gradient(150deg,#EAE2D6,#D2C4B0);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">24평 화이트 우드 펫 거실</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">코코네 · ♥ 128</div></div></div>
+            <div class="pin-card"><div style="height:190px;background:linear-gradient(150deg,#DCE7E0,#C1D4C8);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">산책 후 발바닥 케어 루틴</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">루이맘 · ♥ 62</div></div></div>
+          </div>
+          <div class="pin-col">
+            <div class="care-inline-card">
+              <span style="font-size:10px;font-weight:800;color:var(--purple);">CARE LOUNGE · 수의사 검증</span>
+              <div style="font-size:15px;font-weight:700;line-height:1.4;">소형견 슬개골 부담을 줄이는 거실 러그 배치</div>
+              <div style="font-size:11px;color:var(--ink-2);">김다은 수의사 칼럼 읽기 →</div>
+            </div>
+            <div class="pin-card"><div style="height:290px;background:linear-gradient(150deg,#E2DDF0,#C8BFE0);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">노령견 미끄럼 방지 동선</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">보리집사 · ♥ 94</div></div></div>
+          </div>
+          <div class="pin-col">
+            <div class="pin-card"><div style="height:330px;background:linear-gradient(150deg,#EFE5DC,#DCCBC0);position:relative;"><span style="position:absolute;top:10px;left:10px;background:rgba(255,255,255,0.9);padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;">WABA LOOKBOOK</span></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">몽글이네 햇살 가득 펫 소파 존</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">몽글맘 · ♥ 204</div></div></div>
+            <div class="pin-card"><div style="height:150px;background:linear-gradient(150deg,#E9ECEF,#D5DCE2);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">원룸 모듈 펫 하우스</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">모찌네 · ♥ 76</div></div></div>
+          </div>
+          <div class="pin-col">
+            <div class="pin-card"><div style="height:220px;background:linear-gradient(150deg,#F3EAD8,#E2D2B8);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">창가 햇살 아래 낮잠 타임</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">두부네 · ♥ 112</div></div></div>
+            <div class="care-inline-card" style="background:#FAF8F5;border-color:#EAE5DC;">
+              <span style="font-size:10px;font-weight:800;color:var(--ink);">HEALTH LOG · 건강 수첩</span>
+              <div style="font-size:14px;font-weight:700;line-height:1.4;">몽글이 예방접종 D-12 · 체중 3.8kg 기록하기</div>
+              <span style="font-size:11px;font-weight:700;color:var(--purple);">수첩 바로가기 →</span>
+            </div>
+          </div>
+          <div class="pin-col">
+            <div class="pin-card"><div style="height:295px;background:linear-gradient(150deg,#E5EDE8,#C9DCD1);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">다견 가정 식기 존 정리 팁</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">초코네 · ♥ 89</div></div></div>
+            <div class="pin-card"><div style="height:185px;background:linear-gradient(150deg,#EDE4EE,#D9C8DC);"></div><div style="padding:12px;"><div style="font-size:13px;font-weight:700;">비 오는 날 실내 노즈워크</div><div style="font-size:11px;color:var(--ink-3);margin-top:4px;">콩이맘 · ♥ 54</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         STRUCTURE 3: 50:50 Editorial Split (Awwwards Lookbook)
+    ============================================================ -->
+    <section class="cand-wrap" id="artboard-struct-3">
+      <div class="cand-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">구조안 3</span> 50:50 에디토리얼 스플릿형 (Awwwards / 감성 룩북 매거진)
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">좌측 대표 룩북 고정(Sticky) + 우측 케어 저니·2열 스냅·베스트 집사 스크롤</span>
+      </div>
+      <div class="frame">
+        <header class="hdr">
+          <div class="logo">WABA<span class="dot"></span> <span style="font-size:11px;font-weight:500;color:var(--ink-3);">LOOKBOOK &amp; CARE</span></div>
+          <div style="display:flex;gap:24px;font-size:13px;font-weight:600;color:var(--ink-2);">
+            <span style="color:var(--ink);font-weight:700;">오늘의 룩북</span><span>케어 저니</span><span>건강 수첩</span><span>멘토 Q&amp;A</span>
+          </div>
+          <span class="btn-primary">+ 룩북 올리기</span>
+        </header>
+
+        <div class="s3-split">
+          <!-- Left Sticky Hero Lookbook -->
+          <div class="s3-left">
+            <svg viewBox="0 0 640 760" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
+              <rect width="640" height="760" fill="#EAE2D5"/>
+              <polygon points="80,0 380,0 500,540 20,540" fill="rgba(255,255,255,0.35)"/>
+              <rect x="0" y="540" width="640" height="220" fill="#CCB99E"/>
+              <rect x="90" y="380" width="380" height="165" rx="28" fill="#FAF7F0"/>
+              <ellipse cx="480" cy="565" rx="85" ry="26" fill="#E5DFF5"/>
+              <circle cx="475" cy="536" r="22" fill="#A97E58"/>
+              <rect width="640" height="760" fill="rgba(24,24,27,0.16)"/>
+            </svg>
+            <div style="position:relative;z-index:2;display:flex;justify-content:space-between;">
+              <span style="background:rgba(255,255,255,0.92);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;">🐾 TODAY'S COVER · 몽글 (말티푸)</span>
+              <span style="background:rgba(24,24,27,0.7);color:#fff;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:600;">♥ 342 · 🔖 89</span>
+            </div>
+            <div style="position:relative;z-index:2;color:#fff;">
+              <div style="font-size:11px;letter-spacing:0.14em;font-weight:700;opacity:0.9;">WABA EDITORIAL ISSUE 14</div>
+              <h1 style="font-size:34px;font-weight:800;line-height:1.28;margin-top:8px;">햇살이 머무는 24평 거실,<br/>몽글이의 하루가 시작되는 곳</h1>
+              <div style="margin-top:14px;display:flex;align-items:center;gap:12px;font-size:13px;">
+                <span>by <strong>몽글맘</strong></span><span>·</span><span>거실 룩북 전체 보기 →</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Scrollable Stream -->
+          <div class="s3-right">
+            <div>
+              <div style="font-size:11px;font-weight:800;color:var(--purple);letter-spacing:0.08em;margin-bottom:10px;">CARE JOURNEY &amp; HEALTH</div>
+              <div class="journey-strip-row">
+                <div style="background:var(--warm);border:1px solid var(--line);border-radius:16px;padding:16px;">
+                  <div style="font-size:10px;font-weight:700;color:var(--purple);">CARE LOUNGE · 수의사 검증</div>
+                  <div style="font-size:15px;font-weight:700;line-height:1.4;margin-top:6px;">소형견 슬개골 부담 줄이는 거실 러그 공식</div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:8px;">김다은 수의사 · 3분 읽기 →</div>
+                </div>
+                <div style="background:var(--purple-soft);border:1px solid #E4DBFA;border-radius:16px;padding:16px;">
+                  <div style="font-size:10px;font-weight:700;color:var(--purple);">MY PET HEALTH LOG</div>
+                  <div style="font-size:15px;font-weight:700;line-height:1.4;margin-top:6px;">몽글이 건강 수첩 · 다음 접종 D-12</div>
+                  <div style="font-size:11px;color:var(--ink-2);margin-top:8px;">오늘의 산책·체중 기록하기 →</div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div style="font-size:18px;font-weight:800;">라이프 스냅 &amp; 룩북</div>
+                <span style="font-size:12px;color:var(--ink-3);">전체 보기 →</span>
+              </div>
+              <div class="s3-snap-2">
+                <div><div style="height:190px;border-radius:14px;background:linear-gradient(145deg,#EAE3D7,#D3C7B6);"></div><div style="font-size:13px;font-weight:700;margin-top:8px;">채광 좋은 화이트 우드 리빙룸</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px;">코코네 · ♥ 128</div></div>
+                <div><div style="height:190px;border-radius:14px;background:linear-gradient(145deg,#E2DDF0,#C9C0E2);"></div><div style="font-size:13px;font-weight:700;margin-top:8px;">노령견 미끄럼 방지 동선 리모델링</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px;">보리집사 · ♥ 94</div></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:16px;font-weight:800;margin-bottom:10px;">주간 베스트 멘토 &amp; 집사</div>
+              <div class="mentor-list">
+                <div class="mentor-row"><span><strong>1. 코코네</strong> <span style="color:var(--ink-3);font-size:12px;">· 말티즈 · 24평 펫 리빙</span></span><span style="font-size:12px;font-weight:700;color:var(--purple);">팔로우 +</span></div>
+                <div class="mentor-row"><span><strong>2. 김다은 수의사</strong> <span style="color:var(--ink-3);font-size:12px;">· 정형외과 케어 멘토</span></span><span style="font-size:12px;font-weight:700;color:var(--purple);">팔로우 +</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.cand-wrap');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['struct-1', 'struct-2', 'struct-3'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

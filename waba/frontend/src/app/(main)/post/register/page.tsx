@@ -84,9 +84,14 @@ export default function PostRegisterPage() {
                     description: '+500P 리워드가 적립되었습니다.',
                     type: 'success',
                 });
-                if (res.data?.auto_journal_result?.created === true) {
+                const journalResult = res.data?.auto_journal_result;
+                if (journalResult?.created === true) {
+                    const createdCount = Number(journalResult?.created_count || 1);
                     toaster.create({
-                        title: '게시글 등록과 함께 건강 수첩에도 자동 기록되었어요!',
+                        title:
+                            createdCount > 1
+                                ? `AI 건강 수첩에 ${createdCount}건의 기록이 자동 저장되었습니다.`
+                                : '게시글 등록과 함께 건강 수첩에도 자동 기록되었어요!',
                         type: 'success',
                     });
                 }

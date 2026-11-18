@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA Main — Practical Community Hub (3 Bold Color Moods)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #E5E5E5;
+      color: #18181B;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      border-bottom: 1px solid #E2E2E6;
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: #F1F1F4; padding: 4px; border-radius: 999px; }
+    .studio-tab {
+      border: none; background: transparent; color: #52525B;
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: #18181B; color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .cand-wrap { width: 1440px; display: flex; flex-direction: column; gap: 12px; }
+    .cand-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: #18181B; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .frame {
+      width: 1440px; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.14);
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .cand-wrap { display: none; }
+    body.single-mode .cand-wrap.is-target { display: flex; }
+
+    /* ============================================================
+       THEME TOKENS FOR 3 PORTAL MOODS
+    ============================================================ */
+    .portal-shell {
+      --bg: #F6F4EE;
+      --surface: #FFFFFF;
+      --surface-2: #EFECE3;
+      --hdr-bg: #133C2E;
+      --hdr-ink: #FFFFFF;
+      --subbar-bg: #FFFFFF;
+      --ink: #17231E;
+      --ink-2: #4A5A53;
+      --ink-3: #7A8882;
+      --border: #E2DDD1;
+      --accent: #E86F2C;
+      --accent-soft: #FDF0E8;
+      --accent-2: #133C2E;
+      --badge-bg: #EEF4F1;
+      --badge-ink: #133C2E;
+      --thumb-bg: #EAE4D7;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    /* Mood 2: Electric Cobalt & Crisp Slate */
+    .portal-shell.mood-cobalt {
+      --bg: #F1F5F9;
+      --surface: #FFFFFF;
+      --surface-2: #E2E8F0;
+      --hdr-bg: #1D4ED8;
+      --hdr-ink: #FFFFFF;
+      --subbar-bg: #FFFFFF;
+      --ink: #0F172A;
+      --ink-2: #475569;
+      --ink-3: #64748B;
+      --border: #DCE4EE;
+      --accent: #1D4ED8;
+      --accent-soft: #EFF6FF;
+      --accent-2: #0F172A;
+      --badge-bg: #EFF6FF;
+      --badge-ink: #1D4ED8;
+      --thumb-bg: #E2E8F0;
+    }
+
+    /* Mood 3: Midnight Dark Hub & Coral/Mint */
+    .portal-shell.mood-dark {
+      --bg: #0B1120;
+      --surface: #151E32;
+      --surface-2: #1E293B;
+      --hdr-bg: #0F172A;
+      --hdr-ink: #F8FAFC;
+      --subbar-bg: #151E32;
+      --ink: #F8FAFC;
+      --ink-2: #CBD5E1;
+      --ink-3: #94A3B8;
+      --border: #26334D;
+      --accent: #FF5A5F;
+      --accent-soft: rgba(255, 90, 95, 0.14);
+      --accent-2: #2DD4BF;
+      --badge-bg: rgba(45, 212, 191, 0.14);
+      --badge-ink: #2DD4BF;
+      --thumb-bg: #26334D;
+    }
+
+    /* Portal Top Header */
+    .p-hdr {
+      background: var(--hdr-bg);
+      color: var(--hdr-ink);
+      padding: 14px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .p-logo {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.04em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .p-logo-tag {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.16); letter-spacing: 0.06em;
+    }
+    .p-search {
+      flex: 1; max-width: 520px; height: 40px; border-radius: 10px;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18);
+      padding: 0 14px; display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: rgba(255,255,255,0.85);
+    }
+    .p-hdr-actions { display: flex; align-items: center; gap: 10px; }
+    .p-btn-write {
+      height: 38px; padding: 0 16px; border-radius: 8px;
+      background: var(--accent); color: #fff;
+      font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .p-btn-ghost {
+      height: 38px; padding: 0 14px; border-radius: 8px;
+      background: rgba(255,255,255,0.12); color: #fff;
+      font-size: 12px; font-weight: 600; display: inline-flex; align-items: center;
+    }
+
+    /* Category Bar */
+    .p-catbar {
+      background: var(--subbar-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 48px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .p-tabs { display: flex; gap: 24px; height: 100%; align-items: center; }
+    .p-tab {
+      font-size: 13px; font-weight: 600; color: var(--ink-2);
+      height: 100%; display: inline-flex; align-items: center; position: relative;
+    }
+    .p-tab.on { color: var(--accent); font-weight: 800; }
+    .p-tab.on::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: var(--accent);
+    }
+    .p-live-ticker { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+    /* Main Hub Grid */
+    .p-body {
+      max-width: 1344px;
+      margin: 0 auto;
+      padding: 24px 48px 40px;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 22px;
+    }
+
+    .p-left { display: flex; flex-direction: column; gap: 20px; }
+    .p-right { display: flex; flex-direction: column; gap: 18px; }
+
+    .p-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+
+    .card-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    }
+    .card-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .card-more { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+
+    /* Ranking List (2-column compact 1~8) */
+    .rank-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 24px;
+    }
+    .rank-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 8px 6px; border-bottom: 1px dashed var(--border);
+    }
+    .rank-num {
+      width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+      background: var(--surface-2); color: var(--ink-2);
+    }
+    .rank-num.top { background: var(--accent); color: #fff; }
+    .rank-main { flex: 1; min-width: 0; }
+    .rank-title-line {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: var(--ink);
+    }
+    .prefix {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      background: var(--badge-bg); color: var(--badge-ink); flex-shrink: 0;
+    }
+    .rank-title-text {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rank-sub {
+      font-size: 11px; color: var(--ink-3); margin-top: 3px;
+      display: flex; gap: 10px;
+    }
+    .mini-thumb {
+      width: 42px; height: 42px; border-radius: 8px; background: var(--thumb-bg); flex-shrink: 0;
+    }
+
+    /* 2x2 Multi-Board Grid */
+    .multi-board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .board-list { display: grid; gap: 9px; }
+    .board-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      font-size: 13px;
+    }
+    .board-item-title {
+      flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--ink); font-weight: 500;
+    }
+    .board-item-meta { font-size: 11px; color: var(--ink-3); flex-shrink: 0; }
+
+    /* Right Sidebar Widgets */
+    .health-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      display: grid; gap: 12px;
+    }
+    .health-top {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .pet-avatar {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--accent-soft); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800;
+    }
+    .stat-pair {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .stat-box {
+      background: var(--surface-2); border-radius: 10px; padding: 10px;
+    }
+    .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag-pill {
+      font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+      background: var(--surface-2); color: var(--ink-2);
+    }
+    .tag-pill.hot { background: var(--accent-soft); color: var(--accent); }
+
+    /* Bottom Slim Photo Snap Strip */
+    .snap-strip-wrap {
+      max-width: 1344px; margin: 0 auto; padding: 0 48px 36px;
+    }
+    .snap-strip {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px;
+    }
+    .snap-mini {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    }
+    .snap-mini-img { height: 84px; background: var(--thumb-bg); }
+    .snap-mini-txt { padding: 8px 10px; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">WABA PORTAL HUB</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">실용 커뮤니티 허브형 — 3가지 개성 있는 색감/무드 후보</div>
+        <div style="font-size:12px;color:#71717A;">인기글 TOP8 랭킹 · 2x2 멀티 보드 · AI 건강 수첩 사이드 허브 · 하단 슬림 스냅</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">All 3 Moods</button>
+      <button class="studio-tab" data-target="portal-1" onclick="setView('portal-1')">1. 딥 포레스트 &amp; 앰버</button>
+      <button class="studio-tab" data-target="portal-2" onclick="setView('portal-2')">2. 일렉트릭 코발트</button>
+      <button class="studio-tab" data-target="portal-3" onclick="setView('portal-3')">3. 미드나잇 다크</button>
+    </div>
+  </header>
+
+  <main class="canvas" id="canvas"></main>
+
+  <script>
+    const moods = [
+      {
+        id: 'portal-1',
+        badge: '후보 1',
+        name: '딥 포레스트 & 앰버 무드',
+        desc: '짙은 포레스트 그린(#133C2E) + 웜 린넨 바탕(#F6F4EE) + 앰버 오렌지(#E86F2C) 랭킹 배지',
+        cls: ''
+      },
+      {
+        id: 'portal-2',
+        badge: '후보 2',
+        name: '일렉트릭 코발트 & 크리스프 슬레이트 무드',
+        desc: '선명한 코발트 블루(#1D4ED8) + 다크 잉크 타이포 + 차가운 스틸 그레이 보드(#F1F5F9)',
+        cls: 'mood-cobalt'
+      },
+      {
+        id: 'portal-3',
+        badge: '후보 3',
+        name: '미드나잇 다크 허브 & 코랄/민트 무드',
+        desc: '다크 네이비/차콜(#0B1120 / #151E32) + 생동감 있는 코랄(#FF5A5F) & 민트(#2DD4BF) 포인트',
+        cls: 'mood-dark'
+      }
+    ];
+
+    const rankings = [
+      { n: 1, tag: '질문', title: '3세 말티푸 슬개골 2기 진단 받았는데 산책 줄여야 할까요?', meta: '몽글맘 · 댓글 28 · ♥ 64', top: true },
+      { n: 2, tag: '치료기', title: '노령견 디스크 수술 없이 재활 8주차 케어 저니 공유', meta: '보리집사 · 댓글 41 · ♥ 152', top: true },
+      { n: 3, tag: '후기', title: '거실 미끄럼 방지 매트 3종 6개월 실사용 비교 정리', meta: '코코네 · 댓글 19 · ♥ 93', top: true },
+      { n: 4, tag: '정보', title: '김다은 수의사: 강아지 눈물 자국 사료 교체 전 체크할 3가지', meta: '김다은 수의사 · 댓글 35 · ♥ 128', top: false },
+      { n: 5, tag: '질문', title: '고양이와 강아지 합사 2주차, 분리 공간 어떻게 두시나요?', meta: '루이맘 · 댓글 22 · ♥ 47', top: false },
+      { n: 6, tag: '자랑', title: '24평 화이트 우드 거실, 몽글이 전용 창가 존 완성!', meta: '두부네 · 댓글 16 · ♥ 88', top: false },
+      { n: 7, tag: '케어', title: '겨울철 건조한 발바닥 패드 보습 루틴 & 밤 바르는 팁', meta: '모찌네 · 댓글 11 · ♥ 54', top: false },
+      { n: 8, tag: '질문', title: '건강검진 혈액검사 ALP 수치 약간 높음 나오셨던 분 계신가요?', meta: '초코네 · 댓글 14 · ♥ 39', top: false }
+    ];
+
+    const boards = [
+      {
+        title: '🩺 건강 / 질병 Q&A',
+        items: [
+          { prefix: '[질문]', t: '유산균 급여 후 묽은 변 3일째, 중단해야 할까요?', m: '댓글 12' },
+          { prefix: '[답변]', t: '수의사 답변: 식이 알러지 의심 시 가수분해 테스트 방법', m: '✓ 검증' },
+          { prefix: '[질문]', t: '소형견 스케일링 마취 전 꼭 해야 할 심장 검사', m: '댓글 9' },
+          { prefix: '[정보]', t: '강아지 구토 색깔별 병원 방문 기준 정리표', m: '♥ 74' }
+        ]
+      },
+      {
+        title: '📔 케어 저니 · 치료기',
+        items: [
+          { prefix: '[DAY 21]', t: '아토피 피부염 3주간 식단·목욕 케어 기록', m: '♥ 91' },
+          { prefix: '[DAY 14]', t: '비만견 4.5kg → 3.9kg 감량 산책 & 칼로리 일지', m: '♥ 63' },
+          { prefix: '[치료기]', t: '유선종양 수술 후 1년 정기검진 완치 후기', m: '댓글 31' },
+          { prefix: '[루틴]', t: '아침 10분 관절 마사지 + 스텝 훈련 적응기', m: '♥ 48' }
+        ]
+      },
+      {
+        title: '💬 자유수다 / 일상',
+        items: [
+          { prefix: '[수다]', t: '비 오는 날 실내 노즈워크 어떤 거 가장 좋아하나요?', m: '댓글 24' },
+          { prefix: '[일상]', t: '오늘 아침 산책길 낙엽 밟는 소리 좋아하는 보리', m: '♥ 42' },
+          { prefix: '[고민]', t: '분리불안 5분 외출 연습부터 다시 시작해봤어요', m: '댓글 15' },
+          { prefix: '[팁]', t: '반려동물 동반 가능한 서울 근교 한옥 카페 모음', m: '♥ 57' }
+        ]
+      },
+      {
+        title: '🏡 리빙 / 룩북 노하우',
+        items: [
+          { prefix: '[공간]', t: '원룸에서도 깔끔하게 숨기는 배변패드·사료 수납장', m: '♥ 66' },
+          { prefix: '[룩북]', t: '고양이 캣타워와 소파가 어우러진 18평 신혼집', m: '♥ 84' },
+          { prefix: '[비교]', t: '방수 패브릭 소파 vs 가죽 소파 발톱 스크래치 테스트', m: '댓글 29' },
+          { prefix: '[추천]', t: '높이조절 원목 식기 사용 후 역류성 토 줄어든 후기', m: '♥ 51' }
+        ]
+      }
+    ];
+
+    function renderCandidate(m) {
+      return `
+        <section class="cand-wrap" id="artboard-${m.id}">
+          <div class="cand-head">
+            <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+              <span class="pill">${m.badge}</span> ${m.name}
+            </div>
+            <span style="font-size:12px;color:#52525B;">${m.desc}</span>
+          </div>
+          <div class="frame portal-shell ${m.cls}">
+            <header class="p-hdr">
+              <div class="p-logo">WABA <span class="p-logo-tag">PET HUB</span></div>
+              <div class="p-search">
+                <span>🔍 슬개골, 사료, 건강검진, 우리 동네 동물병원 검색</span>
+                <span style="opacity:0.7;font-size:11px;">⌘K</span>
+              </div>
+              <div class="p-hdr-actions">
+                <span class="p-btn-ghost">내 수첩</span>
+                <span class="p-btn-write">+ 글쓰기</span>
+              </div>
+            </header>
+
+            <nav class="p-catbar">
+              <div class="p-tabs">
+                <span class="p-tab on">전체 허브</span>
+                <span class="p-tab">실시간 인기글</span>
+                <span class="p-tab">건강 Q&amp;A</span>
+                <span class="p-tab">케어 저니</span>
+                <span class="p-tab">자유수다</span>
+                <span class="p-tab">포토 스냅</span>
+              </div>
+              <div class="p-live-ticker">
+                <span class="live-dot"></span>
+                <span><strong>실시간 수의사 답변:</strong> 소형견 겨울철 발바닥 습진 예방법</span>
+              </div>
+            </nav>
+
+            <div class="p-body">
+              <div class="p-left">
+                <!-- TOP 8 Ranking -->
+                <div class="p-card">
+                  <div class="card-hdr">
+                    <div class="card-title">🔥 실시간 인기글 TOP 8</div>
+                    <span class="card-more">오후 4시 기준 · 전체보기 →</span>
+                  </div>
+                  <div class="rank-grid">
+                    ${rankings.map(r => `
+                      <div class="rank-row">
+                        <span class="rank-num ${r.top ? 'top' : ''}">${r.n}</span>
+                        <div class="rank-main">
+                          <div class="rank-title-line">
+                            <span class="prefix">${r.tag}</span>
+                            <span class="rank-title-text">${r.title}</span>
+                          </div>
+                          <div class="rank-sub"><span>${r.meta}</span></div>
+                        </div>
+                        <div class="mini-thumb"></div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- 2x2 Multi-Board -->
+                <div class="multi-board">
+                  ${boards.map(b => `
+                    <div class="p-card">
+                      <div class="card-hdr">
+                        <div class="card-title">${b.title}</div>
+                        <span class="card-more">더보기 ›</span>
+                      </div>
+                      <div class="board-list">
+                        ${b.items.map(it => `
+                          <div class="board-item">
+                            <span class="prefix">${it.prefix}</span>
+                            <span class="board-item-title">${it.t}</span>
+                            <span class="board-item-meta">${it.m}</span>
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Right Community Side Hub -->
+              <aside class="p-right">
+                <div class="health-card">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;font-weight:800;color:var(--accent);">AI 건강 수첩 요약</span>
+                    <span style="font-size:11px;color:var(--ink-3);">수첩 관리 ›</span>
+                  </div>
+                  <div class="health-top">
+                    <div class="pet-avatar">몽</div>
+                    <div>
+                      <div style="font-size:15px;font-weight:800;">몽글이 <span style="font-size:11px;font-weight:600;color:var(--ink-3);">말티푸 · 3세</span></div>
+                      <div style="font-size:11px;color:var(--ink-2);">최근 기록: 어제 산책 35분 · 배변 정상</div>
+                    </div>
+                  </div>
+                  <div class="stat-pair">
+                    <div class="stat-box"><div style="font-size:10px;color:var(--ink-3);">현재 체중</div><div style="font-size:14px;font-weight:800;margin-top:2px;">3.8 kg</div></div>
+                    <div class="stat-box"><div style="font-size:10px;color:var(--ink-3);">다음 접종</div><div style="font-size:14px;font-weight:800;margin-top:2px;">D-12</div></div>
+                  </div>
+                  <div style="background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;text-align:center;padding:9px;border-radius:8px;">
+                    + 오늘 건강·산책 기록하기
+                  </div>
+                </div>
+
+                <div class="p-card">
+                  <div class="card-hdr"><div class="card-title">🏷 실시간 인기 태그</div></div>
+                  <div class="tag-cloud">
+                    <span class="tag-pill hot">#슬개골탈구</span>
+                    <span class="tag-pill hot">#노령견케어</span>
+                    <span class="tag-pill">#알러지사료</span>
+                    <span class="tag-pill">#눈물자국</span>
+                    <span class="tag-pill">#합사가이드</span>
+                    <span class="tag-pill">#미끄럼방지</span>
+                    <span class="tag-pill">#건강검진</span>
+                  </div>
+                </div>
+
+                <div class="p-card">
+                  <div class="card-hdr"><div class="card-title">🏆 주간 베스트 멘토</div><span class="card-more">전체</span></div>
+                  <div style="display:grid;gap:10px;font-size:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>1. 김다은 수의사</strong> <span style="color:var(--ink-3);">· 답변 48건</span></span><span style="color:var(--accent);font-weight:700;">✓ 검증</span></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>2. 보리집사</strong> <span style="color:var(--ink-3);">· 케어 저니 1위</span></span><span style="color:var(--ink-3);">팔로우</span></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;"><span><strong>3. 코코네</strong> <span style="color:var(--ink-3);">· 리빙 멘토</span></span><span style="color:var(--ink-3);">팔로우</span></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            <!-- Slim Bottom Photo Snap Strip -->
+            <div class="snap-strip-wrap">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span style="font-size:13px;font-weight:800;">📸 베스트 포토 스냅</span>
+                <span style="font-size:11px;color:var(--ink-3);">스냅 전체보기 →</span>
+              </div>
+              <div class="snap-strip">
+                <div class="snap-mini"><div class="snap-mini-img"></div><div class="snap-mini-txt">24평 화이트 거실</div></div>
+                <div class="snap-mini"><div class="snap-mini-img"></div><div class="snap-mini-txt">창가 낮잠 몽글이</div></div>
+                <div class="snap-mini"><div class="snap-mini-img"></div><div class="snap-mini-txt">노령견 논슬립 동선</div></div>
+                <div class="snap-mini"><div class="snap-mini-img"></div><div class="snap-mini-txt">다견 식기 정리 존</div></div>
+                <div class="snap-mini"><div class="snap-mini-img"></div><div class="snap-mini-txt">산책 후 발 닦기</div></div>
+                <div class="snap-mini"><div class="snap-mini-img"></div><div class="snap-mini-txt">원룸 모듈 펫하우스</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    document.getElementById('canvas').innerHTML = moods.map(renderCandidate).join('');
+
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.cand-wrap');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['portal-1', 'portal-2', 'portal-3'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

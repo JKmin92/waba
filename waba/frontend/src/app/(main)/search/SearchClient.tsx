@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import SensitiveImageOverlay from '../common/SensitiveImageOverlay';
+import UserAvatar from '../common/UserAvatar';
 import {
     Avatar,
     Badge,
@@ -835,14 +836,11 @@ export default function SearchClient() {
                                                     {/* 작성자 & 인터랙션 카운트 */}
                                                     <Flex mt="auto" align="center" justify="space-between" pt={2} borderTop="1px solid" borderColor="#F0F0F4">
                                                         <HStack gap={2}>
-                                                            <Avatar.Root size="xs">
-                                                                {item.user?.profile_image_url && (
-                                                                    <Avatar.Image src={item.user.profile_image_url} />
-                                                                )}
-                                                                <Avatar.Fallback>
-                                                                    {item.user?.nickname?.charAt(0) || 'U'}
-                                                                </Avatar.Fallback>
-                                                            </Avatar.Root>
+                                                            <UserAvatar
+                                                                src={item.user?.profile_image_url}
+                                                                alt={item.user?.nickname || '집사'}
+                                                                size="xs"
+                                                            />
                                                             <Text fontSize="12px" fontWeight="600" color="waba.muted">
                                                                 @{item.user?.nickname || '집사'}
                                                             </Text>

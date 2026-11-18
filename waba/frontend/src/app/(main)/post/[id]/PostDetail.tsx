@@ -1,21 +1,18 @@
 'use client'
 
-import { Avatar, Box, Button, Container, Dialog, FormatNumber, Heading, HStack, IconButton, Image, Menu, Portal, Separator, Stack, StackSeparator, Text } from "@chakra-ui/react"
-import Header from "../../common/Header"
+import { Box, Button, Dialog, Portal, Separator, Stack, Text } from "@chakra-ui/react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/api";
 import { PostDetail as PostDetailType, User } from "@/interface";
-import { formatDate } from "@/utils/simpleUtils";
-import { Bookmark, Eye, Heart, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
 import { toaster } from "@/components/ui/toaster";
 import { isAuthenticated, getUserInfo } from "@/utils/authUtils";
 import MemberModal from "../../member/MemberModal";
 import ShareModal from "../../common/ShareModal";
 import Comment from "./comment";
-import PostImagePins from "./PostImagePins";
-import PostProductPinList from "./PostProductPinList";
-import { LuUserRound } from "react-icons/lu";
+import PostDetailHeader from "./detail-components/PostDetailHeader";
+import PostDetailBody from "./detail-components/PostDetailBody";
+import PostLinkedJourneyCard from "./detail-components/PostLinkedJourneyCard";
 
 export default function PostDetail({ postId }: { postId: string }) {
 
@@ -185,9 +182,7 @@ export default function PostDetail({ postId }: { postId: string }) {
     };
 
     return (
-        <Container minH="100vh" bg="waba.canvas" pb={24}>
-            <Header />
-
+        <Box minH="100vh" bg="var(--waba-bg)" pb={20} w="100%" minW={0}>
             {/* 비회원 좋아요 클릭 시 띄울 로그인 모달 */}
             <MemberModal open={loginModalOpen} onOpenChange={setLoginModalOpen} showTrigger={false} />
 
@@ -209,14 +204,14 @@ export default function PostDetail({ postId }: { postId: string }) {
                 <Portal>
                     <Dialog.Backdrop />
                     <Dialog.Positioner>
-                        <Dialog.Content borderRadius="24px" p={6} bg="white">
+                        <Dialog.Content borderRadius="24px" p={6} bg="var(--waba-card)" color="var(--waba-ink)">
                             <Dialog.Header p={0} mb={2}>
-                                <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
+                                <Dialog.Title fontSize="18px" fontWeight="800" color="var(--waba-ink)">
                                     게시글을 삭제할까요?
                                 </Dialog.Title>
                             </Dialog.Header>
                             <Dialog.Body p={0} mb={6}>
-                                <Text fontSize="13px" color="gray.600">
+                                <Text fontSize="13px" color="var(--waba-ink-2)">
                                     삭제한 게시글은 복구할 수 없으며, 등록된 사진과 정보도 함께 삭제됩니다.
                                 </Text>
                             </Dialog.Body>
@@ -247,253 +242,34 @@ export default function PostDetail({ postId }: { postId: string }) {
                 </Portal>
             </Dialog.Root>
 
-            <Container maxW="1080px" pt={32} px={6}>
-                <Stack gap="10">
-                    <Stack gap="4">
-                        <HStack justifyContent="center">
-                            <Box rounded="full" bg="bg.inverted" color="fg.inverted" px="5" fontSize="md" py="1">{postDetail?.board.name}</Box>
-                        </HStack>
-                        <Heading textAlign="center" fontSize="3xl">{postDetail?.post.title}</Heading>
-                    </Stack>
+            {/* 중앙 단일 에디토리얼 컬럼 (maxW="820px") */}
+            <Box maxW="820px" w="100%" mx="auto" pt={{ base: 4, md: 8 }} px={{ base: 4, md: 6 }} minW={0}>
+                <Stack gap={{ base: 6, md: 8 }} minW={0}>
+                    <PostDetailHeader
+                        postId={postId}
+                        postDetail={postDetail}
+                        isAuthor={isAuthor}
+                        isLiked={isLiked}
+                        likeCount={likeCount}
+                        isBookmarked={isBookmarked}
+                        bookmarkCount={bookmarkCount}
+                        onToggleLike={toggleLike}
+                        onToggleBookmark={toggleBookmark}
+                        onOpenShare={() => setShareModalOpen(true)}
+                        onOpenDelete={() => setDeleteModalOpen(true)}
+                    />
 
-                    <Separator borderColor="waba.border" />
+                    <PostDetailBody
+                        postDetail={postDetail}
+                        activePinId={activePinId}
+                        onSelectPin={setActivePinId}
+                    />
 
-                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                        <Stack direction="row" alignItems="center" gap="6">
-                            <Avatar.Root size="2xl">
-                                {postDetail?.user.profile_image_url ? (
-                                    <Avatar.Image src={postDetail?.user.profile_image_url} />
-                                ) : (<LuUserRound />)}
-                            </Avatar.Root>
-                            <Stack gap="0">
-                                <HStack gap={2} align="center">
-                                    <Heading fontSize="md">@{postDetail?.user.nickname}</Heading>
-                                    {isAuthor && (
-                                        <>
-                                            <Box
-                                                bg="waba.charcoal"
-                                                color="white"
-                                                fontSize="10px"
-                                                fontWeight="800"
-                                                px={2}
-                                                py={0.5}
-                                                borderRadius="full"
-                                            >
-                                                내 글
-                                            </Box>
-                                            <Menu.Root positioning={{ placement: "bottom-start" }}>
-                                                <Menu.Trigger asChild>
-                                                    <IconButton
-                                                        aria-label="게시글 메뉴"
-                                                        variant="ghost"
-                                                        size="xs"
-                                                        rounded="full"
-                                                        color="waba.charcoal"
-                                                    >
-                                                        <MoreHorizontal size={18} />
-                                                    </IconButton>
-                                                </Menu.Trigger>
-                                                <Portal>
-                                                    <Menu.Positioner>
-                                                        <Menu.Content
-                                                            minW="140px"
-                                                            borderRadius="16px"
-                                                            p={1.5}
-                                                            boxShadow="0 12px 32px -4px rgba(26, 28, 30, 0.12)"
-                                                            border="1px solid"
-                                                            borderColor="waba.border"
-                                                            bg="white"
-                                                        >
-                                                            <Menu.Item
-                                                                value="edit"
-                                                                cursor="pointer"
-                                                                borderRadius="10px"
-                                                                py={2}
-                                                                px={3}
-                                                                onClick={() => router.push(`/post/edit/${postId}`)}
-                                                            >
-                                                                <Pencil size={14} />
-                                                                <Text fontSize="13px" fontWeight="600">수정하기</Text>
-                                                            </Menu.Item>
-                                                            <Menu.Item
-                                                                value="delete"
-                                                                cursor="pointer"
-                                                                borderRadius="10px"
-                                                                py={2}
-                                                                px={3}
-                                                                color="red.500"
-                                                                _hover={{ bg: 'red.50' }}
-                                                                onClick={() => setDeleteModalOpen(true)}
-                                                            >
-                                                                <Trash2 size={14} />
-                                                                <Text fontSize="13px" fontWeight="600">삭제하기</Text>
-                                                            </Menu.Item>
-                                                        </Menu.Content>
-                                                    </Menu.Positioner>
-                                                </Portal>
-                                            </Menu.Root>
-                                        </>
-                                    )}
-                                </HStack>
-                                <Text fontSize="xs" letterSpacing="0.08em" color="gray.500">{formatDate(postDetail?.post.created_at || '')}</Text>
-                            </Stack>
-                        </Stack>
-                        <Stack direction="row" alignItems="center" gap="4">
-                            <Box {...contentCountStyle}>
-                                <Eye size={16} />
-                                <Text fontSize="sm"><FormatNumber value={postDetail?.post.view_count || 0} /></Text>
-                            </Box>
+                    <PostLinkedJourneyCard postDetail={postDetail} />
 
-                            {/* ❤️ 좋아요 버튼 (회원 토글 / 비회원 로그인 다이얼로그) */}
-                            <Box
-                                {...contentCountStyle}
-                                cursor="pointer"
-                                onClick={toggleLike}
-                                borderColor={isLiked ? "red.200" : "waba.border"}
-                                bg={isLiked ? "red.50" : "transparent"}
-                                color={isLiked ? "red.500" : "waba.charcoal"}
-                                _hover={{
-                                    borderColor: isLiked ? "red.300" : "blackAlpha.400",
-                                    transform: "translateY(-1px)",
-                                    boxShadow: "md"
-                                }}
-                                _active={{ transform: "scale(0.96)" }}
-                            >
-                                <Heart
-                                    size={16}
-                                    fill={isLiked ? "#EF4444" : "none"}
-                                    color={isLiked ? "#EF4444" : "currentColor"}
-                                    style={{
-                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                        transform: isLiked ? "scale(1.15)" : "scale(1)"
-                                    }}
-                                />
-                                <Text fontSize="sm" fontWeight={isLiked ? "700" : "500"}>
-                                    <FormatNumber value={likeCount} />
-                                </Text>
-                            </Box>
-
-                            {/* 🔖 북마크 버튼 (회원 토글 / 비회원 로그인 다이얼로그) */}
-                            <Box
-                                {...contentCountStyle}
-                                cursor="pointer"
-                                onClick={toggleBookmark}
-                                borderColor={isBookmarked ? "purple.200" : "waba.border"}
-                                bg={isBookmarked ? "purple.50" : "white"}
-                                color={isBookmarked ? "waba.purple" : "waba.charcoal"}
-                                _hover={{
-                                    borderColor: isBookmarked ? "purple.300" : "blackAlpha.400",
-                                    transform: "translateY(-1px)",
-                                    boxShadow: "md"
-                                }}
-                                _active={{ transform: "scale(0.96)" }}
-                            >
-                                <Bookmark
-                                    size={16}
-                                    fill={isBookmarked ? "currentColor" : "none"}
-                                    color={isBookmarked ? "currentColor" : "currentColor"}
-                                    style={{
-                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                        transform: isBookmarked ? "scale(1.15)" : "scale(1)"
-                                    }}
-                                />
-                                <Text fontSize="sm" fontWeight={isBookmarked ? "700" : "500"}>
-                                    <FormatNumber value={bookmarkCount} />
-                                </Text>
-                            </Box>
-
-                            {/* 🔗 공유 버튼 (카카오톡, 링크 복사 모달 오픈) */}
-                            <Box
-                                {...contentCountStyle}
-                                cursor="pointer"
-                                onClick={() => setShareModalOpen(true)}
-                                _hover={{
-                                    borderColor: "blackAlpha.400",
-                                    transform: "translateY(-1px)",
-                                    boxShadow: "md"
-                                }}
-                                _active={{ transform: "scale(0.96)" }}
-                            >
-                                <Share2 size={16} />
-                                <Text fontSize="sm">공유</Text>
-                            </Box>
-                        </Stack>
-                    </Stack>
-                    <Separator borderColor="waba.border" />
-
-                    <Stack>
-                        {postDetail?.post.content.map((content, index) => {
-                            if (content.type === 'text') {
-                                return (
-                                    <Text key={`text-${index}`}>{content.content}</Text>
-                                )
-                            }
-                            if (content.type === 'image') {
-                                const image = postDetail.post_images.filter(i => i.id === content.image_id)[0];
-                                const pins = postDetail.product_pins?.filter(pp => pp.post_image_id === content.image_id);
-
-                                return (
-                                    <PostImagePins
-                                        key={index + content.image_id}
-                                        imageSrc={image?.image_url || ''}
-                                        pins={pins}
-                                        activePinId={activePinId}
-                                        onSelectPin={setActivePinId}
-                                        isSensitive={Boolean(content.is_sensitive || image?.is_sensitive)}
-                                    />
-                                )
-                            }
-                        })}
-
-                        {postDetail?.tags && postDetail?.tags.length > 0 && (
-                            <Box>
-                                <Stack mt="5" gap="5">
-                                    <Separator />
-                                    <HStack bg="bg" py="3" px="4" rounded="md">
-                                        {postDetail?.tags?.map((tag, idx) => (
-                                            <Box key={idx} bg="bg.muted" fontSize="sm" rounded="full" px="3" py="1">#{tag}</Box>
-                                        ))}
-                                    </HStack>
-                                </Stack>
-                            </Box>
-                        )}
-                    </Stack>
-                    {postDetail?.post_pets && postDetail.post_pets.length > 0 && (
-                        <Stack gap="5">
-                            <Separator borderColor="waba.border" />
-                            <Stack gap="0">
-                                <Text color="fg.subtle">COMPANIONS</Text>
-                                <Heading>이 게시글에 태그된 반려동물</Heading>
-                            </Stack>
-                            <HStack gap="10">
-                                {postDetail.post_pets.map((pet) => {
-                                    return (
-                                        <HStack key={pet.pet_id} gap="4">
-                                            <Avatar.Root>
-                                                {pet.avatar_url && (
-                                                    <Avatar.Image src={pet.avatar_url} />
-                                                )}
-                                                <Avatar.Fallback>{pet.name.charAt(0).toUpperCase()}</Avatar.Fallback>
-                                            </Avatar.Root>
-                                            <Heading fontSize="xl">{pet.name}</Heading>
-                                        </HStack>
-                                    )
-                                })}
-                            </HStack>
-                        </Stack>
-                    )}
-
-                    {/* 🏷️ 태그된 제품 목록 (실제 노출할 제품 핀이 있을 때만 Separator 및 목록 렌더링) */}
-                    {postDetail?.product_pins && postDetail.product_pins.filter((p) => p.pin_type !== 'PET').length > 0 && (
-                        <Stack gap="5">
-                            <Separator borderColor="waba.border" />
-                            <PostProductPinList pins={postDetail.product_pins} />
-                        </Stack>
-                    )}
-
-                    {/* 💬 댓글 섹션 (상단 구분선 포함) */}
-                    <Stack gap="5">
-                        <Separator borderColor="waba.border" />
+                    {/* 💬 댓글 섹션 (본문 아래 넓게 배치) */}
+                    <Stack gap="5" minW={0}>
+                        <Separator borderColor="var(--waba-line)" />
                         <Comment
                             postId={postId}
                             postAuthorId={postDetail?.user?.id || postDetail?.post?.user_id}
@@ -511,8 +287,7 @@ export default function PostDetail({ postId }: { postId: string }) {
                         />
                     </Stack>
                 </Stack>
-            </Container>
-
-        </Container>
+            </Box>
+        </Box>
     )
 }

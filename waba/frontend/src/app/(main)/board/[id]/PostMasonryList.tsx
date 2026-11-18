@@ -1,10 +1,10 @@
 import { PostDetail } from "@/interface";
-import { Avatar, Badge, Box, Heading, HStack, Image, Stack, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
+import { Badge, Box, Heading, HStack, Image, Stack, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
 import { UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LuUserRound } from "react-icons/lu";
 import SensitiveImageOverlay from "../../common/SensitiveImageOverlay";
+import UserAvatar from "../../common/UserAvatar";
 
 export default function PostMasonryList({ postList }: { postList: PostDetail[] }) {
 
@@ -73,13 +73,11 @@ export default function PostMasonryList({ postList }: { postList: PostDetail[] }
                                     )}
                                     <HStack justify="space-between" pt="2" fontSize={{ base: '11px', md: '12px' }} color="waba.faint" gap={1.5} minW={0}>
                                         <HStack minW={0} flex="1" gap={1.5}>
-                                            <Avatar.Root size="xs" flexShrink={0}>
-                                                {item.user?.profile_image_url ? (
-                                                    <Avatar.Image src={item.user.profile_image_url} />
-                                                ) : (
-                                                    <LuUserRound size={16} />
-                                                )}
-                                            </Avatar.Root>
+                                            <UserAvatar
+                                                src={item.user?.profile_image_url}
+                                                alt={item.user?.nickname || '프로필'}
+                                                size="xs"
+                                            />
                                             <Text fontWeight="600" truncate>@{item.user?.nickname}</Text>
                                         </HStack>
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { LuDog } from 'react-icons/lu';
 import {
     Avatar,
     Badge,
@@ -425,7 +426,9 @@ export default function JourneyClient({ slug }: { slug: string }) {
                                 {journey.pet.current_avatar_url ? (
                                     <Avatar.Image src={journey.pet.current_avatar_url} alt={journey.pet.name} />
                                 ) : (
-                                    <Avatar.Fallback>{journey.pet.name.charAt(0)}</Avatar.Fallback>
+                                    <Avatar.Fallback>
+                                        <LuDog size={22} />
+                                    </Avatar.Fallback>
                                 )}
                             </Avatar.Root>
                             <Box>

@@ -16,6 +16,12 @@ router.put('/pets/:petId', verifyToken, uploadPetAvatar, userController.updateUs
 router.delete('/pets/:petId', verifyToken, userController.deleteUserPet);
 router.post('/pets/:petId/restore', verifyToken, userController.restoreUserPet);
 
+// 통합 마이페이지 건강 수첩 히스토리 (다중 반려동물 지원)
+router.get('/histories', verifyToken, userController.getUserHistories);
+router.post('/histories', verifyToken, userController.createUserHistory);
+router.put('/histories/:historyId', verifyToken, userController.updateUserHistory);
+router.delete('/histories/:historyId', verifyToken, userController.deleteUserHistory);
+
 // 펫 라이프 & 메디컬 히스토리 수첩
 router.get('/pets/:petId/histories', verifyToken, userController.getPetHistories);
 router.post('/pets/:petId/histories', verifyToken, userController.createPetHistory);

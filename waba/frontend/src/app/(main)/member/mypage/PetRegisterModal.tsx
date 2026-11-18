@@ -22,6 +22,7 @@ import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 import { Pet, PetGender, PetSpecies } from "@/interface";
 import { UserProfileData } from "./ProfileSection";
+import UserAvatar from "../../common/UserAvatar";
 
 interface PetRegisterModalProps {
     open: boolean;
@@ -37,14 +38,14 @@ interface PetRegisterModalProps {
     }) => void;
 }
 
-const SPECIES_OPTIONS: { value: PetSpecies; label: string; emoji: string; sampleName: string; sampleBreed: string }[] = [
-    { value: 'DOG', label: '강아지', emoji: '🐶', sampleName: '보리', sampleBreed: '말티푸' },
-    { value: 'CAT', label: '고양이', emoji: '🐱', sampleName: '구름이', sampleBreed: '랙돌 (Ragdoll)' },
-    { value: 'RABBIT', label: '토끼', emoji: '🐰', sampleName: '모찌', sampleBreed: '홀랜드 롭이어' },
-    { value: 'HAMSTER', label: '햄스터', emoji: '🐹', sampleName: '해바라기', sampleBreed: '골든 햄스터' },
-    { value: 'GUINEAPIG', label: '기니피그', emoji: '🐹', sampleName: '땅콩이', sampleBreed: '아비시니안' },
-    { value: 'CHINCHILA', label: '친칠라', emoji: '🐭', sampleName: '먼지', sampleBreed: '실버 모자이크' },
-    { value: 'OTHER', label: '기타', emoji: '🐾', sampleName: '탄이', sampleBreed: '세부 품종 입력' },
+const SPECIES_OPTIONS: { value: PetSpecies; label: string; sampleName: string; sampleBreed: string }[] = [
+    { value: 'DOG', label: '강아지', sampleName: '보리', sampleBreed: '말티푸' },
+    { value: 'CAT', label: '고양이', sampleName: '구름이', sampleBreed: '랙돌 (Ragdoll)' },
+    { value: 'RABBIT', label: '토끼', sampleName: '모찌', sampleBreed: '홀랜드 롭이어' },
+    { value: 'HAMSTER', label: '햄스터', sampleName: '해바라기', sampleBreed: '골든 햄스터' },
+    { value: 'GUINEAPIG', label: '기니피그', sampleName: '땅콩이', sampleBreed: '아비시니안' },
+    { value: 'CHINCHILA', label: '친칠라', sampleName: '먼지', sampleBreed: '실버 모자이크' },
+    { value: 'OTHER', label: '기타', sampleName: '탄이', sampleBreed: '세부 품종 입력' },
 ];
 
 const GENDER_OPTIONS: { value: PetGender; label: string }[] = [
@@ -178,10 +179,6 @@ export default function PetRegisterModal({
             toaster.create({ title: '반려동물 이름을 입력해주세요.', type: 'error' });
             return;
         }
-        if (!trimmedBreed) {
-            toaster.create({ title: '세부 품종을 입력해주세요.', type: 'error' });
-            return;
-        }
 
         setIsSubmitting(true);
         try {
@@ -216,7 +213,7 @@ export default function PetRegisterModal({
                 toaster.create({
                     title: isEditMode
                         ? `${trimmedName}의 프로필이 수정되었습니다!`
-                        : `${trimmedName}의 가족 프로필이 등록되었습니다! 🐾`,
+                        : `${trimmedName}의 가족 프로필이 등록되었습니다.`,
                     description: reward > 0 ? `첫 반려동물 등록 리워드 +${reward.toLocaleString()}P가 지급되었습니다.` : undefined,
                     type: 'success',
                 });
@@ -256,7 +253,7 @@ export default function PetRegisterModal({
                         borderRadius="28px"
                         p={{ base: 5, md: 7 }}
                         boxShadow="0 24px 48px -12px rgba(26, 28, 30, 0.22)"
-                        bg="white"
+                        bg="var(--waba-card)"
                         position="relative"
                         css={{
                             scrollbarWidth: 'none',
@@ -272,28 +269,28 @@ export default function PetRegisterModal({
                             h="5px"
                             bgGradient="to-r"
                             gradientFrom="purple.300"
-                            gradientVia="waba.purple"
+                            gradientVia="#6338A9"
                             gradientTo="purple.400"
                         />
 
                         {/* 닫기 버튼 */}
                         <Dialog.CloseTrigger asChild position="absolute" top={5} right={5}>
-                            <CloseButton size="sm" borderRadius="full" bg="waba.subtle" />
+                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" />
                         </Dialog.CloseTrigger>
 
                         {/* 1. 모달 헤더 */}
                         <Dialog.Header p={0} mb={5} pr={8}>
                             <VStack align="start" gap={1}>
                                 <HStack gap={2.5} wrap="wrap">
-                                    <Dialog.Title fontSize="20px" fontWeight="800" color="waba.charcoal">
+                                    <Dialog.Title fontSize="20px" fontWeight="800" color="var(--waba-ink)">
                                         {isEditMode ? '반려동물 프로필 수정' : '새 반려동물 등록'}
                                     </Dialog.Title>
                                     {showFirstRewardBadge && (
                                         <Badge
-                                            bg="waba.purpleLight"
-                                            color="waba.purple"
+                                            bg="var(--waba-purple-soft)"
+                                            color="var(--waba-purple-text)"
                                             border="1px solid"
-                                            borderColor="purple.200"
+                                            borderColor="var(--waba-purple-border)"
                                             rounded="full"
                                             px={2.5}
                                             py={0.5}
@@ -304,7 +301,7 @@ export default function PetRegisterModal({
                                         </Badge>
                                     )}
                                 </HStack>
-                                <Text fontSize="12px" color="waba.faint">
+                                <Text fontSize="12px" color="var(--waba-ink-3)">
                                     함께하는 소중한 가족의 프로필을 등록해 주세요
                                 </Text>
                             </VStack>
@@ -320,22 +317,19 @@ export default function PetRegisterModal({
                                         cursor="pointer"
                                         onClick={() => fileInputRef.current?.click()}
                                     >
-                                        <Avatar.Root
-                                            size="2xl"
+                                        <UserAvatar
+                                            src={previewImageUrl}
+                                            alt="반려동물 아바타 미리보기"
                                             w="92px"
                                             h="92px"
-                                            borderRadius="full"
+                                            iconSize={34}
+                                            fallbackType="pet"
+                                            bg="var(--waba-purple-soft)"
+                                            color="var(--waba-purple-text)"
                                             border="3px solid"
-                                            borderColor="waba.purple"
-                                            bg="waba.purpleLight"
-                                            shadow="md"
-                                        >
-                                            {previewImageUrl ? (
-                                                <Avatar.Image src={previewImageUrl} alt="반려동물 아바타 미리보기" />
-                                            ) : (
-                                                <Text fontSize="38px">{currentSpeciesMeta.emoji}</Text>
-                                            )}
-                                        </Avatar.Root>
+                                            borderColor="var(--waba-purple-text)"
+                                            boxShadow="md"
+                                        />
 
                                         <IconButton
                                             aria-label="아바타 사진 업로드"
@@ -346,9 +340,9 @@ export default function PetRegisterModal({
                                             h="30px"
                                             minW="30px"
                                             borderRadius="full"
-                                            bg="waba.purple"
+                                            bg="#6338A9"
                                             color="white"
-                                            border="2px solid white"
+                                            border="2px solid" borderColor="var(--waba-card)"
                                             shadow="md"
                                             _hover={{ bg: '#522B8F', transform: 'scale(1.05)' }}
                                         >
@@ -368,9 +362,9 @@ export default function PetRegisterModal({
                                         <Button
                                             size="xs"
                                             variant="outline"
-                                            borderColor="waba.border"
-                                            bg="waba.subtle"
-                                            color="waba.charcoal"
+                                            borderColor="var(--waba-line)"
+                                            bg="var(--waba-surface)"
+                                            color="var(--waba-ink)"
                                             rounded="full"
                                             px={3.5}
                                             fontWeight="600"
@@ -383,7 +377,7 @@ export default function PetRegisterModal({
                                             <Button
                                                 size="xs"
                                                 variant="ghost"
-                                                color="waba.faint"
+                                                color="var(--waba-ink-3)"
                                                 rounded="full"
                                                 px={2.5}
                                                 fontSize="11px"
@@ -395,7 +389,7 @@ export default function PetRegisterModal({
                                         )}
                                     </HStack>
 
-                                    <Text fontSize="11px" color="waba.faint">
+                                    <Text fontSize="11px" color="var(--waba-ink-3)">
                                         최소 가로 150px · 1:1 정사각형 중앙 크롭
                                     </Text>
                                 </VStack>
@@ -403,10 +397,10 @@ export default function PetRegisterModal({
                                 {/* 반려동물 종류 (species) 선택 칩 */}
                                 <Box>
                                     <HStack gap={1} mb={2}>
-                                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                             반려동물 종류
                                         </Text>
-                                        <Text fontSize="13px" fontWeight="700" color="waba.purple">
+                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-purple-text)">
                                             *
                                         </Text>
                                     </HStack>
@@ -423,14 +417,14 @@ export default function PetRegisterModal({
                                                     fontSize="12px"
                                                     fontWeight={selected ? '700' : '600'}
                                                     border="1.5px solid"
-                                                    borderColor={selected ? 'waba.purple' : 'waba.border'}
-                                                    bg={selected ? 'waba.purpleLight' : 'white'}
-                                                    color={selected ? 'waba.purple' : 'waba.charcoal'}
+                                                    borderColor={selected ? '#6338A9' : 'var(--waba-line)'}
+                                                    bg={selected ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                                    color={selected ? '#6338A9' : 'var(--waba-ink)'}
                                                     transition="all 0.15s"
-                                                    _hover={{ borderColor: 'waba.purple' }}
+                                                    _hover={{ borderColor: '#6338A9' }}
                                                     onClick={() => setSpecies(item.value)}
                                                 >
-                                                    {item.emoji} {item.label}
+                                                    {item.label}
                                                 </Box>
                                             );
                                         })}
@@ -442,20 +436,20 @@ export default function PetRegisterModal({
                                             mt={3}
                                             p={3.5}
                                             borderRadius="16px"
-                                            bg="purple.50"
+                                            bg="var(--waba-purple-soft)"
                                             border="1.5px solid"
-                                            borderColor="purple.200"
+                                            borderColor="var(--waba-purple-border)"
                                         >
                                             <HStack justify="space-between" mb={1.5}>
                                                 <HStack gap={1}>
-                                                    <Text fontSize="13px" fontWeight="700" color="purple.900">
-                                                        🐾 어떤 동물인가요? (동물 종류)
+                                                    <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
+                                                        어떤 동물인가요? (동물 종류)
                                                     </Text>
-                                                    <Text fontSize="13px" fontWeight="700" color="waba.purple">
+                                                    <Text fontSize="13px" fontWeight="700" color="var(--waba-purple-text)">
                                                         *
                                                     </Text>
                                                 </HStack>
-                                                <Text fontSize="11px" color="purple.600" fontWeight="600">
+                                                <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600">
                                                     직접 입력
                                                 </Text>
                                             </HStack>
@@ -466,14 +460,14 @@ export default function PetRegisterModal({
                                                 maxLength={30}
                                                 h="42px"
                                                 borderRadius="12px"
-                                                bg="white"
+                                                bg="var(--waba-card)"
                                                 border="1px solid"
-                                                borderColor="purple.200"
+                                                borderColor="var(--waba-purple-border)"
                                                 fontSize="14px"
                                                 fontWeight="600"
                                                 px={3.5}
                                                 _focus={{
-                                                    borderColor: 'waba.purple',
+                                                    borderColor: '#6338A9',
                                                     outline: 'none',
                                                 }}
                                             />
@@ -486,14 +480,14 @@ export default function PetRegisterModal({
                                     <Box>
                                         <HStack justify="space-between" mb={1.5}>
                                             <HStack gap={1}>
-                                                <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                                <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                                     이름
                                                 </Text>
-                                                <Text fontSize="13px" fontWeight="700" color="waba.purple">
+                                                <Text fontSize="13px" fontWeight="700" color="var(--waba-purple-text)">
                                                     *
                                                 </Text>
                                             </HStack>
-                                            <Text fontSize="11px" color="waba.faint">최대 20자</Text>
+                                            <Text fontSize="11px" color="var(--waba-ink-3)">최대 20자</Text>
                                         </HStack>
                                         <Input
                                             value={name}
@@ -502,15 +496,15 @@ export default function PetRegisterModal({
                                             maxLength={20}
                                             h="42px"
                                             borderRadius="14px"
-                                            bg="waba.subtle"
+                                            bg="var(--waba-surface)"
                                             border="1px solid"
-                                            borderColor="waba.border"
+                                            borderColor="var(--waba-line)"
                                             fontSize="14px"
                                             fontWeight="600"
                                             px={3.5}
                                             _focus={{
-                                                bg: 'white',
-                                                borderColor: 'waba.purple',
+                                                bg: 'var(--waba-card)',
+                                                borderColor: '#6338A9',
                                                 outline: 'none',
                                             }}
                                         />
@@ -518,15 +512,10 @@ export default function PetRegisterModal({
 
                                     <Box>
                                         <HStack justify="space-between" mb={1.5}>
-                                            <HStack gap={1}>
-                                                <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
-                                                    세부 품종
-                                                </Text>
-                                                <Text fontSize="13px" fontWeight="700" color="waba.purple">
-                                                    *
-                                                </Text>
-                                            </HStack>
-                                            <Text fontSize="11px" color="waba.faint">묘종/견종 등</Text>
+                                            <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
+                                                세부 품종
+                                            </Text>
+                                            <Text fontSize="11px" color="var(--waba-ink-3)">선택 · 묘종/견종 등</Text>
                                         </HStack>
                                         <Input
                                             value={breed}
@@ -535,15 +524,15 @@ export default function PetRegisterModal({
                                             maxLength={40}
                                             h="42px"
                                             borderRadius="14px"
-                                            bg="waba.subtle"
+                                            bg="var(--waba-surface)"
                                             border="1px solid"
-                                            borderColor="waba.border"
+                                            borderColor="var(--waba-line)"
                                             fontSize="14px"
                                             fontWeight="600"
                                             px={3.5}
                                             _focus={{
-                                                bg: 'white',
-                                                borderColor: 'waba.purple',
+                                                bg: 'var(--waba-card)',
+                                                borderColor: '#6338A9',
                                                 outline: 'none',
                                             }}
                                         />
@@ -554,7 +543,7 @@ export default function PetRegisterModal({
                                 <Grid templateColumns={{ base: '1fr', sm: '1fr 1fr' }} gap={3.5}>
                                     <Box>
                                         <HStack justify="space-between" mb={1.5}>
-                                            <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                            <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                                 생년월일
                                             </Text>
                                             <HStack
@@ -568,8 +557,8 @@ export default function PetRegisterModal({
                                                     h="14px"
                                                     borderRadius="4px"
                                                     border="1.5px solid"
-                                                    borderColor={isBirthEstimated ? 'waba.purple' : 'waba.border'}
-                                                    bg={isBirthEstimated ? 'waba.purple' : 'white'}
+                                                    borderColor={isBirthEstimated ? '#6338A9' : 'var(--waba-line)'}
+                                                    bg={isBirthEstimated ? '#6338A9' : 'var(--waba-card)'}
                                                     align="center"
                                                     justify="center"
                                                     color="white"
@@ -577,7 +566,7 @@ export default function PetRegisterModal({
                                                 >
                                                     {isBirthEstimated && <Check size={10} strokeWidth={3} />}
                                                 </Flex>
-                                                <Text fontSize="11px" fontWeight="600" color={isBirthEstimated ? 'waba.purple' : 'waba.muted'}>
+                                                <Text fontSize="11px" fontWeight="600" color={isBirthEstimated ? '#6338A9' : 'var(--waba-ink-3)'}>
                                                     추정 (정확한 생일을 모름)
                                                 </Text>
                                             </HStack>
@@ -589,15 +578,15 @@ export default function PetRegisterModal({
                                             onChange={(e) => setBirthDate(e.target.value)}
                                             h="42px"
                                             borderRadius="14px"
-                                            bg="waba.subtle"
+                                            bg="var(--waba-surface)"
                                             border="1px solid"
-                                            borderColor="waba.border"
+                                            borderColor="var(--waba-line)"
                                             fontSize="13px"
                                             fontWeight="600"
                                             px={3.5}
                                             _focus={{
-                                                bg: 'white',
-                                                borderColor: 'waba.purple',
+                                                bg: 'var(--waba-card)',
+                                                borderColor: '#6338A9',
                                                 outline: 'none',
                                             }}
                                         />
@@ -605,7 +594,7 @@ export default function PetRegisterModal({
 
                                     <Box>
                                         <HStack justify="space-between" mb={1.5}>
-                                            <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                            <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                                 성별
                                             </Text>
                                             <HStack
@@ -618,22 +607,22 @@ export default function PetRegisterModal({
                                                     w="15px"
                                                     h="15px"
                                                     borderRadius="4px"
-                                                    bg={isNeutered ? 'waba.purple' : 'white'}
+                                                    bg={isNeutered ? '#6338A9' : 'var(--waba-card)'}
                                                     border="1.5px solid"
-                                                    borderColor={isNeutered ? 'waba.purple' : 'gray.300'}
+                                                    borderColor={isNeutered ? '#6338A9' : 'var(--waba-line)'}
                                                     align="center"
                                                     justify="center"
                                                     color="white"
                                                 >
                                                     {isNeutered && <Check size={10} strokeWidth={3} />}
                                                 </Flex>
-                                                <Text fontSize="11px" fontWeight="600" color={isNeutered ? 'waba.purple' : 'waba.faint'}>
+                                                <Text fontSize="11px" fontWeight="600" color={isNeutered ? '#6338A9' : 'var(--waba-ink-3)'}>
                                                     중성화 완료
                                                 </Text>
                                             </HStack>
                                         </HStack>
 
-                                        <Grid templateColumns="repeat(3, 1fr)" gap={1.5} h="42px" p={1} bg="waba.subtle" borderRadius="14px" border="1px solid" borderColor="waba.border">
+                                        <Grid templateColumns="repeat(3, 1fr)" gap={1.5} h="42px" p={1} bg="var(--waba-surface)" borderRadius="14px" border="1px solid" borderColor="var(--waba-line)">
                                             {GENDER_OPTIONS.map((g) => {
                                                 const active = gender === g.value;
                                                 return (
@@ -643,8 +632,8 @@ export default function PetRegisterModal({
                                                         borderRadius="10px"
                                                         fontSize="12px"
                                                         fontWeight={active ? '700' : '600'}
-                                                        bg={active ? 'white' : 'transparent'}
-                                                        color={active ? 'waba.purple' : 'waba.faint'}
+                                                        bg={active ? 'var(--waba-card)' : 'transparent'}
+                                                        color={active ? '#6338A9' : 'var(--waba-ink-3)'}
                                                         boxShadow={active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none'}
                                                         transition="all 0.15s"
                                                         onClick={() => setGender(g.value)}
@@ -667,8 +656,8 @@ export default function PetRegisterModal({
                                         p={3.5}
                                         borderRadius="16px"
                                         border="1.5px solid"
-                                        borderColor={(existingPetsCount === 0 || isPrimary) ? 'waba.purple' : 'waba.border'}
-                                        bg={(existingPetsCount === 0 || isPrimary) ? 'waba.purpleLight' : 'waba.subtle'}
+                                        borderColor={(existingPetsCount === 0 || isPrimary) ? '#6338A9' : 'var(--waba-line)'}
+                                        bg={(existingPetsCount === 0 || isPrimary) ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
                                         transition="all 0.2s"
                                         onClick={() => {
                                             if (existingPetsCount > 0) setIsPrimary(!isPrimary);
@@ -679,9 +668,9 @@ export default function PetRegisterModal({
                                                 w="20px"
                                                 h="20px"
                                                 borderRadius="6px"
-                                                bg={(existingPetsCount === 0 || isPrimary) ? 'waba.purple' : 'white'}
+                                                bg={(existingPetsCount === 0 || isPrimary) ? '#6338A9' : 'var(--waba-card)'}
                                                 border="1.5px solid"
-                                                borderColor={(existingPetsCount === 0 || isPrimary) ? 'waba.purple' : 'gray.300'}
+                                                borderColor={(existingPetsCount === 0 || isPrimary) ? '#6338A9' : 'var(--waba-line)'}
                                                 align="center"
                                                 justify="center"
                                                 color="white"
@@ -693,57 +682,14 @@ export default function PetRegisterModal({
                                             <VStack align="start" gap={0.5} flex={1}>
                                                 <HStack gap={1.5}>
                                                     <Crown size={14} color="#6338A9" />
-                                                    <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                                    <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                                         대표 반려동물로 지정
                                                     </Text>
                                                 </HStack>
-                                                <Text fontSize="11px" color="waba.faint" lineHeight="1.4">
+                                                <Text fontSize="11px" color="var(--waba-ink-3)" lineHeight="1.4">
                                                     {existingPetsCount === 0
                                                         ? '첫 번째로 등록하는 반려동물은 자동으로 대표 가족으로 지정됩니다.'
                                                         : '마이페이지 및 커뮤니티 활동 시 가장 먼저 대표 가족으로 표시됩니다.'}
-                                                </Text>
-                                            </VStack>
-                                        </HStack>
-                                    </Box>
-
-                                    {/* 카드 2: AI 맞춤 케어·리빙 데이터 활용 동의 */}
-                                    <Box
-                                        as="button"
-                                        w="full"
-                                        textAlign="left"
-                                        p={3.5}
-                                        borderRadius="16px"
-                                        border="1.5px solid"
-                                        borderColor={aiConsent ? 'purple.200' : 'waba.border'}
-                                        bg={aiConsent ? 'purple.50/50' : 'waba.subtle'}
-                                        transition="all 0.2s"
-                                        onClick={() => setAiConsent(!aiConsent)}
-                                    >
-                                        <HStack align="start" gap={3}>
-                                            <Flex
-                                                w="20px"
-                                                h="20px"
-                                                borderRadius="6px"
-                                                bg={aiConsent ? 'waba.purple' : 'white'}
-                                                border="1.5px solid"
-                                                borderColor={aiConsent ? 'waba.purple' : 'gray.300'}
-                                                align="center"
-                                                justify="center"
-                                                color="white"
-                                                mt={0.5}
-                                                flexShrink={0}
-                                            >
-                                                {aiConsent && <Check size={13} strokeWidth={3} />}
-                                            </Flex>
-                                            <VStack align="start" gap={0.5} flex={1}>
-                                                <HStack gap={1.5}>
-                                                    <Sparkles size={14} color="#6338A9" />
-                                                    <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
-                                                        AI 맞춤 케어·리빙 데이터 활용 동의 (선택)
-                                                    </Text>
-                                                </HStack>
-                                                <Text fontSize="11px" color="waba.faint" lineHeight="1.4">
-                                                    체중·품종·건강 이력을 기반으로 맞춤 가구 사이즈와 케어 솔루션을 추천받습니다.
                                                 </Text>
                                             </VStack>
                                         </HStack>
@@ -753,32 +699,31 @@ export default function PetRegisterModal({
                         </Dialog.Body>
 
                         {/* 3. 모달 푸터 액션 바 */}
-                        <Dialog.Footer p={0} mt={6} pt={4} borderTop="1px solid" borderColor="waba.border">
+                        <Dialog.Footer p={0} mt={6} pt={4} borderTop="1px solid" borderColor="var(--waba-line)">
                             <HStack gap={2.5} justify="flex-end" w="full">
                                 <Button
                                     variant="ghost"
-                                    bg="waba.subtle"
-                                    color="waba.charcoal"
+                                    bg="var(--waba-surface)"
+                                    color="var(--waba-ink)"
                                     rounded="full"
                                     px={5}
                                     h="42px"
                                     fontSize="13px"
                                     fontWeight="600"
-                                    _hover={{ bg: 'gray.200' }}
+                                    _hover={{ bg: 'var(--waba-line)' }}
                                     onClick={() => onOpenChange(false)}
                                     disabled={isSubmitting}
                                 >
                                     취소
                                 </Button>
                                 <Button
-                                    bg="waba.charcoal"
-                                    color="white"
+                                    bg="#6338A9" color="white"
                                     rounded="full"
                                     px={6}
                                     h="42px"
                                     fontSize="13px"
                                     fontWeight="700"
-                                    _hover={{ bg: 'waba.purple' }}
+                                    _hover={{ bg: '#6338A9' }}
                                     onClick={handleSubmit}
                                     loading={isSubmitting}
                                 >

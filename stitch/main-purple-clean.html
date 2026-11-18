@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA Main — Pure White &amp; Purple Clean (Plan 1 Sidebar / Plan 2 Top Header)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --surface: #F7F7FA;
+      --ink: #111115;
+      --ink-2: #52525B;
+      --ink-3: #8E8E98;
+      --line: #ECECF2;
+      --purple: #7C5CFC;
+      --purple-hover: #6D4AFF;
+      --purple-soft: #F3F0FF;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #ECECF2;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: var(--surface); padding: 4px; border-radius: 999px; border: 1px solid var(--line); }
+    .studio-tab {
+      border: none; background: transparent; color: var(--ink-2);
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: var(--purple); color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .artboard { display: flex; flex-direction: column; gap: 12px; }
+    .art-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: var(--purple); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .frame-pc {
+      width: 1440px; background: var(--bg); border-radius: 20px; overflow: hidden;
+      border: 1px solid #DFDFE8; box-shadow: 0 24px 60px rgba(17,17,21,0.08);
+    }
+    .frame-mob {
+      width: 375px; background: var(--bg); border-radius: 32px; overflow: hidden;
+      border: 6px solid #111115; box-shadow: 0 24px 60px rgba(17,17,21,0.12);
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .artboard { display: none; }
+    body.single-mode .artboard.is-target { display: flex; }
+
+    /* Shared UI Elements */
+    .logo { font-size: 21px; font-weight: 800; letter-spacing: -0.04em; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+    .logo-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
+    .btn-purple {
+      background: var(--purple); color: #fff; border-radius: 999px;
+      font-size: 13px; font-weight: 700; padding: 10px 18px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .search-input {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+      height: 40px; padding: 0 16px; display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--ink-3);
+    }
+    .cat-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2);
+    }
+    .chip.on { background: var(--purple); color: #fff; }
+
+    /* Large Generous Cards (Snap + Community Story) */
+    .feed-cols-3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; align-items: start;
+    }
+    .feed-cols-2 {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; align-items: start;
+    }
+    .snap-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; overflow: hidden;
+    }
+    .snap-photo {
+      height: 290px; background: var(--surface); position: relative; overflow: hidden;
+    }
+    .snap-badge {
+      position: absolute; top: 14px; left: 14px;
+      background: rgba(255,255,255,0.92); color: var(--ink);
+      font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 999px;
+    }
+    .snap-body { padding: 18px 20px; }
+    .snap-title { font-size: 16px; font-weight: 700; line-height: 1.45; color: var(--ink); }
+    .snap-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 12px; font-size: 12px; color: var(--ink-3);
+    }
+
+    .post-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 22px;
+      display: flex; flex-direction: column; justify-content: space-between; gap: 16px;
+    }
+    .post-tag {
+      display: inline-block; align-self: flex-start;
+      background: var(--purple-soft); color: var(--purple);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    }
+    .post-title { font-size: 17px; font-weight: 700; line-height: 1.42; color: var(--ink); margin-top: 8px; }
+    .post-excerpt { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin-top: 8px; }
+    .post-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3);
+    }
+    .mini-thumb {
+      width: 68px; height: 68px; border-radius: 14px; background: var(--surface); flex-shrink: 0;
+    }
+
+    /* ============================================================
+       PLAN 1: LEFT SIDEBAR (Threads / Instagram Web)
+    ============================================================ */
+    .p1-shell {
+      display: grid; grid-template-columns: 248px 1fr; min-height: 880px;
+    }
+    .p1-sidebar {
+      border-right: 1px solid var(--line); padding: 28px 20px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      background: #fff;
+    }
+    .p1-nav { display: grid; gap: 6px; margin-top: 32px; }
+    .p1-nav-item {
+      padding: 12px 14px; border-radius: 14px; font-size: 15px; font-weight: 600;
+      color: var(--ink-2); display: flex; align-items: center; gap: 12px;
+    }
+    .p1-nav-item.on { background: var(--purple-soft); color: var(--purple); font-weight: 700; }
+    .p1-main {
+      padding: 28px 56px 56px; background: #fff; display: flex; flex-direction: column; gap: 28px;
+    }
+    .p1-topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    }
+
+    /* ============================================================
+       PLAN 2: CLEAN TOP HEADER
+    ============================================================ */
+    .p2-header {
+      height: 72px; padding: 0 64px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; background: #fff;
+    }
+    .p2-nav { display: flex; gap: 32px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
+    .p2-nav .on { color: var(--purple); font-weight: 700; }
+    .p2-main {
+      max-width: 1280px; margin: 0 auto; padding: 36px 40px 64px;
+      display: flex; flex-direction: column; gap: 32px;
+    }
+
+    /* ============================================================
+       MOBILE 375px (Plan 1 Bottom Bar / Plan 2 Top Drawer)
+    ============================================================ */
+    .mob-top {
+      height: 56px; padding: 0 18px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; background: #fff;
+    }
+    .mob-body { padding: 16px 16px 24px; display: grid; gap: 20px; background: #fff; }
+    .mob-bottom-nav {
+      height: 62px; border-top: 1px solid var(--line); background: #fff;
+      display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; text-align: center;
+      font-size: 10px; font-weight: 600; color: var(--ink-3);
+    }
+    .mob-bottom-nav .on { color: var(--purple); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">WABA PURE WHITE &amp; PURPLE</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">퓨어 화이트(#FFFFFF) + 딥 블랙(#111115) + WABA 퍼플(#7C5CFC)</div>
+        <div style="font-size:12px;color:var(--ink-3);">무거운 배너 제거 · 반려동물 스냅 &amp; 커뮤니티 글 중심 · 안1(좌측 사이드바) vs 안2(심플 상단 헤더)</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">All Views</button>
+      <button class="studio-tab" data-target="plan-1-pc" onclick="setView('plan-1-pc')">안 1 PC (사이드바)</button>
+      <button class="studio-tab" data-target="plan-2-pc" onclick="setView('plan-2-pc')">안 2 PC (상단 헤더)</button>
+      <button class="studio-tab" data-target="plan-1-mob" onclick="setView('plan-1-mob')">안 1 모바일</button>
+      <button class="studio-tab" data-target="plan-2-mob" onclick="setView('plan-2-mob')">안 2 모바일</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+
+    <!-- ============================================================
+         PLAN 1 PC: LEFT SIDEBAR (Threads / Instagram Web)
+    ============================================================ -->
+    <section class="artboard" id="artboard-plan-1-pc">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">안 1 · PC 1440px</span> 좌측 사이드바형 (인스타 / 스레드 웹 감성)
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">좌측 고정 내비 &amp; 보라색 `+ 올리기` · 우측 시원한 여백의 스냅 &amp; 질문/치료기 피드</span>
+      </div>
+      <div class="frame-pc">
+        <div class="p1-shell">
+          <aside class="p1-sidebar">
+            <div>
+              <div class="logo" style="padding:0 12px;">WABA<span class="logo-dot"></span></div>
+              <nav class="p1-nav">
+                <div class="p1-nav-item on">🏠 홈 피드</div>
+                <div class="p1-nav-item">💬 커뮤니티</div>
+                <div class="p1-nav-item">🌿 케어 저니</div>
+                <div class="p1-nav-item">📔 건강 수첩</div>
+              </nav>
+              <div style="margin-top:24px;">
+                <div class="btn-purple" style="width:100%;">+ 올리기</div>
+              </div>
+            </div>
+            <div style="padding:12px;border-radius:14px;background:var(--surface);display:flex;align-items:center;gap:10px;">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--purple-soft);color:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;">몽</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">몽글맘</div>
+                <div style="font-size:11px;color:var(--ink-3);">말티푸 3.8kg</div>
+              </div>
+            </div>
+          </aside>
+
+          <main class="p1-main">
+            <div class="p1-topbar">
+              <div class="cat-chips">
+                <span class="chip on">전체</span>
+                <span class="chip">인기 스냅</span>
+                <span class="chip">건강 Q&amp;A</span>
+                <span class="chip">케어 저니 · 치료기</span>
+              </div>
+              <div class="search-input" style="width:280px;">🔍 사진, 질문, 치료기 검색</div>
+            </div>
+
+            <!-- Generous 3-Col Mixed Snap + Community Feed -->
+            <div class="feed-cols-3">
+              <!-- Snap 1 -->
+              <article class="snap-card">
+                <div class="snap-photo" style="background:linear-gradient(155deg,#EFEAE0,#DCD2C2);">
+                  <svg viewBox="0 0 320 290" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+                    <rect width="320" height="290" fill="#EFEAE0"/>
+                    <rect x="0" y="210" width="320" height="80" fill="#D4C3AC"/>
+                    <rect x="44" y="135" width="210" height="78" rx="22" fill="#FAF8F4"/>
+                    <ellipse cx="220" cy="222" rx="54" ry="18" fill="#E6E0F8"/>
+                    <circle cx="218" cy="202" r="16" fill="#A97E58"/>
+                  </svg>
+                  <span class="snap-badge">🐾 몽글 · 말티푸</span>
+                </div>
+                <div class="snap-body">
+                  <div class="snap-title">햇살이 가득 들어오는 거실 창가, 몽글이의 오후 낮잠 자리</div>
+                  <div class="snap-meta"><span>몽글맘</span><span>♥ 128 · 💬 14</span></div>
+                </div>
+              </article>
+
+              <!-- Community Q&A Highlight Card -->
+              <article class="post-card" style="min-height:404px;">
+                <div>
+                  <span class="post-tag">건강 Q&amp;A · 질문</span>
+                  <div style="display:flex;gap:14px;align-items:flex-start;margin-top:8px;">
+                    <div style="flex:1;">
+                      <h3 class="post-title">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</h3>
+                    </div>
+                  </div>
+                  <p class="post-excerpt">
+                    어제 정기검진에서 슬개골 2기 진단을 받았어요. 평소 하루 40분 정도 산책했는데, 경사진 길만 피하면 되는지 아니면 시간을 반으로 줄여야 하는지 경험 있으신 분 조언 부탁드려요!
+                  </p>
+                  <div style="margin-top:16px;padding:12px 14px;background:var(--surface);border-radius:14px;font-size:12px;color:var(--ink-2);">
+                    <strong style="color:var(--purple);">✓ 김다은 수의사 답변:</strong> 평지 위주 15~20분씩 나누어 걷는 것이 관절 부담을...
+                  </div>
+                </div>
+                <div class="post-foot">
+                  <span>코코네 · 18분 전</span>
+                  <span>💬 28 · ♥ 64</span>
+                </div>
+              </article>
+
+              <!-- Snap 2 -->
+              <article class="snap-card">
+                <div class="snap-photo" style="background:linear-gradient(155deg,#E7E3F5,#D4CCE9);">
+                  <svg viewBox="0 0 320 290" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+                    <rect width="320" height="290" fill="#ECE9F6"/>
+                    <rect x="0" y="210" width="320" height="80" fill="#D5CFE8"/>
+                    <circle cx="160" cy="175" r="46" fill="#FAF9FD"/>
+                    <circle cx="160" cy="164" r="20" fill="#B58A64"/>
+                  </svg>
+                  <span class="snap-badge">🐩 보리 · 푸들</span>
+                </div>
+                <div class="snap-body">
+                  <div class="snap-title">노령견 보리를 위한 미끄럼 방지 러그 깔아준 첫날 반응</div>
+                  <div class="snap-meta"><span>보리집사</span><span>♥ 94 · 💬 19</span></div>
+                </div>
+              </article>
+
+              <!-- Community Care Journey Card -->
+              <article class="post-card">
+                <div style="display:flex;gap:14px;align-items:center;">
+                  <div style="flex:1;">
+                    <span class="post-tag">케어 저니 · 치료기</span>
+                    <h3 class="post-title">노령견 디스크 수술 없이 재활 8주차 기록</h3>
+                  </div>
+                  <div class="mini-thumb" style="background:linear-gradient(145deg,#E8E4F8,#D6CFF2);"></div>
+                </div>
+                <p class="post-excerpt">주 2회 수중 트레드밀과 집에서 매일 해준 10분 온찜질 루틴 덕분에 뒷다리 힘이 많이 돌아왔습니다.</p>
+                <div class="post-foot">
+                  <span>두부네 · DAY 56</span>
+                  <span>💬 41 · ♥ 152</span>
+                </div>
+              </article>
+
+              <!-- Snap 3 -->
+              <article class="snap-card">
+                <div class="snap-photo" style="height:220px;background:linear-gradient(155deg,#E5ECE8,#CFDDD5);">
+                  <span class="snap-badge">🐈 루이 · 브숏</span>
+                </div>
+                <div class="snap-body">
+                  <div class="snap-title">고양이와 강아지가 같은 소파에서 낮잠 자는 순간</div>
+                  <div class="snap-meta"><span>루이맘</span><span>♥ 112 · 💬 8</span></div>
+                </div>
+              </article>
+
+              <!-- Community Review Card -->
+              <article class="post-card">
+                <div style="display:flex;gap:14px;align-items:center;">
+                  <div style="flex:1;">
+                    <span class="post-tag">후기 · 식단</span>
+                    <h3 class="post-title">눈물 자국 잡으려고 사료 바꾼 4주차 솔직 후기</h3>
+                  </div>
+                  <div class="mini-thumb" style="background:linear-gradient(145deg,#F0ECE4,#DFD7C8);"></div>
+                </div>
+                <p class="post-excerpt">가수분해 단일 단백질 사료로 바꾼 뒤 3주차부터 눈물량이 절반 가까이 줄어든 변화 기록입니다.</p>
+                <div class="post-foot">
+                  <span>모찌네 · 1시간 전</span>
+                  <span>💬 19 · ♥ 73</span>
+                </div>
+              </article>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         PLAN 2 PC: CLEAN TOP HEADER
+    ============================================================ -->
+    <section class="artboard" id="artboard-plan-2-pc">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">안 2 · PC 1440px</span> 심플 상단 일자형 헤더
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">맨 위 1줄 깔끔한 화이트 헤더 + 아래 넓은 여백의 3열 스냅·커뮤니티 피드</span>
+      </div>
+      <div class="frame-pc">
+        <header class="p2-header">
+          <div style="display:flex;align-items:center;gap:40px;">
+            <div class="logo">WABA<span class="logo-dot"></span></div>
+            <nav class="p2-nav">
+              <span class="on">홈</span>
+              <span>커뮤니티</span>
+              <span>케어 저니</span>
+              <span>건강 수첩</span>
+            </nav>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="search-input" style="width:280px;">🔍 사진, 질문, 치료기 검색</div>
+            <span class="btn-purple">+ 올리기</span>
+          </div>
+        </header>
+
+        <main class="p2-main">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="cat-chips">
+              <span class="chip on">전체</span>
+              <span class="chip">인기 스냅</span>
+              <span class="chip">건강 Q&amp;A</span>
+              <span class="chip">케어 저니 · 치료기</span>
+            </div>
+            <span style="font-size:13px;color:var(--ink-3);">최신 인기순</span>
+          </div>
+
+          <div class="feed-cols-3">
+            <article class="snap-card">
+              <div class="snap-photo" style="background:linear-gradient(155deg,#EFEAE0,#DCD2C2);">
+                <svg viewBox="0 0 320 290" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+                  <rect width="320" height="290" fill="#EFEAE0"/>
+                  <rect x="0" y="210" width="320" height="80" fill="#D4C3AC"/>
+                  <rect x="44" y="135" width="210" height="78" rx="22" fill="#FAF8F4"/>
+                  <ellipse cx="220" cy="222" rx="54" ry="18" fill="#E6E0F8"/>
+                  <circle cx="218" cy="202" r="16" fill="#A97E58"/>
+                </svg>
+                <span class="snap-badge">🐾 몽글 · 말티푸</span>
+              </div>
+              <div class="snap-body">
+                <div class="snap-title">햇살이 가득 들어오는 거실 창가, 몽글이의 오후 낮잠 자리</div>
+                <div class="snap-meta"><span>몽글맘</span><span>♥ 128 · 💬 14</span></div>
+              </div>
+            </article>
+
+            <article class="post-card" style="min-height:404px;">
+              <div>
+                <span class="post-tag">건강 Q&amp;A · 질문</span>
+                <h3 class="post-title">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</h3>
+                <p class="post-excerpt">
+                  어제 정기검진에서 슬개골 2기 진단을 받았어요. 평소 하루 40분 정도 산책했는데, 경사진 길만 피하면 되는지 아니면 시간을 반으로 줄여야 하는지 조언 부탁드려요!
+                </p>
+                <div style="margin-top:16px;padding:12px 14px;background:var(--surface);border-radius:14px;font-size:12px;color:var(--ink-2);">
+                  <strong style="color:var(--purple);">✓ 김다은 수의사 답변:</strong> 평지 위주 15~20분씩 나누어 걷는 것이 관절 부담을...
+                </div>
+              </div>
+              <div class="post-foot"><span>코코네 · 18분 전</span><span>💬 28 · ♥ 64</span></div>
+            </article>
+
+            <article class="snap-card">
+              <div class="snap-photo" style="background:linear-gradient(155deg,#E7E3F5,#D4CCE9);">
+                <svg viewBox="0 0 320 290" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+                  <rect width="320" height="290" fill="#ECE9F6"/>
+                  <rect x="0" y="210" width="320" height="80" fill="#D5CFE8"/>
+                  <circle cx="160" cy="175" r="46" fill="#FAF9FD"/>
+                  <circle cx="160" cy="164" r="20" fill="#B58A64"/>
+                </svg>
+                <span class="snap-badge">🐩 보리 · 푸들</span>
+              </div>
+              <div class="snap-body">
+                <div class="snap-title">노령견 보리를 위한 미끄럼 방지 러그 깔아준 첫날 반응</div>
+                <div class="snap-meta"><span>보리집사</span><span>♥ 94 · 💬 19</span></div>
+              </div>
+            </article>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         MOBILE VIEWS (PLAN 1 & PLAN 2 SIDE BY SIDE IN OVERVIEW)
+    ============================================================ -->
+    <div style="display:flex;gap:48px;flex-wrap:wrap;justify-content:center;">
+      <!-- PLAN 1 MOBILE -->
+      <section class="artboard" id="artboard-plan-1-mob">
+        <div class="art-head">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;">
+            <span class="pill">안 1 · Mobile 375px</span> 상단 심플 바 + 하단 고정 네비
+          </div>
+        </div>
+        <div class="frame-mob">
+          <div class="mob-top">
+            <div class="logo" style="font-size:18px;">WABA<span class="logo-dot"></span></div>
+            <div style="display:flex;gap:12px;font-size:16px;"><span>🔍</span><span>🔔</span></div>
+          </div>
+          <div class="mob-body">
+            <div class="cat-chips" style="gap:6px;">
+              <span class="chip on" style="padding:6px 12px;font-size:12px;">전체</span>
+              <span class="chip" style="padding:6px 12px;font-size:12px;">인기 스냅</span>
+              <span class="chip" style="padding:6px 12px;font-size:12px;">건강 Q&amp;A</span>
+            </div>
+            <article class="snap-card" style="border-radius:18px;">
+              <div class="snap-photo" style="height:240px;background:linear-gradient(155deg,#EFEAE0,#DCD2C2);">
+                <span class="snap-badge">🐾 몽글 · 말티푸</span>
+              </div>
+              <div class="snap-body" style="padding:14px 16px;">
+                <div class="snap-title" style="font-size:15px;">햇살이 가득 들어오는 거실 창가, 몽글이의 낮잠 자리</div>
+                <div class="snap-meta"><span>몽글맘</span><span>♥ 128 · 💬 14</span></div>
+              </div>
+            </article>
+            <article class="post-card" style="padding:16px;border-radius:18px;">
+              <div>
+                <span class="post-tag">건강 Q&amp;A</span>
+                <h3 class="post-title" style="font-size:15px;">3세 말티푸 슬개골 2기 진단 후 산책 시간 조절 팁</h3>
+                <p class="post-excerpt" style="font-size:12px;">평소 하루 40분 산책했는데 경사진 길만 피하면 될까요?</p>
+              </div>
+              <div class="post-foot" style="padding-top:10px;"><span>코코네</span><span>💬 28 · ♥ 64</span></div>
+            </article>
+          </div>
+          <nav class="mob-bottom-nav">
+            <span class="on">🏠<br/>홈</span>
+            <span>💬<br/>커뮤니티</span>
+            <span style="display:flex;justify-content:center;"><span class="btn-purple" style="padding:7px 14px;font-size:12px;">+</span></span>
+            <span>🌿<br/>케어저니</span>
+            <span>📔<br/>수첩</span>
+          </nav>
+        </div>
+      </section>
+
+      <!-- PLAN 2 MOBILE -->
+      <section class="artboard" id="artboard-plan-2-mob">
+        <div class="art-head">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;">
+            <span class="pill">안 2 · Mobile 375px</span> 상단 심플 바 + 우측 드로어
+          </div>
+        </div>
+        <div class="frame-mob">
+          <div class="mob-top">
+            <div class="logo" style="font-size:18px;">WABA<span class="logo-dot"></span></div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:16px;">🔍</span>
+              <span class="btn-purple" style="padding:6px 12px;font-size:11px;">+ 올리기</span>
+              <span style="font-size:18px;">☰</span>
+            </div>
+          </div>
+          <div class="mob-body" style="padding-bottom:36px;">
+            <div class="cat-chips" style="gap:6px;">
+              <span class="chip on" style="padding:6px 12px;font-size:12px;">전체</span>
+              <span class="chip" style="padding:6px 12px;font-size:12px;">인기 스냅</span>
+              <span class="chip" style="padding:6px 12px;font-size:12px;">건강 Q&amp;A</span>
+            </div>
+            <article class="snap-card" style="border-radius:18px;">
+              <div class="snap-photo" style="height:240px;background:linear-gradient(155deg,#EFEAE0,#DCD2C2);">
+                <span class="snap-badge">🐾 몽글 · 말티푸</span>
+              </div>
+              <div class="snap-body" style="padding:14px 16px;">
+                <div class="snap-title" style="font-size:15px;">햇살이 가득 들어오는 거실 창가, 몽글이의 낮잠 자리</div>
+                <div class="snap-meta"><span>몽글맘</span><span>♥ 128 · 💬 14</span></div>
+              </div>
+            </article>
+            <article class="post-card" style="padding:16px;border-radius:18px;">
+              <div>
+                <span class="post-tag">케어 저니 · 치료기</span>
+                <h3 class="post-title" style="font-size:15px;">노령견 디스크 수술 없이 재활 8주차 기록</h3>
+                <p class="post-excerpt" style="font-size:12px;">주 2회 수중 트레드밀과 매일 온찜질 루틴 공유합니다.</p>
+              </div>
+              <div class="post-foot" style="padding-top:10px;"><span>두부네</span><span>💬 41 · ♥ 152</span></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.artboard');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['plan-1-pc', 'plan-2-pc', 'plan-1-mob', 'plan-2-mob'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

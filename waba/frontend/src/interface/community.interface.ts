@@ -144,6 +144,10 @@ export interface Comment {
   content: string;
   /** 질문/고민(Q&A) 게시판에서 질문자가 채택한 답변 여부 */
   is_accepted: boolean | number;
+  /** 게시글 작성자 고정 댓글 여부 */
+  is_pinned?: boolean | number;
+  /** 고정 일시 */
+  pinned_at?: string | null;
   /** 익명 댓글 여부 */
   is_anonymous?: boolean | number;
   /** 댓글 공감(좋아요) 수 */

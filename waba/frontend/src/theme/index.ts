@@ -2,11 +2,40 @@ import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 
 const customConfig = defineConfig({
   globalCss: {
+    ':root': {
+      '--waba-bg': '#FFFFFF',
+      '--waba-surface': '#FAFBFD',
+      '--waba-card': '#FFFFFF',
+      '--waba-ink': '#111115',
+      '--waba-ink-2': '#4E4E58',
+      '--waba-ink-3': '#8E8E98',
+      '--waba-line': '#EAEAEF',
+      '--waba-purple': '#6338A9',
+      '--waba-purple-soft': '#F6EBFB',
+      '--waba-purple-text': '#6338A9',
+      '--waba-purple-border': '#E5D4F3',
+      '--waba-glass-btn': 'rgba(255, 255, 255, 0.92)',
+    },
+    '[data-theme="dark"]': {
+      '--waba-bg': '#0F1014',
+      '--waba-surface': '#171921',
+      '--waba-card': '#14161D',
+      '--waba-ink': '#F4F5F8',
+      '--waba-ink-2': '#A5A8B8',
+      '--waba-ink-3': '#727688',
+      '--waba-line': '#262936',
+      '--waba-purple': '#6338A9',
+      '--waba-purple-soft': '#261A3A',
+      '--waba-purple-text': '#A984EE',
+      '--waba-purple-border': '#3B285B',
+      '--waba-glass-btn': 'rgba(20, 22, 29, 0.88)',
+    },
     body: {
-      bg: '#F7F7F8',
-      color: '#141416',
+      bg: 'var(--waba-bg)',
+      color: 'var(--waba-ink)',
       letterSpacing: '-0.02em',
       fontFamily: `'Pretendard', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif`,
+      transition: 'background 0.2s ease, color 0.2s ease',
     },
   },
   theme: {

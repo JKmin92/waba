@@ -190,6 +190,18 @@ export const getPostList = async (req, res, next) => {
     }
 }
 
+const validateBoardIdForPublish = async (rawBoardId) => {
+    const trimmed = typeof rawBoardId === 'string' ? rawBoardId.trim() : '';
+    if (!trimmed) {
+        return { valid: false, message: '카테고리를 선택해주세요.' };
+    }
+    const exists = await postService.isValidBoardId(trimmed);
+    if (!exists) {
+        return { valid: false, message: '유효하지 않은 카테고리입니다.' };
+    }
+    return { valid: true, boardId: trimmed };
+};
+
 export const createPost = async (req, res, next) => {
     try {
         const userId = req.user?.userId;
@@ -201,7 +213,7 @@ export const createPost = async (req, res, next) => {
         }
         // Support both application/json and multipart/form-data
         let {
-            board_id = 'SNAP',
+            board_id,
             title = '',
             content,
             blocks,
@@ -212,6 +224,15 @@ export const createPost = async (req, res, next) => {
             auto_journal_pet_id,
             auto_journal_journey_id
         } = req.body;
+
+        const boardCheck = await validateBoardIdForPublish(board_id);
+        if (!boardCheck.valid) {
+            return res.status(400).json({
+                success: false,
+                message: boardCheck.message
+            });
+        }
+        board_id = boardCheck.boardId;
 
         let parsedBlocks = [];
         try {
@@ -324,7 +345,18 @@ export const saveDraft = async (req, res, next) => {
             });
         }
 
-        let { board_id = 'SNAP', title = '', content, blocks, selected_pets, tags, postId } = req.body;
+        let { board_id, title = '', content, blocks, selected_pets, tags, postId } = req.body;
+        const normalizedDraftBoardId = (typeof board_id === 'string' && board_id.trim()) ? board_id.trim() : null;
+        if (normalizedDraftBoardId) {
+            const exists = await postService.isValidBoardId(normalizedDraftBoardId);
+            if (!exists) {
+                return res.status(400).json({
+                    success: false,
+                    message: '유효하지 않은 카테고리입니다.'
+                });
+            }
+        }
+        board_id = normalizedDraftBoardId;
 
         let parsedBlocks = [];
         try {
@@ -661,7 +693,7 @@ export const updatePost = async (req, res, next) => {
         }
 
         const {
-            board_id = 'SNAP',
+            board_id: rawBoardId,
             title = '',
             content,
             blocks,
@@ -671,6 +703,12 @@ export const updatePost = async (req, res, next) => {
             auto_journal_pet_id,
             auto_journal_journey_id
         } = req.body;
+
+        const boardCheck = await validateBoardIdForPublish(rawBoardId);
+        if (!boardCheck.valid) {
+            return res.status(400).json({ success: false, message: boardCheck.message });
+        }
+        const board_id = boardCheck.boardId;
 
         const parseJson = (raw, fallback) => {
             try {
@@ -830,6 +868,37 @@ export const moderateImage = async (req, res, next) => {
             results
         });
     } catch (e) {
+        next(e);
+    }
+};
+
+// 작성자 댓글 고정/해제 토글 (최대 2개)
+export const togglePinComment = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+
+        const { id: postId, commentId } = req.params;
+        const result = await postService.togglePinComment(postId, commentId, userId);
+        return res.status(200).json({
+            success: true,
+            ...result
+        });
+    } catch (e) {
+        if (e.message === 'POST_NOT_FOUND') {
+            return res.status(404).json({ success: false, message: '게시글을 찾을 수 없습니다.' });
+        }
+        if (e.message === 'COMMENT_NOT_FOUND') {
+            return res.status(404).json({ success: false, message: '댓글을 찾을 수 없습니다.' });
+        }
+        if (e.message === 'FORBIDDEN') {
+            return res.status(403).json({ success: false, message: '게시글 작성자만 댓글을 고정할 수 있습니다.' });
+        }
+        if (e.message === 'PIN_LIMIT_EXCEEDED') {
+            return res.status(400).json({ success: false, message: '댓글은 최대 2개까지만 고정할 수 있습니다.' });
+        }
         next(e);
     }
 };

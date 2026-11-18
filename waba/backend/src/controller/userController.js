@@ -151,9 +151,6 @@ export const createUserPet = async (req, res, next) => {
         if (e.message === 'PET_NAME_REQUIRED') {
             return res.status(400).json({ success: false, message: '반려동물 이름을 입력해주세요.' });
         }
-        if (e.message === 'PET_BREED_REQUIRED') {
-            return res.status(400).json({ success: false, message: '세부 품종을 입력해주세요.' });
-        }
         if (e.message && e.message.includes('최소 가로 150px')) {
             return res.status(400).json({ success: false, message: e.message });
         }
@@ -187,9 +184,6 @@ export const updateUserPet = async (req, res, next) => {
         }
         if (e.message === 'PET_NAME_REQUIRED') {
             return res.status(400).json({ success: false, message: '반려동물 이름을 입력해주세요.' });
-        }
-        if (e.message === 'PET_BREED_REQUIRED') {
-            return res.status(400).json({ success: false, message: '세부 품종을 입력해주세요.' });
         }
         if (e.message && e.message.includes('최소 가로 150px')) {
             return res.status(400).json({ success: false, message: e.message });
@@ -243,6 +237,99 @@ export const restoreUserPet = async (req, res, next) => {
         }
         if (e.message === 'PET_NOT_DELETED') {
             return res.status(400).json({ success: false, message: '삭제된 상태가 아닌 반려동물입니다.' });
+        }
+        next(e);
+    }
+};
+
+export const getUserHistories = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const histories = await userService.getUserHistories(userId);
+        return res.status(200).json({ success: true, histories });
+    } catch (e) {
+        next(e);
+    }
+};
+
+export const createUserHistory = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const history = await userService.createUserHistory(userId, req.body);
+        return res.status(201).json({
+            success: true,
+            message: '히스토리가 성공적으로 등록되었습니다.',
+            history
+        });
+    } catch (e) {
+        if (e.message === 'PET_IDS_REQUIRED') {
+            return res.status(400).json({ success: false, message: '최소 1마리 이상의 반려동물을 선택해주세요.' });
+        }
+        if (e.message === 'PET_NOT_FOUND') {
+            return res.status(404).json({ success: false, message: '반려동물 정보를 찾을 수 없습니다.' });
+        }
+        if (e.message === 'EVENT_DATE_REQUIRED') {
+            return res.status(400).json({ success: false, message: '날짜를 입력해주세요.' });
+        }
+        if (e.message === 'TITLE_REQUIRED') {
+            return res.status(400).json({ success: false, message: '제목을 입력해주세요.' });
+        }
+        next(e);
+    }
+};
+
+export const updateUserHistory = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const { historyId } = req.params;
+        const history = await userService.updateUserHistory(userId, historyId, req.body);
+        return res.status(200).json({
+            success: true,
+            message: '히스토리가 성공적으로 수정되었습니다.',
+            history
+        });
+    } catch (e) {
+        if (e.message === 'PET_IDS_REQUIRED') {
+            return res.status(400).json({ success: false, message: '최소 1마리 이상의 반려동물을 선택해주세요.' });
+        }
+        if (e.message === 'PET_NOT_FOUND' || e.message === 'HISTORY_NOT_FOUND') {
+            return res.status(404).json({ success: false, message: '해당 기록을 찾을 수 없습니다.' });
+        }
+        if (e.message === 'EVENT_DATE_REQUIRED') {
+            return res.status(400).json({ success: false, message: '날짜를 입력해주세요.' });
+        }
+        if (e.message === 'TITLE_REQUIRED') {
+            return res.status(400).json({ success: false, message: '제목을 입력해주세요.' });
+        }
+        next(e);
+    }
+};
+
+export const deleteUserHistory = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const { historyId } = req.params;
+        const result = await userService.deleteUserHistory(userId, historyId);
+        return res.status(200).json({
+            success: true,
+            message: '히스토리가 삭제되었습니다.',
+            ...result
+        });
+    } catch (e) {
+        if (e.message === 'HISTORY_NOT_FOUND') {
+            return res.status(404).json({ success: false, message: '해당 기록을 찾을 수 없습니다.' });
         }
         next(e);
     }
@@ -435,10 +522,11 @@ export const getUserSimplePosts = async (req, res, next) => {
         if (!userId) {
             return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
         }
-        const posts = await userService.getUserSimplePosts(userId);
+        const { page = 1, limit = 10, q = '' } = req.query;
+        const result = await userService.getUserSimplePosts(userId, { page, limit, q });
         return res.status(200).json({
             success: true,
-            posts
+            ...result
         });
     } catch (e) {
         next(e);

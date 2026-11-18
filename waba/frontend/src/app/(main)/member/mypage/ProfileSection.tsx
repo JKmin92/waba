@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 import { User } from "@/interface";
+import UserAvatar from "../../common/UserAvatar";
 
 export interface UserProfileData extends User {
     post_count: number;
@@ -119,19 +120,16 @@ export default function ProfileSection({
             <Grid templateColumns={{ base: "1fr", lg: "1fr auto" }} gap={8} alignItems="center">
                 {/* 좌측: 아바타 및 회원 프로필 정보 */}
                 <HStack gap={{ base: 4, md: 6 }} align="start">
-                    <Avatar.Root
-                        size={{ base: "xl", md: "2xl" }}
-                        borderRadius="full"
+                    <UserAvatar
+                        src={profile?.profile_image_url}
+                        alt={profile?.nickname || '프로필'}
+                        w={{ base: "64px", md: "80px" }}
+                        h={{ base: "64px", md: "80px" }}
+                        iconSize={32}
                         border="3px solid"
                         borderColor="waba.purple"
-                        shadow="md"
-                    >
-                        {profile?.profile_image_url ? (
-                            <Avatar.Image src={profile.profile_image_url} alt={profile.nickname} />
-                        ) : (
-                            <LuUserRound size={26} />
-                        )}
-                    </Avatar.Root>
+                        boxShadow="md"
+                    />
 
                     <VStack align="start" gap={2} flex={1}>
                         <HStack gap={2} flexWrap="wrap">

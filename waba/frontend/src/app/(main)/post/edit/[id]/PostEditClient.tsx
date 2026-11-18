@@ -87,8 +87,12 @@ export default function PostEditClient({ postId }: { postId: string }) {
                         type: 'success',
                     });
                 } else if (journalResult?.created === true) {
+                    const createdCount = Number(journalResult?.created_count || 1);
                     toaster.create({
-                        title: '게시글이 수정되었고, AI 건강 수첩에 새 기록이 추가되었습니다.',
+                        title:
+                            createdCount > 1
+                                ? `게시글이 수정되었고, AI 건강 수첩에 ${createdCount}건의 기록이 자동 저장되었습니다.`
+                                : '게시글이 수정되었고, AI 건강 수첩에 새 기록이 추가되었습니다.',
                         type: 'success',
                     });
                 } else {

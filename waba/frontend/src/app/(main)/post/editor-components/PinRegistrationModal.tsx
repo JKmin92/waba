@@ -24,6 +24,7 @@ import {
     Search,
 } from 'lucide-react';
 import { ParsedExternalMetadata } from './types';
+import UserAvatar from '../../common/UserAvatar';
 
 interface PinRegistrationModalProps {
     open: boolean;
@@ -429,7 +430,6 @@ export default function PinRegistrationModal({
                                             <VStack gap={2} align="stretch">
                                                 {userPetsList.map((pet) => {
                                                     const isSelected = selectedPetForPin?.id === pet.id;
-                                                    const speciesIcon = pet.species === 'CAT' ? '🐱' : pet.species === 'DOG' ? '🐶' : pet.species === 'RABBIT' ? '🐰' : '🐾';
                                                     return (
                                                         <Box
                                                             key={pet.id}
@@ -447,13 +447,12 @@ export default function PinRegistrationModal({
                                                             _hover={{ bg: 'purple.50' }}
                                                         >
                                                             <HStack gap={3}>
-                                                                <Avatar.Root size="sm">
-                                                                    {pet.current_avatar_url ? (
-                                                                        <Avatar.Image src={pet.current_avatar_url} />
-                                                                    ) : (
-                                                                        <Avatar.Fallback>{speciesIcon}</Avatar.Fallback>
-                                                                    )}
-                                                                </Avatar.Root>
+                                                                <UserAvatar
+                                                                    src={pet.current_avatar_url}
+                                                                    alt={pet.name}
+                                                                    size="sm"
+                                                                    fallbackType="pet"
+                                                                />
                                                                 <Box>
                                                                     <HStack gap={1.5}>
                                                                         <Text fontSize="13px" fontWeight="700" color="waba.charcoal">

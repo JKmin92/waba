@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import {
     Avatar,
@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 import { UserProfileData } from "./ProfileSection";
+import UserAvatar from "../../common/UserAvatar";
 import { getRefreshToken, setAuthSession } from "@/utils/authUtils";
 
 interface ProfileEditModalProps {
@@ -242,19 +243,19 @@ export default function ProfileEditModal({
                         borderRadius="28px"
                         p={{ base: 6, md: 7 }}
                         boxShadow="0 24px 48px -12px rgba(26, 28, 30, 0.2)"
-                        bg="white"
+                        bg="var(--waba-card)"
                     >
                         {/* 닫기 버튼 */}
                         <Dialog.CloseTrigger asChild position="absolute" top={5} right={5}>
-                            <CloseButton size="sm" borderRadius="full" bg="waba.subtle" />
+                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" />
                         </Dialog.CloseTrigger>
 
                         {/* 모달 헤더 */}
                         <Dialog.Header p={0} mb={6}>
-                            <Dialog.Title fontSize="20px" fontWeight="800" color="waba.charcoal">
+                            <Dialog.Title fontSize="20px" fontWeight="800" color="var(--waba-ink)">
                                 프로필 수정
                             </Dialog.Title>
-                            <Text fontSize="12px" color="waba.faint" mt={0.5}>
+                            <Text fontSize="12px" color="var(--waba-ink-3)" mt={0.5}>
                                 WABA 커뮤니티에서 다른 집사들에게 보여질 프로필을 설정합니다
                             </Text>
                         </Dialog.Header>
@@ -268,21 +269,17 @@ export default function ProfileEditModal({
                                 {/* ============================================= */}
                                 <VStack gap={3} align="center" py={2}>
                                     <Box position="relative">
-                                        <Avatar.Root
-                                            size="2xl"
+                                        <UserAvatar
+                                            src={previewImageUrl}
+                                            alt="프로필 아바타"
                                             w="100px"
                                             h="100px"
-                                            borderRadius="full"
+                                            iconSize={44}
+                                            color="#6338A9"
                                             border="3px solid"
-                                            borderColor="waba.purple"
-                                            shadow="md"
-                                        >
-                                            {previewImageUrl ? (
-                                                <Avatar.Image src={previewImageUrl} alt="프로필 아바타" />
-                                            ) : (
-                                                <LuUserRound size={44} color="#6338A9" />
-                                            )}
-                                        </Avatar.Root>
+                                            borderColor="var(--waba-purple-text)"
+                                            boxShadow="md"
+                                        />
 
                                         {/* 카메라 오버레이 버튼 */}
                                         <IconButton
@@ -295,12 +292,12 @@ export default function ProfileEditModal({
                                             w="32px"
                                             h="32px"
                                             borderRadius="full"
-                                            bg="waba.purple"
+                                            bg="#6338A9"
                                             color="white"
-                                            border="2px solid white"
+                                            border="2px solid" borderColor="var(--waba-card)"
                                             shadow="sm"
                                             transition="all 0.2s"
-                                            _hover={{ transform: 'scale(1.1)', bg: 'waba.charcoal' }}
+                                            _hover={{ transform: 'scale(1.1)', bg: 'var(--waba-ink)' }}
                                         >
                                             <Camera size={16} />
                                         </IconButton>
@@ -324,8 +321,8 @@ export default function ProfileEditModal({
                                             px={3}
                                             h="30px"
                                             fontSize="12px"
-                                            borderColor="waba.border"
-                                            color="waba.charcoal"
+                                            borderColor="var(--waba-line)"
+                                            color="var(--waba-ink)"
                                             onClick={() => fileInputRef.current?.click()}
                                         >
                                             <Upload size={12} style={{ marginRight: '4px' }} />
@@ -341,7 +338,7 @@ export default function ProfileEditModal({
                                                 px={2.5}
                                                 h="30px"
                                                 fontSize="12px"
-                                                color="waba.faint"
+                                                color="var(--waba-ink-3)"
                                                 _hover={{ color: 'red.500', bg: 'red.50' }}
                                                 onClick={handleResetToDefaultImage}
                                             >
@@ -350,7 +347,7 @@ export default function ProfileEditModal({
                                         )}
                                     </HStack>
 
-                                    <Text fontSize="11px" color="waba.faint" textAlign="center">
+                                    <Text fontSize="11px" color="var(--waba-ink-3)" textAlign="center">
                                         최소 가로 150px 이상 · 1:1 정사각형 중앙 자동 크롭
                                     </Text>
                                 </VStack>
@@ -361,10 +358,10 @@ export default function ProfileEditModal({
                                 {/* ============================================= */}
                                 <VStack align="start" gap={1.5}>
                                     <HStack justify="space-between" w="full">
-                                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                             활동 닉네임 <Text as="span" color="red.500">*</Text>
                                         </Text>
-                                        <Text fontSize="11px" color="waba.faint">
+                                        <Text fontSize="11px" color="var(--waba-ink-3)">
                                             2~12자 이내
                                         </Text>
                                     </HStack>
@@ -378,12 +375,12 @@ export default function ProfileEditModal({
                                             borderColor={
                                                 nicknameStatus === 'available' ? 'green.500' :
                                                     nicknameStatus === 'duplicated' || nicknameStatus === 'invalid' ? 'red.400' :
-                                                        'waba.border'
+                                                        'var(--waba-line)'
                                             }
                                             fontSize="14px"
                                             h="44px"
                                             px={4}
-                                            _focus={{ borderColor: 'waba.purple' }}
+                                            _focus={{ borderColor: '#6338A9' }}
                                         />
 
                                         <Button
@@ -391,7 +388,7 @@ export default function ProfileEditModal({
                                             onClick={handleCheckNickname}
                                             loading={isCheckingNickname}
                                             disabled={nicknameStatus === 'same' || !nickname.trim()}
-                                            bg={nicknameStatus === 'available' ? 'green.600' : 'waba.charcoal'}
+                                            bg={nicknameStatus === 'available' ? 'green.600' : 'var(--waba-ink)'}
                                             color="white"
                                             rounded="16px"
                                             h="44px"
@@ -434,10 +431,10 @@ export default function ProfileEditModal({
                                 {/* ============================================= */}
                                 <VStack align="start" gap={1.5}>
                                     <HStack justify="space-between" w="full">
-                                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                             한 줄 소개 (Bio)
                                         </Text>
-                                        <Text fontSize="11px" color={bio.length > 150 ? 'red.500' : 'waba.faint'}>
+                                        <Text fontSize="11px" color={bio.length > 150 ? 'red.500' : 'var(--waba-ink-3)'}>
                                             {bio.length} / 150자
                                         </Text>
                                     </HStack>
@@ -447,12 +444,12 @@ export default function ProfileEditModal({
                                         onChange={(e) => setBio(e.target.value.slice(0, 150))}
                                         placeholder="반려동물과의 소중한 일상이나 인테리어 취향을 간단히 적어보세요"
                                         borderRadius="16px"
-                                        borderColor="waba.border"
+                                        borderColor="var(--waba-line)"
                                         fontSize="14px"
                                         p={3.5}
                                         minH="88px"
                                         resize="none"
-                                        _focus={{ borderColor: 'waba.purple' }}
+                                        _focus={{ borderColor: '#6338A9' }}
                                     />
                                 </VStack>
 
@@ -465,27 +462,27 @@ export default function ProfileEditModal({
                                     onClick={() => setIsMultiSpecies(!isMultiSpecies)}
                                     p={3.5}
                                     borderRadius="18px"
-                                    bg={isMultiSpecies ? 'waba.purpleLight/50' : 'waba.subtle'}
+                                    bg={isMultiSpecies ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
                                     border="1px solid"
-                                    borderColor={isMultiSpecies ? 'waba.purple/40' : 'waba.border'}
+                                    borderColor={isMultiSpecies ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
                                     textAlign="left"
                                     w="full"
                                     transition="all 0.2s"
-                                    _hover={{ borderColor: 'waba.purple' }}
+                                    _hover={{ borderColor: '#6338A9' }}
                                 >
                                     <HStack justify="space-between" align="center">
                                         <VStack align="start" gap={0.5}>
                                             <HStack gap={1.5}>
-                                                <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                                <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                                     ✨ 캣토(다종) 합사 가구 설정
                                                 </Text>
                                                 {isMultiSpecies && (
-                                                    <Badge bg="waba.purple" color="white" rounded="full" px={1.5} fontSize="10px">
+                                                    <Badge bg="#6338A9" color="white" rounded="full" px={1.5} fontSize="10px">
                                                         활성화
                                                     </Badge>
                                                 )}
                                             </HStack>
-                                            <Text fontSize="11px" color="waba.faint">
+                                            <Text fontSize="11px" color="var(--waba-ink-3)">
                                                 고양이와 토끼 등 2종 이상의 반려동물과 동거 중일 경우 맞춤 배지와 리워드 가중치가 적용됩니다
                                             </Text>
                                         </VStack>
@@ -495,8 +492,8 @@ export default function ProfileEditModal({
                                             h="20px"
                                             borderRadius="full"
                                             border="2px solid"
-                                            borderColor={isMultiSpecies ? 'waba.purple' : 'gray.300'}
-                                            bg={isMultiSpecies ? 'waba.purple' : 'transparent'}
+                                            borderColor={isMultiSpecies ? '#6338A9' : 'var(--waba-line)'}
+                                            bg={isMultiSpecies ? '#6338A9' : 'transparent'}
                                             display="flex"
                                             alignItems="center"
                                             justifyContent="center"
@@ -523,9 +520,9 @@ export default function ProfileEditModal({
                                 h="44px"
                                 fontSize="14px"
                                 fontWeight="600"
-                                borderColor="waba.border"
-                                color="waba.charcoal"
-                                _hover={{ bg: 'waba.subtle' }}
+                                borderColor="var(--waba-line)"
+                                color="var(--waba-ink)"
+                                _hover={{ bg: 'var(--waba-surface)' }}
                                 onClick={() => onOpenChange(false)}
                             >
                                 취소
@@ -535,7 +532,7 @@ export default function ProfileEditModal({
                                 type="button"
                                 onClick={handleSubmit}
                                 loading={isSubmitting}
-                                bg="waba.charcoal"
+                                bg="var(--waba-ink)"
                                 color="white"
                                 rounded="full"
                                 px={7}

@@ -339,6 +339,8 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                         'content', c.content,
                         'like_count', c.like_count,
                         'is_anonymous', (c.is_anonymous = 1),
+                        'is_pinned', (c.is_pinned = 1),
+                        'pinned_at', c.pinned_at,
                         'created_at', c.created_at,
                         'author', JSON_OBJECT(
                             'id', cu.id,
@@ -350,7 +352,7 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                 FROM comments c
                 JOIN users cu ON c.user_id = cu.id
                 WHERE c.post_id = p.id AND c.status = 'ACTIVE'
-                ORDER BY c.created_at ASC
+                ORDER BY c.is_pinned DESC, c.pinned_at DESC, c.created_at ASC
             ), JSON_ARRAY()) AS comments,
             -- 9) 로그인 사용자의 인터랙션 여부
             COALESCE((
@@ -373,8 +375,21 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
 
     const [rows] = await db.query(sql, [userId || '', userId || '', postId]);
     if (!rows[0]) return null;
+
+    const sortedComments = Array.isArray(rows[0].comments)
+        ? [...rows[0].comments].sort((a, b) => {
+            const pinDiff = (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
+            if (pinDiff !== 0) return pinDiff;
+            if (a.is_pinned && b.is_pinned) {
+                return new Date(b.pinned_at || 0).getTime() - new Date(a.pinned_at || 0).getTime();
+            }
+            return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        })
+        : [];
+
     return {
         ...rows[0],
+        comments: sortedComments,
         is_liked: Boolean(rows[0].is_liked),
         is_bookmarked: Boolean(rows[0].is_bookmarked)
     };
@@ -586,10 +601,82 @@ export const updateComment = async (commentId, userId, content) => {
     return { comment_id: commentId, post_id: rows[0].post_id, content };
 }
 
+export const togglePinComment = async (postId, commentId, userId) => {
+    const [postRows] = await db.query(
+        `SELECT id, user_id FROM posts WHERE id = ?`,
+        [postId]
+    );
+    if (postRows.length === 0) {
+        const error = new Error('POST_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+    if (postRows[0].user_id !== userId) {
+        const error = new Error('FORBIDDEN');
+        error.status = 403;
+        throw error;
+    }
+
+    const [commentRows] = await db.query(
+        `SELECT id, is_pinned FROM comments WHERE id = ? AND post_id = ? AND status = 'ACTIVE'`,
+        [commentId, postId]
+    );
+    if (commentRows.length === 0) {
+        const error = new Error('COMMENT_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+
+    const currentlyPinned = Number(commentRows[0].is_pinned) === 1;
+    let nextPinned = 0;
+
+    if (currentlyPinned) {
+        await db.query(
+            `UPDATE comments SET is_pinned = 0, pinned_at = NULL WHERE id = ?`,
+            [commentId]
+        );
+        nextPinned = 0;
+    } else {
+        const [countRows] = await db.query(
+            `SELECT COUNT(*) AS cnt FROM comments WHERE post_id = ? AND is_pinned = 1 AND status = 'ACTIVE'`,
+            [postId]
+        );
+        if (Number(countRows[0]?.cnt || 0) >= 2) {
+            const error = new Error('PIN_LIMIT_EXCEEDED');
+            error.status = 400;
+            throw error;
+        }
+        await db.query(
+            `UPDATE comments SET is_pinned = 1, pinned_at = NOW() WHERE id = ?`,
+            [commentId]
+        );
+        nextPinned = 1;
+    }
+
+    const [latestCountRows] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM comments WHERE post_id = ? AND is_pinned = 1 AND status = 'ACTIVE'`,
+        [postId]
+    );
+
+    return {
+        is_pinned: nextPinned,
+        pinned_count: Number(latestCountRows[0]?.cnt || 0)
+    };
+}
+
 export const getBoardList = async () => {
     const sql = `SELECT * FROM boards WHERE is_active = 1 ORDER BY sort_order ASC`;
     const [rows] = await db.query(sql);
     return rows;
+}
+
+export const isValidBoardId = async (boardId) => {
+    if (!boardId || typeof boardId !== 'string' || !boardId.trim()) return false;
+    const [rows] = await db.query(
+        `SELECT id FROM boards WHERE id = ? AND is_active = 1 LIMIT 1`,
+        [boardId.trim()]
+    );
+    return rows.length > 0;
 }
 
 export const getPostList = async (boardId) => {
@@ -895,13 +982,14 @@ export const getUserLikes = async (userId) => {
 
 export const createOrUpdatePost = async (userId, {
     postId: inputPostId,
-    board_id = 'SNAP',
+    board_id = null,
     title = '',
     content = [],
     selected_pets = [],
     tags = [],
     status = 'PUBLISHED'
 }) => {
+    const normalizedBoardId = (typeof board_id === 'string' && board_id.trim()) ? board_id.trim() : null;
     let postId = inputPostId;
     let isExisting = false;
     let existingStatus = null;
@@ -930,7 +1018,7 @@ export const createOrUpdatePost = async (userId, {
                 view_count, like_count, bookmark_count, comment_count, 
                 status, created_at, updated_at
             ) VALUES (?, ?, ?, 'NORMAL_FEED', ?, '[]', 0, NULL, 0, 0, 0, 0, 0, ?, NOW(), NOW())`,
-            [postId, board_id, userId, title, status]
+            [postId, normalizedBoardId, userId, title, status]
         );
     } else {
         await db.query(`DELETE FROM post_images WHERE post_id = ?`, [postId]);
@@ -1038,7 +1126,7 @@ export const createOrUpdatePost = async (userId, {
         `UPDATE posts 
          SET board_id = ?, title = ?, content = ?, status = ?, updated_at = NOW()
          WHERE id = ?`,
-        [board_id, title, JSON.stringify(finalContent), status, postId]
+        [normalizedBoardId, title, JSON.stringify(finalContent), status, postId]
     );
 
     // 6. 최초 발행 시 리워드 포인트 지급

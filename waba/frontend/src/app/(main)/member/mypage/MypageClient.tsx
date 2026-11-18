@@ -1,47 +1,86 @@
 'use client'
 
-import { Container, Stack } from "@chakra-ui/react";
-import Header from "../../common/Header";
-import { useEffect, useState } from "react";
+import { Box, Button, Flex, HStack, IconButton, Menu, Portal, Text, VStack } from "@chakra-ui/react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import axiosInstance from "@/utils/api";
-import { isAuthenticated } from "@/utils/authUtils";
+import { clearAuthSession, isAuthenticated } from "@/utils/authUtils";
 import { toaster } from "@/components/ui/toaster";
 import { Pet, PostDetail } from "@/interface";
+import { LuEllipsis, LuPencil, LuPlus, LuTrash2 } from "react-icons/lu";
+import UserAvatar from "../../common/UserAvatar";
 import MypageGuestView from "./MypageGuestView";
-import ProfileSection, { UserProfileData } from "./ProfileSection";
-import PetSection from "./PetSection";
+import { UserProfileData } from "./ProfileSection";
 import ActivitySection from "./ActivitySection";
 import ProfileEditModal from "./ProfileEditModal";
 import PetRegisterModal from "./PetRegisterModal";
+import NotebookGroupModal from "./NotebookGroupModal";
+import NotebookRecordModal from "./NotebookRecordModal";
+import {
+    MypageHistoryRecord,
+    MypageJourneyRecord,
+    MypageNotebookTab,
+    MypageScrappedNotebooks,
+    MypageSettingsTab,
+} from "./MypageTabsContent";
+import { NotebookItem } from "../../notebook/notebook-components/types";
+
+type MypageMainTab = 'notebook' | 'activity' | 'settings';
 
 export default function MypageClient() {
     const searchParams = useSearchParams();
-    const initialTab = searchParams.get('tab') || 'post';
+    const initialTabParam = searchParams.get('tab');
 
-    const [activeTab, setActiveTab] = useState<'post' | 'bookmark' | 'like' | 'draft'>(
-        ['post', 'bookmark', 'like', 'draft'].includes(initialTab) ? (initialTab as any) : 'post'
+    const [mainTab, setMainTab] = useState<MypageMainTab>(() => {
+        if (initialTabParam === 'activity' || initialTabParam === 'post' || initialTabParam === 'bookmark' || initialTabParam === 'like' || initialTabParam === 'draft') {
+            return 'activity';
+        }
+        if (initialTabParam === 'settings') return 'settings';
+        return 'notebook';
+    });
+
+    const [activitySubTab, setActivitySubTab] = useState<'post' | 'bookmark' | 'like' | 'draft'>(
+        initialTabParam && ['post', 'bookmark', 'like', 'draft'].includes(initialTabParam)
+            ? (initialTabParam as 'post' | 'bookmark' | 'like' | 'draft')
+            : 'post'
     );
 
     const [profile, setProfile] = useState<UserProfileData | null>(null);
     const [pets, setPets] = useState<Pet[]>([]);
+    const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
+
+    const [histories, setHistories] = useState<MypageHistoryRecord[]>([]);
+    const [journeys, setJourneys] = useState<MypageJourneyRecord[]>([]);
+    const [scrappedNotebooks, setScrappedNotebooks] = useState<NotebookItem[]>([]);
+
     const [postList, setPostList] = useState<PostDetail[]>([]);
     const [bookmarkList, setBookmarkList] = useState<PostDetail[]>([]);
     const [likeList, setLikeList] = useState<PostDetail[]>([]);
     const [draftList, setDraftList] = useState<any[]>([]);
 
+    const [autoJournalEnabled, setAutoJournalEnabled] = useState(true);
+    const [isUpdatingAutoJournal, setIsUpdatingAutoJournal] = useState(false);
+
     const [loading, setLoading] = useState(true);
     const [tabLoading, setTabLoading] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [petModalOpen, setPetModalOpen] = useState(false);
+    const [groupModalOpen, setGroupModalOpen] = useState(false);
+    const [editingJourney, setEditingJourney] = useState<MypageJourneyRecord | null>(null);
+    const [recordModalOpen, setRecordModalOpen] = useState(false);
+    const [editingHistory, setEditingHistory] = useState<MypageHistoryRecord | null>(null);
     const [editingPet, setEditingPet] = useState<Pet | null>(null);
-    const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
 
     const openLoginModal = () => {
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('open-login-modal'));
         }
     };
+
+    const activePet = useMemo(() => {
+        if (pets.length === 0) return null;
+        return pets.find((p) => String(p.id) === String(selectedPetId)) || pets[0];
+    }, [pets, selectedPetId]);
 
     useEffect(() => {
         if (!isAuthenticated()) {
@@ -51,12 +90,16 @@ export default function MypageClient() {
         }
 
         fetchUserProfile();
-        fetchTabData(activeTab);
+        fetchAutoJournalSetting();
+        fetchScrappedNotebooks();
+        fetchActivityTabData(activitySubTab);
 
         const handleAuthChange = () => {
             if (isAuthenticated()) {
                 fetchUserProfile();
-                fetchTabData(activeTab);
+                fetchAutoJournalSetting();
+                fetchScrappedNotebooks();
+                fetchActivityTabData(activitySubTab);
             } else {
                 setProfile(null);
                 openLoginModal();
@@ -68,10 +111,19 @@ export default function MypageClient() {
     }, []);
 
     useEffect(() => {
-        if (isAuthenticated()) {
-            fetchTabData(activeTab);
+        if (isAuthenticated() && mainTab === 'activity') {
+            fetchActivityTabData(activitySubTab);
         }
-    }, [activeTab]);
+    }, [activitySubTab, mainTab]);
+
+    useEffect(() => {
+        if (!isAuthenticated() || (!activePet?.id && pets.length === 0)) {
+            setHistories([]);
+            setJourneys([]);
+            return;
+        }
+        fetchPetTimelineAndJourneys(activePet?.id);
+    }, [activePet?.id, pets.length]);
 
     const fetchUserProfile = async () => {
         try {
@@ -79,7 +131,9 @@ export default function MypageClient() {
             if (res.data?.success && res.data?.profile) {
                 setProfile(res.data.profile);
                 if (res.data.profile.pets) {
-                    setPets(res.data.profile.pets);
+                    const loadedPets: Pet[] = res.data.profile.pets;
+                    setPets(loadedPets);
+                    setSelectedPetId((prev) => prev || (loadedPets[0]?.id ? String(loadedPets[0].id) : null));
                 }
             }
         } catch (e: any) {
@@ -93,7 +147,96 @@ export default function MypageClient() {
         }
     };
 
-    const fetchTabData = async (tab: 'post' | 'bookmark' | 'like' | 'draft') => {
+    const fetchPetTimelineAndJourneys = async (petId?: string | number | null) => {
+        try {
+            const targetPetIds =
+                pets.length > 0
+                    ? pets.map((p) => p.id)
+                    : petId
+                        ? [petId]
+                        : [];
+
+            const [histRes, ...jourResList] = await Promise.all([
+                axiosInstance.get('/user/histories'),
+                ...targetPetIds.map((id) => axiosInstance.get(`/user/pets/${id}/journeys`)),
+            ]);
+            setHistories(histRes.data?.histories || []);
+
+            const mergedJourneys: MypageJourneyRecord[] = [];
+            const seenJourneyIds = new Set<string>();
+            for (const jRes of jourResList) {
+                const list: MypageJourneyRecord[] = jRes.data?.journeys || [];
+                for (const j of list) {
+                    const key = String(j.id);
+                    if (!seenJourneyIds.has(key)) {
+                        seenJourneyIds.add(key);
+                        mergedJourneys.push(j);
+                    }
+                }
+            }
+            setJourneys(mergedJourneys);
+        } catch {
+            // 조용히 처리
+        }
+    };
+
+    const fetchScrappedNotebooks = async () => {
+        try {
+            const res = await axiosInstance.get('/notebooks?tab=scrapped');
+            const rawList: any[] = Array.isArray(res.data)
+                ? res.data
+                : res.data?.notebooks || res.data?.journeys || res.data?.data || [];
+            const list: NotebookItem[] = rawList.map((nb) => ({
+                ...nb,
+                status: nb.status || (nb.is_ongoing ? 'ACTIVE' : 'CURED'),
+                user: nb.user || nb.owner || null,
+            }));
+            setScrappedNotebooks(list);
+        } catch {
+            setScrappedNotebooks([]);
+        }
+    };
+
+    const fetchAutoJournalSetting = async () => {
+        try {
+            const res = await axiosInstance.get('/user/settings/auto-journal');
+            const val = res.data?.auto_journal_enabled ?? res.data?.enabled;
+            if (typeof val === 'boolean') {
+                setAutoJournalEnabled(val);
+            }
+        } catch {
+            // 기본값 유지
+        }
+    };
+
+    const handleToggleAutoJournal = async (checked: boolean) => {
+        setIsUpdatingAutoJournal(true);
+        try {
+            await axiosInstance.patch('/user/settings/auto-journal', { enabled: checked });
+            setAutoJournalEnabled(checked);
+            toaster.create({
+                title: checked ? 'AI 건강 수첩 자동 기록이 켜졌습니다.' : 'AI 건강 수첩 자동 기록이 꺼졌습니다.',
+                type: 'success',
+            });
+        } catch {
+            toaster.create({ title: '설정 변경에 실패했습니다.', type: 'error' });
+        } finally {
+            setIsUpdatingAutoJournal(false);
+        }
+    };
+
+    const handleUnscrapNotebook = async (notebookId: string | number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            await axiosInstance.post(`/notebooks/${notebookId}/scrap`);
+            setScrappedNotebooks((prev) => prev.filter((nb) => nb.id !== notebookId));
+            toaster.create({ title: '수첩 스크랩이 해제되었습니다.', type: 'info' });
+        } catch {
+            toaster.create({ title: '스크랩 해제에 실패했습니다.', type: 'error' });
+        }
+    };
+
+    const fetchActivityTabData = async (tab: 'post' | 'bookmark' | 'like' | 'draft') => {
         setTabLoading(true);
         try {
             if (tab === 'post') {
@@ -133,113 +276,401 @@ export default function MypageClient() {
     };
 
     const handleProfileUpdated = (updatedProfile: UserProfileData) => {
-        setProfile(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
-        // 헤더 프로필 연동을 위해 auth-change 이벤트 발생
+        setProfile((prev) => (prev ? { ...prev, ...updatedProfile } : updatedProfile));
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('auth-change'));
         }
     };
 
-    const handleDeletePet = async (petId: string, authData?: { password?: string; confirm_name?: string }) => {
+    const handleLogout = () => {
+        clearAuthSession();
+        toaster.create({ title: '로그아웃되었습니다.', type: 'info' });
+    };
+
+    const handleDeleteHistory = async (historyId: string | number) => {
+        if (!confirm('이 기록을 삭제하시겠습니까?')) return;
         try {
-            const res = await axiosInstance.delete(`/user/pets/${petId}`, {
-                data: authData || {}
+            await axiosInstance.delete(`/user/histories/${historyId}`);
+            setHistories((prev) => prev.filter((h) => String(h.id) !== String(historyId)));
+            toaster.create({ title: '기록이 삭제되었습니다.', type: 'info' });
+            fetchPetTimelineAndJourneys(activePet?.id);
+        } catch (error: any) {
+            toaster.create({
+                title: error?.response?.data?.message || '기록 삭제에 실패했습니다.',
+                type: 'error',
             });
-            if (res.data?.success) {
-                setPets(res.data.pets || []);
-                if (res.data.profile) {
-                    setProfile(res.data.profile);
-                }
-                toaster.create({
-                    title: '반려동물 프로필이 보관 처리되었습니다.',
-                    description: '6개월(180일)간 안전하게 보존되며, 고객센터 문의 시 언제든 복구할 수 있습니다.',
-                    type: 'info',
-                });
-            }
-        } catch (err: any) {
-            const code = err.response?.data?.code;
-            if (code === 'INVALID_PASSWORD') {
-                toaster.create({ title: '비밀번호가 일치하지 않습니다.', type: 'error' });
-            } else if (code === 'INVALID_CONFIRM_NAME') {
-                toaster.create({ title: '반려동물 이름이 일치하지 않습니다.', type: 'error' });
-            } else {
-                toaster.create({
-                    title: err.response?.data?.message || '반려동물 삭제 처리 중 오류가 발생했습니다.',
-                    type: 'error',
-                });
-            }
-            throw err;
         }
     };
 
-    // 비로그인 상태 안내 화면
+    const handleDeletePet = async (pet: Pet) => {
+        if (!confirm(`'${pet.name}' 프로필을 삭제하시겠습니까?`)) return;
+        try {
+            await axiosInstance.delete(`/user/pets/${pet.id}`);
+            const nextPets = pets.filter((p) => p.id !== pet.id);
+            setPets(nextPets);
+            if (activePet?.id === pet.id) {
+                setSelectedPetId(nextPets[0]?.id ? String(nextPets[0].id) : null);
+            }
+            toaster.create({ title: `'${pet.name}' 프로필이 삭제되었습니다.`, type: 'success' });
+        } catch {
+            toaster.create({ title: '반려동물 프로필 삭제에 실패했습니다.', type: 'error' });
+        }
+    };
+
+    const handleDeleteJourney = async (journeyId: string | number) => {
+        if (!activePet?.id) return;
+        if (!confirm('이 수첩 그룹을 삭제하시겠습니까? (그룹에 속한 기록은 미분류로 남습니다)')) return;
+        try {
+            await axiosInstance.delete(`/user/pets/${activePet.id}/journeys/${journeyId}`);
+            setJourneys((prev) => prev.filter((j) => String(j.id) !== String(journeyId)));
+            toaster.create({ title: '수첩 그룹이 삭제되었습니다.', type: 'info' });
+            fetchPetTimelineAndJourneys(activePet.id);
+        } catch (error: any) {
+            toaster.create({
+                title: error?.response?.data?.message || '수첩 그룹 삭제에 실패했습니다.',
+                type: 'error',
+            });
+        }
+    };
+
     if (!loading && !profile && !isAuthenticated()) {
-        return (
-            <Container minH="100vh" bg="waba.canvas" pb={24}>
-                <Header />
-                <MypageGuestView onOpenLogin={openLoginModal} />
-            </Container>
-        );
+        return <MypageGuestView onOpenLogin={openLoginModal} />;
     }
 
     return (
-        <Container minH="100vh" bg="waba.canvas" pb={24}>
-            <Header />
+        <Box
+            w="100%"
+            maxW="1240px"
+            mx="auto"
+            px={{ base: 4, md: 6, lg: '36px' }}
+            pt={{ base: 4, md: 6 }}
+            pb={{ base: 10, md: '44px' }}
+            minW={0}
+        >
+            <VStack align="stretch" gap={{ base: '18px', md: '22px' }} minW={0}>
+                {/* 1. 상단 프로필 & 반려동물 스위처 배너 */}
+                <Flex
+                    direction={{ base: 'column', lg: 'row' }}
+                    justify="space-between"
+                    align={{ base: 'stretch', lg: 'center' }}
+                    bg="var(--waba-surface)"
+                    border="1px solid"
+                    borderColor="var(--waba-line)"
+                    borderRadius="22px"
+                    p={{ base: '18px', md: '22px 26px' }}
+                    gap={5}
+                    minW={0}
+                >
+                    {/* Left: Profile */}
+                    <HStack gap={4} minW={0}>
+                        <UserAvatar
+                            src={profile?.profile_image_url}
+                            alt={profile?.nickname || '프로필'}
+                            w={{ base: '54px', md: '62px' }}
+                            h={{ base: '54px', md: '62px' }}
+                            iconSize={26}
+                            border="2px solid"
+                            borderColor="#6338A9"
+                        />
+                        <Box minW={0}>
+                            <HStack gap={2} flexWrap="wrap" align="center">
+                                <Text fontSize={{ base: '18px', md: '20px' }} fontWeight="800" color="var(--waba-ink)">
+                                    {profile?.nickname || '회원'}
+                                </Text>
+                                {profile?.mentor_badge && (
+                                    <Box
+                                        bg="var(--waba-purple-soft)"
+                                        color="var(--waba-purple-text)"
+                                        fontSize="11px"
+                                        fontWeight="700"
+                                        px="10px"
+                                        py="3px"
+                                        borderRadius="999px"
+                                    >
+                                        {profile.mentor_badge}
+                                    </Box>
+                                )}
+                                <Button
+                                    size="2xs"
+                                    variant="outline"
+                                    rounded="full"
+                                    borderColor="var(--waba-line)"
+                                    color="var(--waba-ink-2)"
+                                    px={2.5}
+                                    h="24px"
+                                    fontSize="11px"
+                                    onClick={() => setEditModalOpen(true)}
+                                    gap={1}
+                                >
+                                    <LuPencil size={11} />
+                                    프로필 수정
+                                </Button>
+                            </HStack>
+                            <Text fontSize="12px" color="var(--waba-ink-2)" mt="4px">
+                                게시글 {profile?.post_count ?? postList.length} · 수첩 그룹 {journeys.length} · 스크랩 수첩 {scrappedNotebooks.length}
+                            </Text>
+                        </Box>
+                    </HStack>
 
-            <Container maxW="1280px" pt={28} px={{ base: 4, md: 6 }}>
-                <Stack gap={10}>
-                    {/* 1. 상단 프로필 & 리워드 요약 섹션 */}
-                    <ProfileSection
-                        profile={profile}
-                        activeTab={activeTab}
-                        onSelectTab={setActiveTab}
-                        postCount={profile?.post_count ?? postList.length}
-                        bookmarkCount={profile?.bookmark_count ?? bookmarkList.length}
-                        likeCount={profile?.like_count ?? likeList.length}
-                        draftCount={profile?.draft_count ?? draftList.length}
-                        isMultiSpecies={Boolean(profile?.is_multi_species || pets.length >= 2)}
-                        onOpenEditProfile={() => setEditModalOpen(true)}
-                    />
+                    {/* Right: Pet Switcher + Add Pet */}
+                    <HStack
+                        gap="10px"
+                        overflowX="auto"
+                        pb={{ base: 1, lg: 0 }}
+                        flexWrap={{ base: 'nowrap', lg: 'wrap' }}
+                        justify={{ base: 'flex-start', lg: 'flex-end' }}
+                        css={{ '&::-webkit-scrollbar': { display: 'none' } }}
+                    >
+                        {pets.map((pet) => {
+                            const isSelected = activePet?.id === pet.id;
+                            return (
+                                <HStack
+                                    key={pet.id}
+                                    onClick={() => setSelectedPetId(String(pet.id))}
+                                    bg={isSelected ? 'var(--waba-purple-soft)' : 'var(--waba-card)'}
+                                    border={isSelected ? '1.5px solid' : '1px solid'}
+                                    borderColor={isSelected ? '#6338A9' : 'var(--waba-line)'}
+                                    borderRadius="16px"
+                                    px="14px"
+                                    py="9px"
+                                    gap="10px"
+                                    cursor="pointer"
+                                    flexShrink={0}
+                                    textAlign="left"
+                                    transition="all 0.15s"
+                                >
+                                    <UserAvatar
+                                        src={pet.current_avatar_url}
+                                        alt={pet.name}
+                                        w="36px"
+                                        h="36px"
+                                        iconSize={16}
+                                        fallbackType="pet"
+                                    />
+                                    <Box>
+                                        <Text fontSize="13px" fontWeight={isSelected ? '800' : '700'} color="var(--waba-ink)">
+                                            {pet.name}
+                                        </Text>
+                                        <Text
+                                            fontSize="11px"
+                                            color={isSelected ? 'var(--waba-purple-text)' : 'var(--waba-ink-3)'}
+                                        >
+                                            {[
+                                                pet.breed || pet.species,
+                                                pet.latest_weight_kg ? `${Number(pet.latest_weight_kg).toFixed(1)}kg` : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </Text>
+                                    </Box>
+                                    <Menu.Root positioning={{ placement: 'bottom-end' }}>
+                                        <Menu.Trigger asChild>
+                                            <IconButton
+                                                aria-label={`${pet.name} 메뉴`}
+                                                size="2xs"
+                                                variant="ghost"
+                                                rounded="full"
+                                                color="var(--waba-ink-3)"
+                                                _hover={{ color: 'var(--waba-ink)', bg: 'var(--waba-surface)' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <LuEllipsis size={14} />
+                                            </IconButton>
+                                        </Menu.Trigger>
+                                        <Portal>
+                                            <Menu.Positioner>
+                                                <Menu.Content
+                                                    minW="120px"
+                                                    borderRadius="14px"
+                                                    bg="var(--waba-card)"
+                                                    border="1px solid"
+                                                    borderColor="var(--waba-line)"
+                                                    boxShadow="0 10px 25px rgba(0, 0, 0, 0.12)"
+                                                    p={1.5}
+                                                >
+                                                    <Menu.Item
+                                                        value="edit"
+                                                        borderRadius="10px"
+                                                        fontSize="13px"
+                                                        fontWeight="600"
+                                                        color="var(--waba-ink)"
+                                                        cursor="pointer"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingPet(pet);
+                                                            setPetModalOpen(true);
+                                                        }}
+                                                    >
+                                                        <LuPencil size={13} />
+                                                        수정하기
+                                                    </Menu.Item>
+                                                    <Menu.Item
+                                                        value="delete"
+                                                        borderRadius="10px"
+                                                        fontSize="13px"
+                                                        fontWeight="600"
+                                                        color="#E53E3E"
+                                                        cursor="pointer"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeletePet(pet);
+                                                        }}
+                                                    >
+                                                        <LuTrash2 size={13} />
+                                                        삭제하기
+                                                    </Menu.Item>
+                                                </Menu.Content>
+                                            </Menu.Positioner>
+                                        </Portal>
+                                    </Menu.Root>
+                                </HStack>
+                            );
+                        })}
 
-                    {/* 2. 내 반려동물 카드 섹션 (My Pets) */}
-                    <PetSection
+                        <Button
+                            size="xs"
+                            h="40px"
+                            px="14px"
+                            borderRadius="14px"
+                            variant="outline"
+                            borderColor="var(--waba-line)"
+                            bg="var(--waba-card)"
+                            color="var(--waba-ink-2)"
+                            fontSize="12px"
+                            fontWeight="700"
+                            onClick={() => {
+                                setEditingPet(null);
+                                setPetModalOpen(true);
+                            }}
+                            flexShrink={0}
+                            gap={1}
+                        >
+                            <LuPlus size={14} />
+                            반려동물 등록
+                        </Button>
+                    </HStack>
+                </Flex>
+
+                {/* 2. 언더라인 3개 탭 */}
+                <Box
+                    borderBottom="1px solid"
+                    borderColor="var(--waba-line)"
+                    minW={0}
+                >
+                    <HStack
+                        gap={{ base: 4, md: '24px' }}
+                        overflowX="auto"
+                        whiteSpace="nowrap"
+                        css={{ '&::-webkit-scrollbar': { display: 'none' } }}
+                    >
+                        {[
+                            { key: 'notebook' as const, label: '건강 수첩' },
+                            { key: 'activity' as const, label: '내 게시글 · 스크랩' },
+                            { key: 'settings' as const, label: `설정 (AI 일지 ${autoJournalEnabled ? 'ON' : 'OFF'})` },
+                        ].map((tab) => {
+                            const isActive = mainTab === tab.key;
+                            return (
+                                <Box
+                                    key={tab.key}
+                                    as="button"
+                                    onClick={() => setMainTab(tab.key)}
+                                    position="relative"
+                                    fontSize="14px"
+                                    fontWeight={isActive ? '800' : '600'}
+                                    color={isActive ? 'var(--waba-ink)' : 'var(--waba-ink-3)'}
+                                    pb="12px"
+                                    cursor="pointer"
+                                    flexShrink={0}
+                                    _hover={{ color: 'var(--waba-ink)' }}
+                                >
+                                    {tab.label}
+                                    {isActive && (
+                                        <Box
+                                            position="absolute"
+                                            left={0}
+                                            right={0}
+                                            bottom={0}
+                                            h="2.5px"
+                                            bg="#6338A9"
+                                            borderRadius="999px"
+                                        />
+                                    )}
+                                </Box>
+                            );
+                        })}
+                    </HStack>
+                </Box>
+
+                {/* 3. 탭별 컨텐츠 */}
+                {mainTab === 'notebook' && (
+                    <MypageNotebookTab
+                        pet={activePet}
                         pets={pets}
-                        selectedPetId={selectedPetId}
-                        onSelectPet={(petId) => {
-                            setSelectedPetId(petId);
-                            setActiveTab('post');
+                        histories={histories}
+                        journeys={journeys}
+                        autoJournalEnabled={autoJournalEnabled}
+                        onOpenRecordModal={() => {
+                            setEditingHistory(null);
+                            setRecordModalOpen(true);
                         }}
-                        onAddPet={() => {
+                        onOpenManageModal={() => {
+                            setEditingJourney(null);
+                            setGroupModalOpen(true);
+                        }}
+                        onEditJourney={(journey) => {
+                            setEditingJourney(journey);
+                            setGroupModalOpen(true);
+                        }}
+                        onDeleteJourney={handleDeleteJourney}
+                        onEditHistory={(item) => {
+                            setEditingHistory(item);
+                            setRecordModalOpen(true);
+                        }}
+                        onDeleteHistory={handleDeleteHistory}
+                        onOpenPetRegister={() => {
                             setEditingPet(null);
                             setPetModalOpen(true);
                         }}
-                        onEditPet={(pet) => {
-                            setEditingPet(pet);
-                            setPetModalOpen(true);
-                        }}
-                        onDeletePet={handleDeletePet}
                     />
+                )}
 
-                    {/* 3. 콘텐츠 활동 탭 바 & 목록 섹션 */}
-                    <ActivitySection
-                        activeTab={activeTab}
-                        onTabChange={setActiveTab}
-                        postList={postList}
-                        bookmarkList={bookmarkList}
-                        likeList={likeList}
-                        draftList={draftList}
-                        onDeleteDraft={handleDeleteDraft}
-                        isLoading={tabLoading}
-                        postCount={profile?.post_count ?? postList.length}
-                        bookmarkCount={profile?.bookmark_count ?? bookmarkList.length}
-                        likeCount={profile?.like_count ?? likeList.length}
-                        draftCount={profile?.draft_count ?? draftList.length}
-                        pets={pets}
-                        selectedPetId={selectedPetId}
-                        onSelectPetId={setSelectedPetId}
+                {mainTab === 'activity' && (
+                    <VStack align="stretch" gap="18px" minW={0}>
+                        <MypageScrappedNotebooks
+                            notebooks={scrappedNotebooks}
+                            onUnscrap={handleUnscrapNotebook}
+                        />
+
+                        <ActivitySection
+                            activeTab={activitySubTab}
+                            onTabChange={setActivitySubTab}
+                            postList={postList}
+                            bookmarkList={bookmarkList}
+                            likeList={likeList}
+                            draftList={draftList}
+                            onDeleteDraft={handleDeleteDraft}
+                            isLoading={tabLoading}
+                            postCount={profile?.post_count ?? postList.length}
+                            bookmarkCount={profile?.bookmark_count ?? bookmarkList.length}
+                            likeCount={profile?.like_count ?? likeList.length}
+                            draftCount={profile?.draft_count ?? draftList.length}
+                            pets={pets}
+                            selectedPetId={selectedPetId}
+                            onSelectPetId={setSelectedPetId}
+                        />
+                    </VStack>
+                )}
+
+                {mainTab === 'settings' && (
+                    <MypageSettingsTab
+                        autoJournalEnabled={autoJournalEnabled}
+                        isUpdatingAutoJournal={isUpdatingAutoJournal}
+                        onToggleAutoJournal={handleToggleAutoJournal}
+                        onOpenEditProfile={() => setEditModalOpen(true)}
+                        onLogout={handleLogout}
                     />
-                </Stack>
-            </Container>
+                )}
+            </VStack>
 
             {/* 프로필 수정 모달 */}
             <ProfileEditModal
@@ -261,11 +692,48 @@ export default function MypageClient() {
                 editingPet={editingPet}
                 onPetCreated={({ pets: updatedPets, profile: updatedProfile }) => {
                     setPets(updatedPets);
+                    if (updatedPets.length > 0 && !selectedPetId) {
+                        setSelectedPetId(String(updatedPets[0].id));
+                    }
                     if (updatedProfile) {
                         setProfile(updatedProfile);
                     }
                 }}
             />
-        </Container>
+
+            {/* 수첩 기록 직접 추가 / 수정 모달 (새 마스터 디자인) */}
+            <NotebookRecordModal
+                open={recordModalOpen}
+                onOpenChange={(open) => {
+                    setRecordModalOpen(open);
+                    if (!open) setEditingHistory(null);
+                }}
+                pet={activePet}
+                pets={pets}
+                journeys={journeys}
+                editingHistory={editingHistory}
+                onSaved={() => {
+                    if (activePet?.id) {
+                        fetchPetTimelineAndJourneys(activePet.id);
+                    }
+                }}
+            />
+
+            {/* 수첩 그룹 생성·수정 모달 (새 마스터 디자인) */}
+            <NotebookGroupModal
+                open={groupModalOpen}
+                onOpenChange={(open) => {
+                    setGroupModalOpen(open);
+                    if (!open) setEditingJourney(null);
+                }}
+                pet={activePet}
+                editingJourney={editingJourney}
+                onSaved={() => {
+                    if (activePet?.id) {
+                        fetchPetTimelineAndJourneys(activePet.id);
+                    }
+                }}
+            />
+        </Box>
     );
 }

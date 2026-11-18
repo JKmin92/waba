@@ -138,12 +138,13 @@ const normalizeContentText = (content) => {
     return String(content).trim();
 };
 
-const healthEventSchema = {
+const healthEventItemSchema = {
     type: Type.OBJECT,
     properties: {
-        has_event: {
-            type: Type.BOOLEAN,
-            description: '진료, 수술, 예방접종, 투약, 미용, 체중 변화, 증상 등 반려동물 건강/케어 기록으로 남길 만한 이벤트가 있는지 여부'
+        pet_names: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: '이 건강/케어 이벤트의 실제 당사자인 반려동물 이름 목록 (등록된 반려동물 목록 기준 정확히 매칭, 불명확하면 빈 배열)'
         },
         category: {
             type: Type.STRING,
@@ -152,7 +153,7 @@ const healthEventSchema = {
         },
         title: {
             type: Type.STRING,
-            description: '20자 이내의 간결한 한 줄 제목 (예: 중성화 수술 완료, 정기 건강검진)'
+            description: '20자 이내의 간결한 한 줄 제목 (예: 중성화 수술 완료, 심장사상충 접종)'
         },
         notes: {
             type: Type.STRING,
@@ -173,15 +174,28 @@ const healthEventSchema = {
             description: '본문에 언급된 반려동물 체중(kg 단위 숫자). 언급이 없으면 null'
         }
     },
-    required: ['has_event', 'category', 'title', 'notes', 'event_date', 'hospital_name', 'weight_kg']
+    required: ['pet_names', 'category', 'title', 'notes', 'event_date', 'hospital_name', 'weight_kg']
+};
+
+const healthEventsSchema = {
+    type: Type.OBJECT,
+    properties: {
+        events: {
+            type: Type.ARRAY,
+            items: healthEventItemSchema,
+            description: '글에서 분리 추출된 독립적인 건강/케어 이벤트 배열 (최대 4건, 기록할 이벤트가 없으면 빈 배열 [])'
+        }
+    },
+    required: ['events']
 };
 
 /**
- * 게시글 본문(텍스트)에서 반려동물 건강 수첩 기록(Smart Auto-Journal)을 자동 추출합니다.
+ * 게시글 본문(텍스트)에서 다중 반려동물/다중 건강 이벤트를 1회 호출로 분리 추출합니다.
  */
-export const extractPetHealthEvent = async ({
+export const extractPetHealthEvents = async ({
     title = '',
     content = '',
+    pets = [],
     petName = '',
     species = '',
     todayDate = new Date().toISOString().slice(0, 10)
@@ -193,53 +207,54 @@ export const extractPetHealthEvent = async ({
     const textContent = normalizeContentText(content);
 
     if (!textTitle && !textContent) {
-        return {
-            has_event: false,
-            category: 'NOTE',
-            title: '',
-            notes: '',
-            event_date: todayDate,
-            hospital_name: null,
-            weight_kg: null
-        };
+        return { events: [] };
     }
 
-    const petContext = [
-        petName ? `반려동물 이름: ${petName}` : null,
-        species ? `종: ${species}` : null
-    ].filter(Boolean).join(', ');
+    const normalizedPets = Array.isArray(pets) && pets.length > 0
+        ? pets.map((p) => {
+            const sp = p.custom_species || p.species || '';
+            const br = p.breed ? `, ${p.breed}` : '';
+            return `- ${p.name}${sp ? ` (${sp}${br})` : ''}`;
+        }).join('\n')
+        : (petName ? `- ${petName}${species ? ` (${species})` : ''}` : '');
 
     const systemInstruction = [
         '당신은 반려동물 커뮤니티 WABA의 스마트 건강 수첩 AI 어시스턴트입니다.',
-        '보호자가 작성한 게시글(제목 및 본문)을 분석하여 반려동물의 건강/메디컬/케어 수첩에 기록할 가치가 있는지 판단하고 구조화된 JSON으로 추출하세요.',
+        '보호자가 작성한 게시글(제목 및 본문)을 분석하여 반려동물의 건강/메디컬/케어 수첩에 기록할 가치가 있는 독립 이벤트를 최대 4건까지 분리 추출하세요.',
         '',
         '[핵심 판별 원칙]',
         '"반려동물의 몸 상태·건강·식습관·체중·안전(사고/이물질 섭취)과 관련이 있어 보호자나 수의사가 참고할 만한 내용인가?"',
-        '- [게시글 제목]과 [게시글 본문] **둘 중 어느 한쪽에만** 건강/진료/접종/체중/증상/특별 케어 내용이 포함되어 있어도(예: 본문은 단순 일상이나 산책 이야기지만 제목에 예방접종·병원·증상 등이 있는 경우) 반드시 `has_event: true`로 판정하고 해당 이벤트를 추출하세요.',
+        '- [게시글 제목]과 [게시글 본문] **둘 중 어느 한쪽에만** 건강/진료/접종/체중/증상/특별 케어 내용이 포함되어 있어도 반드시 추출하세요.',
         '',
-        '[반드시 기록 대상(has_event: true)에 포함해야 할 케이스]',
-        '1. 병원 진료, 건강검진(CHECKUP), 예방접종(VACCINE), 수술(SURGERY), 영수증/처방전/진단서',
+        '[다중 반려동물·다중 이벤트 분리 및 엄격한 일상 제외 규칙]',
+        '1. 글 안에 서로 다른 건강/케어 이벤트(예: "심장사상충 주사 맞음"과 "다음주 중성화 수술 예약")가 함께 있으면 최대 4건까지 각각 독립적인 이벤트 객체로 분리해 `events` 배열에 담으세요.',
+        '2. 둘 이상의 반려동물이 **같은 건강/케어 이벤트를 함께** 겪은 경우(예: "오늘 모아랑 초코가 심장사상충 주사 맞고 왔어요")에는 1개의 이벤트에 `pet_names: ["모아", "초코"]`로 함께 묶으세요.',
+        '3. 각 이벤트의 `pet_names`에는 [등록된 반려동물 목록] 중 **해당 건강/케어 이벤트의 실제 당사자** 이름만 정확히 넣으세요.',
+        '4. **엄격한 일상 제외 규칙:** 어떤 반려동물이 건강·진료·접종·수술·투약·증상·체중·위생 케어의 당사자가 아니라 단순히 감정·안부·일상 맥락으로만 언급된 경우(예: "초코 중성화 수술 무사히 끝났어요. 집에서 혼자 기다렸을 모아에게 미안하네요")에는 그 반려동물(모아)을 **절대** `pet_names`에 넣거나 별도 이벤트로 생성하지 마세요. 오직 실제 건강 이벤트 당사자(초코) 1건만 추출하세요.',
+        '5. 기록할 만한 건강/케어 이벤트가 전혀 없으면 `events: []` 빈 배열을 반환하세요.',
+        '',
+        '[반드시 기록 대상에 포함해야 할 케이스]',
+        '1. 병원 진료, 건강검진(CHECKUP), 예방접종(VACCINE), 수술(SURGERY), 수술/진료 예약, 영수증/처방전/진단서',
         '2. 투약, 처치, 영양제/연고 복용(MEDICATION)',
         '3. 신체 이상 증상 및 외상·사고(SYMPTOM): 구토, 설사, 기침, 피부 발적, 다리 절뚝임, 산책 중 발바닥 다침/아파함 등',
-        '4. 이물질/금지 음식 섭취 및 관련 질문글(SYMPTOM): 예) "모래를 먹었는데 괜찮나요?", "산책하다 이상한 걸 주워 먹었는지 기운이 없어요", "초콜릿을 조금 먹었어요" 등',
-        '5. 식욕·음수량·배변·컨디션 변화(SYMPTOM 또는 NOTE): 예) "밥/물을 잘 안 먹는다", "물을 갑자기 너무 많이 마신다", 혹은 아팠던 아이가 "이제 밥/물을 잘 먹는다, 상태가 좋아졌다" 같은 회복 경과',
-        '6. 체중·체형 변화(WEIGHT): 구체적 kg 수치뿐 아니라 "살이 쪘다 / 살이 빠졌다 / 체중이 늘었다" 등 정성적 체중 변화 언급도 반드시 포함',
+        '4. 이물질/금지 음식 섭취 및 관련 질문글(SYMPTOM)',
+        '5. 식욕·음수량·배변·컨디션 변화(SYMPTOM 또는 NOTE)',
+        '6. 체중·체형 변화(WEIGHT): 구체적 kg 수치 및 정성적 체중 변화 언급 포함',
         '7. 위생·미용 케어(GROOMING): 발톱 깎기, 귀 청소, 항문낭 관리, 약용 목욕 등',
         '',
-        '[기록 제외(has_event: false) 대상]',
-        '- 건강 이슈나 사고·증상이 전혀 없는 단순 산책·나들이·여행·애견카페 방문 ("오늘 한강 산책 즐거웠어요")',
-        '- 건강/식욕 맥락 없는 단순 먹방·귀여움 자랑 ("자는 모습 심쿵", "간식 맛있게 먹는 중")',
-        '- 단순 용품 구매/자랑 ("새 하네스/캣타워 샀어요")',
+        '[기록 제외 대상]',
+        '- 건강 이슈나 사고·증상이 전혀 없는 단순 산책·나들이·여행·애견카페 방문',
+        '- 건강/식욕 맥락 없는 단순 먹방·귀여움 자랑·용품 자랑·단순 감정/미안함 언급',
         '',
         '[시간대 및 다일(Multi-day) 경과 요약 규칙]',
-        '- 글 안에 "오전/오후/저녁/밤/새벽", "2시간 뒤", "몇 시간 후", "어제 ... → 오늘 ...", "며칠 전부터 ..." 같은 시간 순서와 경과가 있으면 절대 생략하지 말고 notes에 시간 흐름 순서대로(필요 시 `[오전] ... → [밤/2시간 뒤] ...` 또는 `[어제] ... → [오늘] ...` 형식 활용) 1~3문장으로 빠짐없이 요약하세요.',
-        `- 기준 날짜(todayDate)는 ${todayDate} 입니다. event_date는 글의 중심 사건일(여러 날에 걸친 경과일 경우 가장 최근/기준 사건일)을 todayDate 기준으로 YYYY-MM-DD 추론하고, 날짜 단서가 전혀 없으면 ${todayDate}를 사용하세요.`,
+        '- 글 안에 시간 순서와 경과가 있으면 notes에 시간 흐름 순서대로 1~3문장으로 요약하세요.',
+        `- 기준 날짜(todayDate)는 ${todayDate} 입니다. event_date는 글의 중심 사건일을 todayDate 기준으로 YYYY-MM-DD 추론하고, 불명확하면 ${todayDate}를 사용하세요.`,
         '- title은 반드시 공백 포함 20자 이내의 간결한 한국어 한 줄 제목으로 작성하세요.',
         '- hospital_name과 weight_kg는 본문에 명시된 경우에만 추출하고, 없으면 반드시 null로 반환하세요.'
     ].join('\n');
 
     const userPrompt = [
-        petContext ? `[반려동물 정보] ${petContext}` : null,
+        normalizedPets ? `[등록된 반려동물 목록]\n${normalizedPets}` : null,
         `[기준 날짜] ${todayDate}`,
         textTitle ? `[게시글 제목] ${textTitle}` : null,
         textContent ? `[게시글 본문]\n${textContent}` : null
@@ -251,27 +266,66 @@ export const extractPetHealthEvent = async ({
         config: {
             systemInstruction,
             responseMimeType: 'application/json',
-            responseSchema: healthEventSchema,
+            responseSchema: healthEventsSchema,
             temperature: 0.1
         }
     });
 
     const parsed = JSON.parse(response.text);
-    const safeCategory = VALID_CATEGORIES.includes(parsed.category) ? parsed.category : 'NOTE';
-    const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(String(parsed.event_date || ''))
-        ? String(parsed.event_date)
-        : todayDate;
-    const safeWeight = (parsed.weight_kg !== null && parsed.weight_kg !== undefined && !Number.isNaN(Number(parsed.weight_kg)))
-        ? Number(parsed.weight_kg)
-        : null;
+    const rawEvents = Array.isArray(parsed?.events) ? parsed.events.slice(0, 4) : [];
 
+    const events = rawEvents.map((ev) => {
+        const safeCategory = VALID_CATEGORIES.includes(ev?.category) ? ev.category : 'NOTE';
+        const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(String(ev?.event_date || ''))
+            ? String(ev.event_date)
+            : todayDate;
+        const safeWeight = (ev?.weight_kg !== null && ev?.weight_kg !== undefined && !Number.isNaN(Number(ev.weight_kg)))
+            ? Number(ev.weight_kg)
+            : null;
+        const safePetNames = Array.isArray(ev?.pet_names)
+            ? ev.pet_names.map((n) => String(n || '').trim()).filter(Boolean)
+            : [];
+
+        return {
+            pet_names: safePetNames,
+            category: safeCategory,
+            title: String(ev?.title || '').trim().slice(0, 20),
+            notes: String(ev?.notes || '').trim(),
+            event_date: safeDate,
+            hospital_name: ev?.hospital_name ? String(ev.hospital_name).trim() : null,
+            weight_kg: safeWeight
+        };
+    }).filter((ev) => ev.title || ev.notes);
+
+    return { events };
+};
+
+/**
+ * 단건 호환 래퍼: extractPetHealthEvents 결과의 첫 번째 이벤트를 반환합니다.
+ */
+export const extractPetHealthEvent = async ({
+    title = '',
+    content = '',
+    pets = [],
+    petName = '',
+    species = '',
+    todayDate = new Date().toISOString().slice(0, 10)
+} = {}) => {
+    const { events } = await extractPetHealthEvents({ title, content, pets, petName, species, todayDate });
+    if (!events || events.length === 0) {
+        return {
+            has_event: false,
+            category: 'NOTE',
+            title: '',
+            notes: '',
+            event_date: todayDate,
+            hospital_name: null,
+            weight_kg: null
+        };
+    }
+    const first = events[0];
     return {
-        has_event: Boolean(parsed.has_event),
-        category: safeCategory,
-        title: String(parsed.title || '').trim().slice(0, 20),
-        notes: String(parsed.notes || '').trim(),
-        event_date: safeDate,
-        hospital_name: parsed.hospital_name ? String(parsed.hospital_name).trim() : null,
-        weight_kg: safeWeight
+        has_event: true,
+        ...first
     };
 };

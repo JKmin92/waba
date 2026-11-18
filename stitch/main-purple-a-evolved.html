@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA Main — Evolved Plan A (A-1 Cinematic / A-2 Magazine Showcase)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --surface: #F7F7FA;
+      --ink: #111115;
+      --ink-2: #4E4E58;
+      --ink-3: #8E8E98;
+      --line: #EAEAEF;
+      --purple: #7C5CFC;
+      --purple-soft: #F3F0FF;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #ECECF2;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: var(--surface); padding: 4px; border-radius: 999px; border: 1px solid var(--line); }
+    .studio-tab {
+      border: none; background: transparent; color: var(--ink-2);
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: var(--purple); color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .artboard { width: 1440px; display: flex; flex-direction: column; gap: 12px; }
+    .art-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: var(--purple); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+
+    .frame-pc {
+      width: 1440px; background: var(--bg); border-radius: 20px; overflow: hidden;
+      border: 1px solid #DFDFE8; box-shadow: 0 24px 60px rgba(17,17,21,0.08);
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .artboard { display: none; }
+    body.single-mode .artboard.is-target { display: flex; }
+
+    /* Shared Left Sidebar (Refined Typography & Pet Widget) */
+    .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 980px; background: #fff; }
+    .left-rail {
+      border-right: 1px solid var(--line); padding: 26px 18px 22px;
+      display: flex; flex-direction: column; justify-content: space-between; background: #fff;
+    }
+    .brand-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+    .brand-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); }
+    .side-nav { display: grid; gap: 4px; margin-top: 26px; }
+    .side-item {
+      padding: 11px 12px; border-radius: 13px; font-size: 14px; font-weight: 600;
+      color: var(--ink-2); display: flex; align-items: center; gap: 11px;
+    }
+    .side-item.on { background: var(--purple-soft); color: var(--purple); font-weight: 700; }
+    .cta-upload {
+      margin-top: 18px; height: 44px; border-radius: 14px; background: var(--purple); color: #fff;
+      font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 8px 20px rgba(124, 92, 252, 0.24);
+    }
+    .pet-widget {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
+      display: grid; gap: 10px;
+    }
+    .pet-widget-top { display: flex; align-items: center; gap: 10px; }
+    .pet-widget-top img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }
+
+    /* Underline Tabs + Sort Dropdown + Search */
+    .top-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line); padding-bottom: 12px;
+    }
+    .ul-tabs { display: flex; gap: 24px; }
+    .ul-tab {
+      font-size: 14px; font-weight: 600; color: var(--ink-3); position: relative; padding-bottom: 12px; margin-bottom: -13px;
+    }
+    .ul-tab.on { color: var(--ink); font-weight: 800; }
+    .ul-tab.on::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: var(--purple); border-radius: 999px;
+    }
+    .right-tools { display: flex; align-items: center; gap: 10px; }
+    .sort-select {
+      height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .search-pill {
+      width: 240px; height: 36px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+      padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3);
+    }
+
+    /* Shared Card Micro-Details */
+    .snap-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .snap-media { height: 225px; position: relative; overflow: hidden; }
+    .snap-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .snap-pill {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; color: var(--ink);
+    }
+    .bookmark-btn {
+      position: absolute; top: 12px; right: 12px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .snap-body { padding: 15px 17px; display: grid; gap: 10px; }
+    .snap-title { font-size: 15px; font-weight: 700; line-height: 1.42; }
+    .card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
+    .author-mini { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-weight: 600; }
+    .author-mini img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+
+    .avatar-stack { display: flex; align-items: center; }
+    .avatar-stack img {
+      width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
+      border: 2px solid #fff; margin-left: -8px;
+    }
+    .avatar-stack img:first-child { margin-left: 0; }
+
+    /* ============================================================
+       EVOLVED A-1: CINEMATIC SPOTLIGHT + SEPARATED Q&A / SNAP
+    ============================================================ */
+    .main-e1 { padding: 24px 36px 44px; display: flex; flex-direction: column; gap: 24px; }
+
+    .e1-hero-row {
+      display: grid; grid-template-columns: 1.85fr 1fr; gap: 18px; height: 330px;
+    }
+    .cinematic-spot {
+      position: relative; border-radius: 24px; overflow: hidden;
+    }
+    .cinematic-spot img.bg-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cinematic-grad {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(17,17,21,0.08) 0%, rgba(17,17,21,0.18) 45%, rgba(17,17,21,0.84) 100%);
+    }
+    .cinematic-top {
+      position: absolute; top: 18px; left: 20px; right: 20px;
+      display: flex; justify-content: space-between; align-items: center; z-index: 2;
+    }
+    .glass-chip {
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.35); color: #fff;
+      font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
+    }
+    .cinematic-bottom {
+      position: absolute; left: 22px; right: 22px; bottom: 20px; z-index: 2;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; color: #fff;
+    }
+    .glass-cta {
+      background: rgba(255,255,255,0.95); color: var(--ink);
+      font-size: 12px; font-weight: 700; padding: 10px 16px; border-radius: 999px; white-space: nowrap;
+    }
+
+    .e1-right-stack {
+      display: flex; flex-direction: column; gap: 14px; height: 330px;
+    }
+    .e1-pet-box {
+      flex: 1; background: linear-gradient(145deg, #FFFFFF 0%, #F3F0FF 100%);
+      border: 1px solid #E5DDFB; border-radius: 20px; padding: 16px 18px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .e1-hot-qa {
+      flex: 1; background: var(--surface); border: 1px solid var(--line);
+      border-radius: 20px; padding: 16px 18px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+
+    .sec-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .sec-h { font-size: 16px; font-weight: 800; color: var(--ink); }
+    .sec-more { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+
+    /* Compact 2-Col Q&A (Zero Blank Space) */
+    .qa-compact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .qa-compact-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .qa-reply-box {
+      background: var(--surface); border-radius: 12px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-2);
+    }
+    .qa-reply-box img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+    /* ============================================================
+       EVOLVED A-2: MODERN MAGAZINE & COMMUNITY SHOWCASE
+    ============================================================ */
+    .main-e2 { padding: 24px 36px 44px; display: flex; flex-direction: column; gap: 22px; }
+    .e2-page-head { display: flex; align-items: flex-end; justify-content: space-between; }
+    .e2-showcase {
+      display: grid; grid-template-columns: 45% 1fr; gap: 20px; height: 390px;
+    }
+    .e2-portrait-cover {
+      position: relative; border-radius: 24px; overflow: hidden;
+    }
+    .e2-portrait-cover img.cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .e2-right-col { display: flex; flex-direction: column; gap: 16px; height: 390px; }
+    .e2-journeys-box {
+      flex: 1.05; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 18px 20px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .e2-journey-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .e2-j-item {
+      background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+      display: grid; gap: 6px;
+    }
+    .e2-qa-box {
+      flex: 1; background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 18px 20px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">EVOLVED PLAN A</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">구성안 A 업그레이드 진화안 2종 (A-1 / A-2)</div>
+        <div style="font-size:12px;color:var(--ink-3);">풀블리드 시네마틱 스포트라이트 · Q&amp;A 빈 여백 제거 · 언더라인 탭/정렬/아바타 마이크로 디테일 강화</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">Both (A-1 &amp; A-2)</button>
+      <button class="studio-tab" data-target="evolved-1" onclick="setView('evolved-1')">진화안 A-1 (시네마틱+분리)</button>
+      <button class="studio-tab" data-target="evolved-2" onclick="setView('evolved-2')">진화안 A-2 (매거진 쇼케이스)</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+
+    <!-- ============================================================
+         EVOLVED A-1: CINEMATIC SPOTLIGHT + Q&A / SNAP SEPARATED
+    ============================================================ -->
+    <section class="artboard" id="artboard-evolved-1">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">진화안 A-1</span> 풀블리드 시네마틱 스포트라이트 + Q&amp;A / 라이프 스냅 분리형
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">상단 65% 시네마틱 + 35% AI 수첩/핫 Q&amp;A · 중단 2열 컴팩트 Q&amp;A · 하단 3열 고화질 스냅</span>
+      </div>
+
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item on">🏠 홈 피드</div>
+                <div class="side-item">💬 커뮤니티</div>
+                <div class="side-item">🌿 케어 저니</div>
+                <div class="side-item">📔 건강 수첩</div>
+                <div class="side-item">👤 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div>
+                  <div style="font-size:13px;font-weight:800;">몽글 <span style="font-size:11px;font-weight:600;color:var(--ink-3);">3.8kg</span></div>
+                  <div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div>
+                </div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="main-e1">
+            <!-- Underline Tabs + Sort + Search -->
+            <div class="top-controls">
+              <div class="ul-tabs">
+                <span class="ul-tab on">전체</span>
+                <span class="ul-tab">인기 스냅</span>
+                <span class="ul-tab">건강 Q&amp;A</span>
+                <span class="ul-tab">케어 저니 · 치료기</span>
+              </div>
+              <div class="right-tools">
+                <span class="sort-select">인기순 ▾</span>
+                <div class="search-pill">🔍 사진, 질문, 케어 저니 검색</div>
+              </div>
+            </div>
+
+            <!-- Top Row: 65% Full-bleed Cinematic Spotlight + 35% AI Notebook & Hot Q&A -->
+            <section class="e1-hero-row">
+              <article class="cinematic-spot">
+                <img class="bg-photo" src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1000&q=80" alt="보리 재활" />
+                <div class="cinematic-grad"></div>
+                <div class="cinematic-top">
+                  <span style="background:var(--purple);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;">TODAY'S SPOTLIGHT · DAY 56</span>
+                  <span class="glass-chip">76% 목표 달성</span>
+                </div>
+                <div class="cinematic-bottom">
+                  <div>
+                    <h2 style="font-size:24px;font-weight:800;line-height:1.3;">노령견 디스크 수술 없이<br/>수중 재활 8주차 극복 기록</h2>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+                      <div class="avatar-stack">
+                        <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=100&q=80" alt="" />
+                        <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80" alt="" />
+                        <img src="https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=100&q=80" alt="" />
+                      </div>
+                      <span style="font-size:12px;opacity:0.9;">보리집사 외 128명 응원 중 · ♥ 342</span>
+                    </div>
+                  </div>
+                  <span class="glass-cta">케어 저니 보기 →</span>
+                </div>
+              </article>
+
+              <div class="e1-right-stack">
+                <div class="e1-pet-box">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;font-weight:800;color:var(--purple);">내 펫 AI 수첩</span>
+                    <span style="font-size:11px;color:var(--ink-3);">오늘 1/3 완료</span>
+                  </div>
+                  <div style="font-size:16px;font-weight:800;line-height:1.35;">몽글이 산책 &amp; 체중<br/>3.8kg 안정 유지 중</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+                    <span style="color:var(--ink-2);">다음 종합백신 D-12</span>
+                    <span style="font-weight:700;color:var(--purple);">기록하기 →</span>
+                  </div>
+                </div>
+
+                <div class="e1-hot-qa">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;font-weight:800;color:var(--ink);">🔥 실시간 핫 Q&amp;A</span>
+                    <span style="font-size:11px;color:var(--purple);font-weight:700;">답변 28개</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;line-height:1.4;">유산균 급여 후 묽은 변 3일째, 중단해야 할까요?</div>
+                  <div style="font-size:11px;color:var(--ink-3);">김다은 수의사 외 4명 답변 작성 중...</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Middle Section: Separated 2-Col Compact Health Q&A (Zero Blank Space) -->
+            <section>
+              <div class="sec-title-row">
+                <h3 class="sec-h">💬 지금 답변이 활발한 건강 Q&amp;A</h3>
+                <span class="sec-more">Q&amp;A 전체보기 →</span>
+              </div>
+              <div class="qa-compact-grid">
+                <article class="qa-compact-card">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="background:var(--purple-soft);color:var(--purple);font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;">관절 · 슬개골</span>
+                    <span style="font-size:11px;color:var(--ink-3);">18분 전</span>
+                  </div>
+                  <div style="font-size:15px;font-weight:700;line-height:1.4;">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</div>
+                  <div class="qa-reply-box">
+                    <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80" alt="" />
+                    <div><strong style="color:var(--purple);">✓ 김다은 수의사:</strong> 평지 위주 15~20분씩 나누어 걷는 것이 관절에 좋습니다.</div>
+                  </div>
+                  <div class="card-meta"><span>코코네</span><span>💬 28 · ♥ 64</span></div>
+                </article>
+
+                <article class="qa-compact-card">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="background:var(--purple-soft);color:var(--purple);font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;">식단 · 눈물</span>
+                    <span style="font-size:11px;color:var(--ink-3);">42분 전</span>
+                  </div>
+                  <div style="font-size:15px;font-weight:700;line-height:1.4;">눈물 자국 잡으려고 가수분해 사료로 바꿨는데 효과 언제부터 보나요?</div>
+                  <div class="qa-reply-box">
+                    <img src="https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=100&q=80" alt="" />
+                    <div><strong style="color:var(--ink);">모찌네:</strong> 저희 아이는 3주차부터 눈에 띄게 눈물량이 줄어들기 시작했어요!</div>
+                  </div>
+                  <div class="card-meta"><span>초코맘</span><span>💬 19 · ♥ 73</span></div>
+                </article>
+              </div>
+            </section>
+
+            <!-- Bottom Section: 3-Col High-Res Life Snaps -->
+            <section>
+              <div class="sec-title-row">
+                <h3 class="sec-h">📸 라이프 스냅</h3>
+                <span class="sec-more">스냅 전체보기 →</span>
+              </div>
+              <div class="grid-3">
+                <article class="snap-card">
+                  <div class="snap-media">
+                    <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&q=80" alt="몽글이" />
+                    <span class="snap-pill">🐾 몽글 · 말티푸</span>
+                    <span class="bookmark-btn">🔖</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">햇살 가득한 오후, 거실 창가 쿠션에서 낮잠 자는 몽글이</div>
+                    <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1517849845537-4d257902454a?w=100&q=80" alt="" /> 몽글맘</span><span>♥ 128 · 💬 14</span></div>
+                  </div>
+                </article>
+
+                <article class="snap-card">
+                  <div class="snap-media">
+                    <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80" alt="루이" />
+                    <span class="snap-pill">🐈 루이 · 코숏</span>
+                    <span class="bookmark-btn">🔖</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">음수량 늘리려고 창가마다 도자기 물그릇 배치해둔 후기</div>
+                    <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=100&q=80" alt="" /> 루이맘</span><span>♥ 112 · 💬 8</span></div>
+                  </div>
+                </article>
+
+                <article class="snap-card">
+                  <div class="snap-media">
+                    <img src="https://images.unsplash.com/photo-1560807707-8cc77767d783?w=600&q=80" alt="두부" />
+                    <span class="snap-pill">🐶 두부 · 카발리에</span>
+                    <span class="bookmark-btn">🔖</span>
+                  </div>
+                  <div class="snap-body">
+                    <div class="snap-title">비 오는 날 실내 노즈워크 매트로 에너지 발산하는 두부</div>
+                    <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=100&q=80" alt="" /> 두부네</span><span>♥ 96 · 💬 11</span></div>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         EVOLVED A-2: MODERN MAGAZINE & COMMUNITY SHOWCASE
+    ============================================================ -->
+    <section class="artboard" id="artboard-evolved-2">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">진화안 A-2</span> 모던 매거진 &amp; 커뮤니티 쇼케이스형
+        </div>
+        <span style="font-size:12px;color:var(--ink-2);">'오늘의 WABA' 타이틀 + 좌측 45% 세로 풀블리드 스냅 + 우측 55% 케어 저니 TOP2 &amp; Q&amp;A + 하단 3열</span>
+      </div>
+
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item on">🏠 홈 피드</div>
+                <div class="side-item">💬 커뮤니티</div>
+                <div class="side-item">🌿 케어 저니</div>
+                <div class="side-item">📔 건강 수첩</div>
+                <div class="side-item">👤 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div>
+                  <div style="font-size:13px;font-weight:800;">몽글 <span style="font-size:11px;font-weight:600;color:var(--ink-3);">3.8kg</span></div>
+                  <div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div>
+                </div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="main-e2">
+            <!-- Title Header + Underline Tabs -->
+            <div class="e2-page-head">
+              <div>
+                <div style="font-size:11px;font-weight:800;color:var(--purple);letter-spacing:0.08em;">WABA DAILY CURATION</div>
+                <h1 style="font-size:26px;font-weight:800;letter-spacing:-0.03em;margin-top:2px;">오늘의 WABA</h1>
+              </div>
+              <div class="right-tools">
+                <span class="sort-select">인기순 ▾</span>
+                <div class="search-pill">🔍 사진, 질문, 케어 저니 검색</div>
+              </div>
+            </div>
+
+            <div class="top-controls" style="padding-top:0;">
+              <div class="ul-tabs">
+                <span class="ul-tab on">전체</span>
+                <span class="ul-tab">인기 스냅</span>
+                <span class="ul-tab">건강 Q&amp;A</span>
+                <span class="ul-tab">케어 저니 · 치료기</span>
+              </div>
+            </div>
+
+            <!-- Asymmetric Showcase (45% Portrait Cover + 55% Care Journey TOP 2 & Today's Q&A) -->
+            <section class="e2-showcase">
+              <article class="e2-portrait-cover">
+                <img class="cover-img" src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=900&q=80" alt="오늘의 베스트 스냅" />
+                <div class="cinematic-grad"></div>
+                <div class="cinematic-top">
+                  <span style="background:rgba(255,255,255,0.92);color:var(--ink);font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;">🏆 BEST SNAP · 몽글</span>
+                  <span class="bookmark-btn" style="position:static;">🔖</span>
+                </div>
+                <div class="cinematic-bottom" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                  <h2 style="font-size:22px;font-weight:800;line-height:1.35;">햇살이 머무는 24평 거실,<br/>몽글이의 오후 낮잠 존</h2>
+                  <div style="font-size:12px;opacity:0.9;">몽글맘 · ♥ 248 · 💬 31</div>
+                </div>
+              </article>
+
+              <div class="e2-right-col">
+                <div class="e2-journeys-box">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;font-weight:800;">🌿 케어 저니 TOP 2</span>
+                    <span style="font-size:11px;color:var(--ink-3);">전체 보기 ›</span>
+                  </div>
+                  <div class="e2-journey-grid">
+                    <div class="e2-j-item">
+                      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;"><span style="color:var(--purple);">DAY 56</span><span>♥ 342</span></div>
+                      <div style="font-size:13px;font-weight:700;line-height:1.35;">노령견 디스크 수중 재활 8주차 극복기</div>
+                      <div style="height:5px;background:var(--surface);border-radius:999px;"><div style="width:76%;height:100%;background:var(--purple);border-radius:999px;"></div></div>
+                    </div>
+                    <div class="e2-j-item">
+                      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;"><span style="color:var(--purple);">DAY 21</span><span>♥ 191</span></div>
+                      <div style="font-size:13px;font-weight:700;line-height:1.35;">아토피 피부염 3주 식단 &amp; 보습 일지</div>
+                      <div style="height:5px;background:var(--surface);border-radius:999px;"><div style="width:70%;height:100%;background:var(--purple);border-radius:999px;"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="e2-qa-box">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="background:var(--purple-soft);color:var(--purple);font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;">오늘의 건강 Q&amp;A</span>
+                    <span style="font-size:11px;color:var(--ink-3);">💬 28 · ♥ 64</span>
+                  </div>
+                  <div style="font-size:16px;font-weight:800;line-height:1.4;">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</div>
+                  <div class="qa-reply-box">
+                    <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80" alt="" />
+                    <div><strong style="color:var(--purple);">✓ 김다은 수의사:</strong> 평지 위주 15~20분씩 나누어 걷고, 계단·점프를 제한해 주세요.</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Bottom Balanced 3-Col Snap & Review Grid -->
+            <section class="grid-3">
+              <article class="snap-card">
+                <div class="snap-media">
+                  <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&q=80" alt="보리" />
+                  <span class="snap-pill">🐕 보리 · 재활스냅</span>
+                  <span class="bookmark-btn">🔖</span>
+                </div>
+                <div class="snap-body">
+                  <div class="snap-title">오랜만에 흙길 산책 나온 보리의 행복한 표정</div>
+                  <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=100&q=80" alt="" /> 보리집사</span><span>♥ 152 · 💬 41</span></div>
+                </div>
+              </article>
+
+              <article class="snap-card">
+                <div class="snap-media">
+                  <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80" alt="루이" />
+                  <span class="snap-pill">🐈 루이 · 코숏</span>
+                  <span class="bookmark-btn">🔖</span>
+                </div>
+                <div class="snap-body">
+                  <div class="snap-title">음수량 늘리려고 창가마다 도자기 물그릇 배치해둔 후기</div>
+                  <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=100&q=80" alt="" /> 루이맘</span><span>♥ 112 · 💬 8</span></div>
+                </div>
+              </article>
+
+              <article class="snap-card">
+                <div class="snap-media">
+                  <img src="https://images.unsplash.com/photo-1560807707-8cc77767d783?w=600&q=80" alt="두부" />
+                  <span class="snap-pill">후기 · 식단</span>
+                  <span class="bookmark-btn">🔖</span>
+                </div>
+                <div class="snap-body">
+                  <div class="snap-title">눈물 자국 잡으려고 사료 바꾼 4주차 솔직 후기</div>
+                  <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=100&q=80" alt="" /> 모찌네</span><span>♥ 73 · 💬 19</span></div>
+                </div>
+              </article>
+            </section>
+          </main>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.artboard');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['evolved-1', 'evolved-2'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

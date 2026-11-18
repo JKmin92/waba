@@ -195,6 +195,92 @@ const pool = mysql.createPool({
             ('oliveyoung.co.kr', '올리브영')
         `);
         console.log("✅ [DB Migration] allowed_affiliate_domains 테이블 및 기본 도메인 시드 확인 완료.");
+
+        // 1) comments 테이블 댓글 고정(최대 2개) 컬럼 및 인덱스 추가
+        const [commentPinnedCols] = await pool.query("SHOW COLUMNS FROM `comments` LIKE 'is_pinned'");
+        if (commentPinnedCols.length === 0) {
+            await pool.query(`
+                ALTER TABLE \`comments\`
+                ADD COLUMN \`is_pinned\` TINYINT(1) NOT NULL DEFAULT 0 AFTER \`is_accepted\`,
+                ADD COLUMN \`pinned_at\` DATETIME NULL AFTER \`is_pinned\`,
+                ADD INDEX \`idx_post_pinned\` (\`post_id\`, \`is_pinned\`, \`pinned_at\`)
+            `);
+            console.log("✅ [DB Migration] comments.is_pinned, pinned_at 컬럼 및 idx_post_pinned 인덱스 추가 완료.");
+        }
+
+        // 2) pet_journeys 상태(ACTIVE/CURED/COMPLETED), 카테고리, 목표 요약, 완료일시 컬럼 추가
+        const [journeyStatusCols] = await pool.query("SHOW COLUMNS FROM `pet_journeys` LIKE 'status'");
+        if (journeyStatusCols.length === 0) {
+            await pool.query("ALTER TABLE `pet_journeys` ADD COLUMN `status` VARCHAR(30) NOT NULL DEFAULT 'ACTIVE' AFTER `is_ongoing`");
+            console.log("✅ [DB Migration] pet_journeys.status 컬럼 추가 완료.");
+        }
+        const [journeyCategoryCols] = await pool.query("SHOW COLUMNS FROM `pet_journeys` LIKE 'category'");
+        if (journeyCategoryCols.length === 0) {
+            await pool.query("ALTER TABLE `pet_journeys` ADD COLUMN `category` VARCHAR(50) NULL AFTER `status`");
+            console.log("✅ [DB Migration] pet_journeys.category 컬럼 추가 완료.");
+        }
+        const [journeyGoalCols] = await pool.query("SHOW COLUMNS FROM `pet_journeys` LIKE 'goal_summary'");
+        if (journeyGoalCols.length === 0) {
+            await pool.query("ALTER TABLE `pet_journeys` ADD COLUMN `goal_summary` VARCHAR(255) NULL AFTER `category`");
+            console.log("✅ [DB Migration] pet_journeys.goal_summary 컬럼 추가 완료.");
+        }
+        const [journeyCompletedCols] = await pool.query("SHOW COLUMNS FROM `pet_journeys` LIKE 'completed_at'");
+        if (journeyCompletedCols.length === 0) {
+            await pool.query("ALTER TABLE `pet_journeys` ADD COLUMN `completed_at` DATETIME NULL AFTER `goal_summary`");
+            console.log("✅ [DB Migration] pet_journeys.completed_at 컬럼 추가 완료.");
+        }
+
+        // 3) pet_journey_scraps 테이블 생성 (공유 수첩 스크랩)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`pet_journey_scraps\` (
+              \`id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              \`journey_id\` BIGINT NOT NULL,
+              \`user_id\` VARCHAR(30) NOT NULL,
+              \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE KEY \`uk_journey_scrap\` (\`journey_id\`, \`user_id\`),
+              INDEX \`idx_pjs_user\` (\`user_id\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        console.log("✅ [DB Migration] pet_journey_scraps 테이블 확인/생성 완료.");
+
+        // 4) pet_journey_comments 테이블 생성 (건강 수첩 상세 응원/질문 댓글)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`pet_journey_comments\` (
+              \`id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              \`journey_id\` BIGINT NOT NULL,
+              \`user_id\` VARCHAR(30) NOT NULL,
+              \`content\` TEXT NOT NULL,
+              \`is_deleted\` TINYINT(1) NOT NULL DEFAULT 0,
+              \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX \`idx_pjc_journey\` (\`journey_id\`, \`created_at\`),
+              INDEX \`idx_pjc_user\` (\`user_id\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        console.log("✅ [DB Migration] pet_journey_comments 테이블 확인/생성 완료.");
+
+        // 5) posts.board_id NULL 허용 (카테고리 미선택 임시저장 지원)
+        const [postBoardCols] = await pool.query("SHOW COLUMNS FROM `posts` LIKE 'board_id'");
+        if (postBoardCols[0] && postBoardCols[0].Null === 'NO') {
+            await pool.query("ALTER TABLE `posts` MODIFY COLUMN `board_id` VARCHAR(30) NULL DEFAULT NULL");
+            console.log("✅ [DB Migration] posts.board_id NULL 허용 변경 완료.");
+        }
+
+        // 6) pet_history_pets 다중 반려동물 매핑 테이블 생성 및 기존 데이터 백필
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`pet_history_pets\` (
+              \`history_id\` BIGINT NOT NULL,
+              \`pet_id\` VARCHAR(30) NOT NULL,
+              \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (\`history_id\`, \`pet_id\`),
+              INDEX \`idx_phpets_pet\` (\`pet_id\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        await pool.query(`
+            INSERT IGNORE INTO \`pet_history_pets\` (\`history_id\`, \`pet_id\`)
+            SELECT \`id\`, \`pet_id\` FROM \`pet_histories\`
+        `);
+        console.log("✅ [DB Migration] pet_history_pets 테이블 생성 및 백필 완료.");
     } catch (err) {
         console.error("⚠️ [DB Migration] pet_journeys/posts 테이블 생성 실패:", err.message);
     }

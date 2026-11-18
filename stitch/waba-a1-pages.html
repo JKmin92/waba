@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA — 4 Core Pages (A-1 Design System)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --surface: #F7F7FA;
+      --ink: #111115;
+      --ink-2: #4E4E58;
+      --ink-3: #8E8E98;
+      --line: #EAEAEF;
+      --purple: #7C5CFC;
+      --purple-soft: #F3F0FF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #ECECF2; color: var(--ink); -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: var(--surface); padding: 4px; border-radius: 999px; border: 1px solid var(--line); }
+    .studio-tab {
+      border: none; background: transparent; color: var(--ink-2);
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: var(--purple); color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .artboard { width: 1440px; display: flex; flex-direction: column; gap: 12px; }
+    .art-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: var(--purple); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+
+    .frame-pc {
+      width: 1440px; background: var(--bg); border-radius: 20px; overflow: hidden;
+      border: 1px solid #DFDFE8; box-shadow: 0 24px 60px rgba(17,17,21,0.08);
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .artboard { display: none; }
+    body.single-mode .artboard.is-target { display: flex; }
+
+    /* Shared A-1 Shell & Left Sidebar */
+    .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 920px; background: #fff; }
+    .left-rail {
+      border-right: 1px solid var(--line); padding: 26px 18px 22px;
+      display: flex; flex-direction: column; justify-content: space-between; background: #fff;
+    }
+    .brand-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+    .brand-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); }
+    .side-nav { display: grid; gap: 4px; margin-top: 26px; }
+    .side-item {
+      padding: 11px 12px; border-radius: 13px; font-size: 14px; font-weight: 600;
+      color: var(--ink-2); display: flex; align-items: center; gap: 11px;
+    }
+    .side-item.on { background: var(--purple-soft); color: var(--purple); font-weight: 700; }
+    .cta-upload {
+      margin-top: 18px; height: 44px; border-radius: 14px; background: var(--purple); color: #fff;
+      font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 8px 20px rgba(124, 92, 252, 0.24);
+    }
+    .pet-widget {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 10px;
+    }
+    .pet-widget-top { display: flex; align-items: center; gap: 10px; }
+    .pet-widget-top img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }
+
+    /* Shared Controls */
+    .top-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line); padding-bottom: 12px;
+    }
+    .ul-tabs { display: flex; gap: 24px; }
+    .ul-tab {
+      font-size: 14px; font-weight: 600; color: var(--ink-3); position: relative; padding-bottom: 12px; margin-bottom: -13px;
+    }
+    .ul-tab.on { color: var(--ink); font-weight: 800; }
+    .ul-tab.on::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: var(--purple); border-radius: 999px;
+    }
+    .pill-btn {
+      height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .search-pill {
+      width: 240px; height: 34px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+      padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3);
+    }
+    .badge-purple {
+      display: inline-block; background: var(--purple-soft); color: var(--purple);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    }
+
+    /* ============================================================
+       PAGE 1: COMMUNITY LIST (/board/[id])
+    ============================================================ */
+    .page-pad { padding: 26px 36px 44px; display: flex; flex-direction: column; gap: 22px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+    .snap-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; height: 100%; }
+    .snap-media { height: 220px; position: relative; overflow: hidden; flex-shrink: 0; }
+    .snap-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .snap-pill {
+      position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    }
+    .bookmark-btn {
+      position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.92); display: flex; align-items: center; justify-content: center;
+    }
+    .snap-body { padding: 16px 18px; display: flex; flex-direction: column; justify-content: space-between; flex: 1; gap: 12px; }
+    .text-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 20px;
+      display: flex; flex-direction: column; justify-content: space-between; height: 100%; gap: 14px;
+    }
+    .text-card-excerpt {
+      font-size: 13px; color: var(--ink-2); line-height: 1.6;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .text-highlight-box {
+      background: var(--surface); border-radius: 13px; padding: 11px 13px;
+      font-size: 12px; color: var(--ink-2); line-height: 1.45;
+    }
+    .card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
+    .author-mini { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-weight: 600; }
+    .author-mini img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+
+    /* ============================================================
+       PAGE 2: POST DETAIL (/post/[id])
+    ============================================================ */
+    .detail-editorial { max-width: 820px; width: 100%; margin: 0 auto; display: grid; gap: 22px; }
+    .pin-hero-box { position: relative; border-radius: 22px; overflow: hidden; height: 420px; }
+    .pin-hero-box img.main-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .map-pin {
+      position: absolute; padding: 6px 12px; border-radius: 999px;
+      background: rgba(17,17,21,0.82); backdrop-filter: blur(8px); color: #fff;
+      font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+      border: 1.5px solid rgba(255,255,255,0.7); box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+    }
+    .map-pin .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--purple); }
+    .linked-journey {
+      background: linear-gradient(135deg, #F3F0FF 0%, #F7F7FA 100%);
+      border: 1px solid #E5DDFB; border-radius: 18px; padding: 16px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .comment-panel {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 20px;
+      display: grid; gap: 14px;
+    }
+    .comment-item {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 8px;
+    }
+
+    /* ============================================================
+       PAGE 3: POST REGISTER (/post/register)
+    ============================================================ */
+    .reg-topbar {
+      padding: 16px 36px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .reg-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 28px; padding: 28px 36px 44px; align-items: start; }
+    .editor-canvas {
+      border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: grid; gap: 20px; background: #fff;
+    }
+    .editor-img-block {
+      position: relative; border-radius: 18px; overflow: hidden; height: 320px;
+    }
+    .editor-img-block img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .toggle-switch {
+      width: 44px; height: 24px; border-radius: 999px; background: var(--purple); position: relative;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; right: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+    }
+    .panel-box {
+      background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; display: grid; gap: 12px;
+    }
+
+    /* ============================================================
+       PAGE 4: MYPAGE (/member/mypage)
+    ============================================================ */
+    .mypage-header {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 22px 26px;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    .pet-switcher { display: flex; gap: 12px; }
+    .pet-pill-card {
+      background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pet-pill-card.active { border-color: var(--purple); background: var(--purple-soft); }
+    .pet-pill-card img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+
+    .timeline-box {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 22px 24px; display: grid; gap: 16px;
+    }
+    .tl-item {
+      display: grid; grid-template-columns: 90px 1fr auto; gap: 16px; align-items: center;
+      padding: 14px 16px; border-radius: 16px; background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">WABA CORE 4 PAGES</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">진화안 A-1 디자인 시스템 확장 — 4개 핵심 페이지</div>
+        <div style="font-size:12px;color:var(--ink-3);">커뮤니티 리스트(/board) · 글 상세(/post) · 글 작성(/post/register) · 마이페이지(/member/mypage)</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">All 4 Pages</button>
+      <button class="studio-tab" data-target="page-board" onclick="setView('page-board')">1. 커뮤니티 리스트</button>
+      <button class="studio-tab" data-target="page-detail" onclick="setView('page-detail')">2. 글 상세</button>
+      <button class="studio-tab" data-target="page-register" onclick="setView('page-register')">3. 글 작성</button>
+      <button class="studio-tab" data-target="page-mypage" onclick="setView('page-mypage')">4. 마이페이지</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+
+    <!-- ============================================================
+         1. COMMUNITY LIST (/board/[id])
+    ============================================================ -->
+    <section class="artboard" id="artboard-page-board">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">1. 커뮤니티 리스트</span> /board/[id] — 탐색 &amp; 필터 · 3열 스냅 + Q&amp;A 리스트
+        </div>
+      </div>
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> 홈</div>
+                <div class="side-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 커뮤니티</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> 케어 저니</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 건강 수첩</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div><div style="font-size:13px;font-weight:800;">몽글 · 3.8kg</div><div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div></div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="page-pad">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+              <div>
+                <div style="font-size:11px;font-weight:800;color:var(--purple);">WABA COMMUNITY</div>
+                <h1 style="font-size:24px;font-weight:800;margin-top:2px;">커뮤니티 탐색</h1>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <span class="pill-btn">최신순 ▾</span>
+                <span class="pill-btn" style="background:var(--surface);">⊞ 그리드 | ☰ 리스트</span>
+                <div class="search-pill">🔍 글 제목, 태그, 견종 검색</div>
+              </div>
+            </div>
+
+            <div class="top-controls">
+              <div class="ul-tabs">
+                <span class="ul-tab on">전체</span>
+                <span class="ul-tab">인기 스냅</span>
+                <span class="ul-tab">건강 Q&amp;A</span>
+                <span class="ul-tab">케어 저니</span>
+                <span class="ul-tab">자유수다</span>
+              </div>
+              <span style="font-size:12px;color:var(--ink-3);">총 1,428개의 글</span>
+            </div>
+
+            <div class="grid-3">
+              <!-- Row 1, Col 1: Photo Card -->
+              <article class="snap-card">
+                <div class="snap-media"><img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&q=80" alt="" /><span class="snap-pill">🐾 몽글 · 말티푸</span><span class="bookmark-btn">🔖</span></div>
+                <div class="snap-body"><div style="font-size:15px;font-weight:700;line-height:1.45;">햇살 가득한 오후, 거실 창가 쿠션에서 낮잠 자는 몽글이</div><div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1517849845537-4d257902454a?w=100&q=80" alt="" /> 몽글맘</span><span>♥ 128 · 💬 14</span></div></div>
+              </article>
+
+              <!-- Row 1, Col 2: Text-only Health Q&A Card (Equal Height) -->
+              <article class="text-card">
+                <div style="display:grid;gap:10px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="badge-purple">건강 Q&amp;A · 수의사 답변</span>
+                    <span style="font-size:11px;color:var(--ink-3);">18분 전</span>
+                  </div>
+                  <div style="font-size:16px;font-weight:800;line-height:1.4;">3세 말티푸 슬개골 2기 진단 받았는데 산책 시간 줄여야 할까요?</div>
+                  <p class="text-card-excerpt">어제 정기검진에서 슬개골 2기 진단을 받았어요. 평소 하루 40분 정도 산책했는데, 경사진 길만 피하면 되는지 아니면 시간을 반으로 줄여야 하는지 조언 부탁드려요!</p>
+                </div>
+                <div style="display:grid;gap:12px;">
+                  <div class="text-highlight-box">
+                    <strong style="color:var(--purple);">✓ 김다은 수의사:</strong> 평지 위주 15~20분씩 하루 2회 나누어 걷는 것이 관절에 좋습니다.
+                  </div>
+                  <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80" alt="" /> 코코네</span><span>♥ 64 · 💬 28</span></div>
+                </div>
+              </article>
+
+              <!-- Row 1, Col 3: Photo Card -->
+              <article class="snap-card">
+                <div class="snap-media"><img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&q=80" alt="" /><span class="snap-pill">🐕 보리 · 재활</span><span class="bookmark-btn">🔖</span></div>
+                <div class="snap-body"><div style="font-size:15px;font-weight:700;line-height:1.45;">노령견 디스크 수술 없이 수중 재활 8주차 극복 기록</div><div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=100&q=80" alt="" /> 보리집사</span><span>♥ 342 · 💬 68</span></div></div>
+              </article>
+
+              <!-- Row 2, Col 1: Text-only Care Journey Card (Equal Height) -->
+              <article class="text-card">
+                <div style="display:grid;gap:10px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="badge-purple">케어 저니 · DAY 21</span>
+                    <span style="font-size:11px;color:var(--ink-3);">42분 전</span>
+                  </div>
+                  <div style="font-size:16px;font-weight:800;line-height:1.4;">아토피 피부염 3주간 식단·목욕 케어 일지 공유합니다</div>
+                  <p class="text-card-excerpt">가수분해 단일 단백질 사료로 교체하고 주 2회 약용 샴푸로 10분 스파를 병행했더니 긁는 횟수가 눈에 띄게 줄어들어 기록 남깁니다.</p>
+                </div>
+                <div style="display:grid;gap:12px;">
+                  <div class="text-highlight-box" style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <span style="background:#fff;padding:3px 8px;border-radius:999px;font-weight:600;">#아토피케어</span>
+                    <span style="background:#fff;padding:3px 8px;border-radius:999px;font-weight:600;">#가수분해사료</span>
+                    <span style="background:#fff;padding:3px 8px;border-radius:999px;font-weight:600;color:var(--purple);">치료기</span>
+                  </div>
+                  <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=100&q=80" alt="" /> 모찌네</span><span>♥ 91 · 💬 19</span></div>
+                </div>
+              </article>
+
+              <!-- Row 2, Col 2: Photo Card -->
+              <article class="snap-card">
+                <div class="snap-media"><img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80" alt="" /><span class="snap-pill">🐈 루이 · 코숏</span><span class="bookmark-btn">🔖</span></div>
+                <div class="snap-body"><div style="font-size:15px;font-weight:700;line-height:1.45;">음수량 늘리려고 창가마다 도자기 물그릇 배치해둔 후기</div><div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=100&q=80" alt="" /> 루이맘</span><span>♥ 112 · 💬 8</span></div></div>
+              </article>
+
+              <!-- Row 2, Col 3: Text-only Community Talk Card (Equal Height) -->
+              <article class="text-card">
+                <div style="display:grid;gap:10px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="badge-purple" style="background:var(--surface);color:var(--ink);">자유수다 · 질문</span>
+                    <span style="font-size:11px;color:var(--ink-3);">1시간 전</span>
+                  </div>
+                  <div style="font-size:16px;font-weight:800;line-height:1.4;">비 오는 날 산책 못 나갈 때 집에서 어떤 노즈워크 해주시나요?</div>
+                  <p class="text-card-excerpt">장마철이라 연속 사흘째 실내에만 있으니 아이가 심심해하네요. 수건 말기 말고 간단하게 에너지 뺄 수 있는 실내 놀이 팁 궁금해요!</p>
+                </div>
+                <div style="display:grid;gap:12px;">
+                  <div class="text-highlight-box">
+                    💬 <strong>두부네:</strong> 종이컵 3개 엎어두고 간식 숨기기 게임하면 15분 만에 꿀잠 자요!
+                  </div>
+                  <div class="card-meta"><span class="author-mini"><img src="https://images.unsplash.com/photo-1560807707-8cc77767d783?w=100&q=80" alt="" /> 초코맘</span><span>♥ 47 · 💬 24</span></div>
+                </div>
+              </article>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         2. POST DETAIL (/post/[id])
+    ============================================================ -->
+    <section class="artboard" id="artboard-page-detail">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">2. 글 상세</span> /post/[id] — 반려동물/외부쇼핑몰 핀 아이콘 + 케어 저니 연결 + 답변 스레드
+        </div>
+      </div>
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> 홈</div>
+                <div class="side-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 커뮤니티</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> 케어 저니</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 건강 수첩</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div><div style="font-size:13px;font-weight:800;">몽글 · 3.8kg</div><div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div></div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="page-pad">
+            <div class="detail-editorial">
+              <!-- 1. Breadcrumb + Actions + Title + Author/Pet/Date -->
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:12px;color:var(--ink-3);">커뮤니티 &gt; <strong style="color:var(--purple);">인기 스냅 · 케어 저니</strong></div>
+                <div style="display:flex;gap:8px;">
+                  <span class="pill-btn">♥ 128</span>
+                  <span class="pill-btn">🔖 저장</span>
+                  <span class="pill-btn">↗ 공유</span>
+                </div>
+              </div>
+
+              <div>
+                <h1 style="font-size:26px;font-weight:800;line-height:1.35;">햇살 가득한 오후, 거실 창가 쿠션에서 낮잠 자는 몽글이</h1>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:13px;color:var(--ink-2);">
+                  <img src="https://images.unsplash.com/photo-1517849845537-4d257902454a?w=100&q=80" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" />
+                  <strong>몽글맘</strong>
+                  <span class="badge-purple">🐾 몽글 · 말티푸 · 3세</span>
+                  <span style="color:var(--ink-3);">2026.11.18</span>
+                </div>
+              </div>
+
+              <!-- 2. Hero Photo with Pins + Body Text -->
+              <div class="pin-hero-box">
+                <img class="main-img" src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=900&q=80" alt="몽글이" />
+                <span class="map-pin" style="top:42%;left:48%;"><span class="dot"></span> 🐾 몽글 (말티푸 3.8kg)</span>
+                <span class="map-pin" style="bottom:22%;left:24%;"><span class="dot" style="background:#FBBF24;"></span> 🏷 외부쇼핑몰 · 부클레 스텝 ↗</span>
+              </div>
+
+              <p style="font-size:15px;line-height:1.8;color:var(--ink-2);">
+                최근 슬개골 관리 때문에 거실 소파 앞에 미끄럼 방지 러그랑 2단 스텝을 새로 배치해 줬어요. 처음엔 낯설어하더니 이제는 햇살 들어올 때마다 혼자 올라가서 낮잠을 자네요. 발톱 정리도 오늘 무사히 마쳐서 기분이 좋습니다!
+              </p>
+
+              <!-- 3. Linked Care Journey / Tagged Item Card -->
+              <div class="linked-journey">
+                <div>
+                  <div style="font-size:11px;font-weight:800;color:var(--purple);">연결된 케어 저니 · 태그된 아이템</div>
+                  <div style="font-size:15px;font-weight:800;margin-top:4px;">몽글이 슬개골 &amp; 발톱 케어 루틴 (DAY 14) · 부클레 스텝</div>
+                </div>
+                <span style="background:var(--purple);color:#fff;font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;">저니 보기 →</span>
+              </div>
+
+              <!-- 4. Bottom Wide Comment Section (Pinned Max 2 + Normal Comments) -->
+              <section class="comment-panel">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div style="font-size:16px;font-weight:800;">💬 댓글 및 수의사 답변 (14)</div>
+                  <span style="font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-soft);padding:4px 10px;border-radius:999px;">📌 고정 댓글 2/2</span>
+                </div>
+                <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:13px;color:var(--ink-3);">따뜻한 댓글이나 질문을 남겨보세요...</span>
+                  <span style="background:var(--purple);color:#fff;font-size:12px;font-weight:700;padding:7px 16px;border-radius:999px;">댓글 등록</span>
+                </div>
+
+                <!-- Pinned Comment #1 -->
+                <div class="comment-item" style="border:1px solid #DDD6FE;background:#F7F5FF;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="background:var(--purple);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;">📌 작성자가 고정한 댓글</span>
+                    <span style="font-size:11px;font-weight:600;color:var(--ink-2);background:#fff;border:1px solid #DDD6FE;padding:3px 9px;border-radius:999px;">고정 해제</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;">
+                    <span><strong style="color:var(--purple);">✓ 김다은 수의사</strong> · 정형외과</span>
+                    <span style="color:var(--ink-3);">10분 전</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.6;color:var(--ink);">스텝과 러그 배치가 아주 이상적이네요! 발바닥 털도 주기적으로 정리해주면 미끄럼 예방에 큰 도움이 됩니다.</div>
+                </div>
+
+                <!-- Pinned Comment #2 -->
+                <div class="comment-item" style="border:1px solid #DDD6FE;background:#F7F5FF;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="background:var(--purple);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;">📌 작성자가 고정한 댓글</span>
+                    <span style="font-size:11px;font-weight:600;color:var(--ink-2);background:#fff;border:1px solid #DDD6FE;padding:3px 9px;border-radius:999px;">고정 해제</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;">
+                    <span><strong>몽글맘</strong> <span style="color:var(--purple);font-weight:700;">· 작성자</span></span>
+                    <span style="color:var(--ink-3);">8분 전</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.6;color:var(--ink);">많이 물어보시는 부클레 스텝 높이는 2단(28cm) 제품이고, 러그는 워셔블 160x210 사이즈 사용 중입니다!</div>
+                </div>
+
+                <!-- Normal Comment with Pin Action -->
+                <div class="comment-item">
+                  <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+                    <span><strong>코코네</strong> <span style="color:var(--ink-3);margin-left:6px;">5분 전</span></span>
+                    <span style="font-size:11px;font-weight:600;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);padding:3px 9px;border-radius:999px;">📌 고정하기</span>
+                  </div>
+                  <div style="font-size:13px;line-height:1.6;color:var(--ink-2);">몽글이 노란 옷 너무 잘 어울려요! 저도 스텝 정보 참고할게요 :)</div>
+                </div>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. POST REGISTER (/post/register)
+    ============================================================ -->
+    <section class="artboard" id="artboard-page-register">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">3. 글 작성</span> /post/register — 블록 에디터 + AI 건강 수첩 자동 기록 ON/OFF 패널
+        </div>
+      </div>
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> 홈</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 커뮤니티</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> 케어 저니</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 건강 수첩</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div><div style="font-size:13px;font-weight:800;">몽글 · 3.8kg</div><div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div></div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <div>
+            <div class="reg-topbar">
+              <div style="font-size:16px;font-weight:800;">새 기록 작성</div>
+              <div style="display:flex;gap:10px;">
+                <span class="pill-btn">임시저장</span>
+                <span class="pill-btn">미리보기</span>
+                <span class="pill-btn" style="background:var(--purple);color:#fff;border-color:var(--purple);">발행하기</span>
+              </div>
+            </div>
+
+            <div class="reg-grid">
+              <!-- Left Block Editor -->
+              <div class="editor-canvas">
+                <!-- Category Selection Above Title -->
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:11px;font-weight:700;color:var(--ink-3);margin-right:4px;">카테고리</span>
+                  <span class="pill-btn" style="height:30px;font-size:12px;background:var(--surface);">일상 스냅</span>
+                  <span class="pill-btn" style="height:30px;font-size:12px;background:var(--surface);">건강 Q&amp;A</span>
+                  <span class="pill-btn" style="height:30px;font-size:12px;background:var(--purple);color:#fff;border-color:var(--purple);">케어 저니</span>
+                  <span class="pill-btn" style="height:30px;font-size:12px;background:var(--surface);">자유수다</span>
+                </div>
+
+                <div style="font-size:22px;font-weight:800;border-bottom:1px solid var(--line);padding-bottom:14px;">
+                  오늘 몽글이 발톱 깎기 성공한 비법 공유해요!
+                </div>
+                <div class="editor-img-block">
+                  <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=900&q=80" alt="" />
+                  <span style="position:absolute;bottom:14px;right:14px;background:rgba(17,17,21,0.85);color:#fff;font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;">📍 이미지 위 펫·링크 핀 추가</span>
+                </div>
+                <div style="font-size:14px;line-height:1.75;color:var(--ink-2);">
+                  지난번엔 몽글이가 무서워해서 실패했는데, 오늘은 간식을 조금씩 주면서 한 발씩 천천히 다듬어 주었더니 얌전히 잘 기다려 주었어요.
+                </div>
+                <div style="display:flex;gap:10px;">
+                  <span class="pill-btn">+ 사진 추가</span>
+                </div>
+              </div>
+
+              <!-- Right Assistive Panel -->
+              <aside style="display:grid;gap:16px;">
+                <div class="panel-box" style="background:linear-gradient(145deg,#FFFFFF 0%,#F3F0FF 100%);border-color:#E4DCFF;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;font-weight:800;color:var(--purple);">✨ AI 건강 수첩 자동 기록</span>
+                    <span class="toggle-switch"></span>
+                  </div>
+                  <div style="font-size:12px;color:var(--ink-2);line-height:1.5;">
+                    글을 발행하면 AI가 내용을 분석해 내 펫 건강 수첩 타임라인에 자동으로 기록합니다.
+                  </div>
+                  <div style="display:grid;gap:8px;font-size:12px;">
+                    <div style="background:#fff;padding:10px 12px;border-radius:12px;border:1px solid var(--line);display:flex;justify-content:space-between;"><span>반려동물 선택</span><strong>몽글 (말티푸) ▾</strong></div>
+                    <div style="background:#fff;padding:10px 12px;border-radius:12px;border:1px solid var(--line);display:flex;justify-content:space-between;"><span>케어 저니 연결</span><strong>슬개골 &amp; 위생 루틴 ▾</strong></div>
+                  </div>
+                </div>
+
+                <div class="panel-box">
+                  <div style="font-size:13px;font-weight:800;">태그 설정</div>
+                  <div style="background:var(--surface);padding:9px 12px;border-radius:12px;font-size:12px;color:var(--ink-3);border:1px solid var(--line);">
+                    #태그를 입력하고 Enter를 누르세요
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <span class="badge-purple">#발톱관리</span>
+                    <span class="badge-purple">#말티푸</span>
+                    <span class="pill-btn" style="height:26px;font-size:11px;">+ 태그 추가</span>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         4. MYPAGE (/member/mypage)
+    ============================================================ -->
+    <section class="artboard" id="artboard-page-mypage">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">4. 마이페이지</span> /member/mypage — 반려동물 스위처 + AI 건강 수첩 누적 타임라인
+        </div>
+      </div>
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> 홈</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 커뮤니티</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> 케어 저니</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 건강 수첩</div>
+                <div class="side-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div><div style="font-size:13px;font-weight:800;">몽글 · 3.8kg</div><div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div></div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="page-pad">
+            <!-- Profile & Pet Switcher -->
+            <section class="mypage-header">
+              <div style="display:flex;align-items:center;gap:16px;">
+                <img src="https://images.unsplash.com/photo-1517849845537-4d257902454a?w=200&q=80" alt="몽글맘" style="width:62px;height:62px;border-radius:50%;object-fit:cover;" />
+                <div>
+                  <div style="font-size:20px;font-weight:800;">몽글맘 <span class="badge-purple" style="margin-left:6px;">베스트 집사</span></div>
+                  <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">게시글 24 · 케어 저니 3 · 팔로워 184</div>
+                </div>
+              </div>
+
+              <div class="pet-switcher">
+                <div class="pet-pill-card active">
+                  <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                  <div><div style="font-size:13px;font-weight:800;">몽글</div><div style="font-size:11px;color:var(--purple);">말티푸 · 3.8kg</div></div>
+                </div>
+                <div class="pet-pill-card">
+                  <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&q=80" alt="초코" />
+                  <div><div style="font-size:13px;font-weight:700;">초코</div><div style="font-size:11px;color:var(--ink-3);">푸들 · 4.5kg</div></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Mypage Tabs -->
+            <div class="top-controls">
+              <div class="ul-tabs">
+                <span class="ul-tab on">건강 수첩</span>
+                <span class="ul-tab">케어 저니</span>
+                <span class="ul-tab">내 게시글 · 북마크</span>
+                <span class="ul-tab">설정 (AI 자동 일지 ON)</span>
+              </div>
+              <span class="pill-btn" style="background:var(--purple);color:#fff;border-color:var(--purple);">+ 수첩 직접 기록</span>
+            </div>
+
+            <!-- AI Health Notebook Cumulative Timeline -->
+            <section class="timeline-box">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="font-size:16px;font-weight:800;">몽글이 AI 건강 수첩 타임라인</div>
+                  <div style="font-size:12px;color:var(--ink-3);margin-top:2px;">커뮤니티 글과 연동되어 시간순으로 자동 누적됩니다.</div>
+                </div>
+                <span class="badge-purple">✨ AI 자동 일지 ON</span>
+              </div>
+
+              <div class="tl-item" style="background:#F8F6FF;border:1px solid #E5DDFB;">
+                <div style="font-size:12px;font-weight:800;color:var(--purple);">2026.11.18<br/><span style="font-weight:500;">오늘</span></div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple">✨ AI 자동 생성</span><strong>발톱 깎기 성공</strong></div>
+                  <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">간식 보상과 함께 한 발씩 천천히 진행해 스트레스 없이 완료</div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:var(--purple);">원본 글 →</span>
+              </div>
+
+              <div class="tl-item">
+                <div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.04</div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple" style="background:#FFEFEF;color:#DC2626;">재시도 필요</span><strong>발톱 깎기 실패 (예민 반응)</strong></div>
+                  <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">발 만지는 것을 거부해 2발만 정리 후 중단</div>
+                </div>
+                <span style="font-size:12px;color:var(--ink-3);">원본 글 →</span>
+              </div>
+
+              <div class="tl-item">
+                <div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.10.19</div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple">✨ AI 자동 생성</span><strong>발톱 깎음 · 체중 3.8kg</strong></div>
+                  <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">정기 위생 미용과 함께 발톱 길이 정리</div>
+                </div>
+                <span style="font-size:12px;color:var(--ink-3);">원본 글 →</span>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.artboard');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['page-board', 'page-detail', 'page-register', 'page-mypage'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

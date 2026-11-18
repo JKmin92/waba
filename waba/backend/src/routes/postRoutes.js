@@ -25,6 +25,7 @@ router.delete('/:id', verifyToken, postController.deletePost);
 router.post('/:id/like', verifyToken, postController.togglePostLike);
 router.post('/:id/bookmark', verifyToken, postController.togglePostBookmark);
 router.post('/:id/comment', verifyToken, postController.createComment);
+router.patch('/:id/comments/:commentId/pin', verifyToken, postController.togglePinComment);
 router.delete('/comment/:commentId', verifyToken, postController.deleteComment);
 router.put('/comment/:commentId', verifyToken, postController.updateComment);
 

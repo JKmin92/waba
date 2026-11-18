@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA Main — 2026 Modern Bento Grid Community (Aurora Glass / Neo Pop)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #E8E8ED;
+      color: #111318;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(14px);
+      border-bottom: 1px solid #E5E7EB;
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: #F3F4F6; padding: 4px; border-radius: 999px; }
+    .studio-tab {
+      border: none; background: transparent; color: #6B7280;
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: #111318; color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .cand-wrap { width: 1440px; display: flex; flex-direction: column; gap: 12px; }
+    .cand-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: #111318; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .frame {
+      width: 1440px; border-radius: 28px; overflow: hidden;
+      box-shadow: 0 28px 70px rgba(17,19,24,0.14);
+      position: relative;
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .cand-wrap { display: none; }
+    body.single-mode .cand-wrap.is-target { display: flex; }
+
+    /* ============================================================
+       SHARED BENTO ARCHITECTURE
+    ============================================================ */
+    .bento-shell {
+      padding: 24px 40px 44px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Floating App Dock Header */
+    .app-dock {
+      max-width: 1360px;
+      margin: 0 auto 24px;
+      height: 60px;
+      border-radius: 999px;
+      padding: 0 10px 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(20px);
+    }
+    .dock-left { display: flex; align-items: center; gap: 28px; }
+    .dock-logo { font-size: 19px; font-weight: 800; letter-spacing: -0.04em; display: flex; align-items: center; gap: 7px; }
+    .dock-nav { display: flex; gap: 6px; }
+    .dock-link {
+      font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    }
+    .dock-right { display: flex; align-items: center; gap: 10px; }
+    .cmd-search {
+      width: 260px; height: 40px; border-radius: 999px; padding: 0 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px;
+    }
+    .kbd {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+    }
+    .dock-cta {
+      height: 40px; padding: 0 18px; border-radius: 999px;
+      font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    /* 12-Col Bento Grid */
+    .bento-grid {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-auto-rows: minmax(150px, auto);
+      gap: 16px;
+    }
+
+    .tile {
+      border-radius: 26px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Tile Spans */
+    .span-health { grid-column: span 5; grid-row: span 2; }
+    .span-snap-tall { grid-column: span 3; grid-row: span 2; padding: 0; }
+    .span-topic { grid-column: span 4; grid-row: span 1; }
+    .span-journey { grid-column: span 4; grid-row: span 1; }
+    .span-vet { grid-column: span 4; grid-row: span 1; }
+    .span-snap-wide { grid-column: span 5; grid-row: span 1; padding: 0; }
+    .span-mood { grid-column: span 3; grid-row: span 1; }
+
+    /* ============================================================
+       TRENDY A: AURORA GLASS (Linear / Arc / Toss)
+    ============================================================ */
+    .theme-aurora {
+      background:
+        radial-gradient(circle at 12% 15%, #EAE4FF 0%, transparent 42%),
+        radial-gradient(circle at 86% 18%, #DCFFF3 0%, transparent 40%),
+        radial-gradient(circle at 55% 88%, #F2ECFF 0%, transparent 45%),
+        #F8F9FC;
+      color: #111318;
+    }
+    .theme-aurora .app-dock {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(255,255,255,0.9);
+      box-shadow: 0 8px 30px rgba(17,19,24,0.05);
+    }
+    .theme-aurora .dock-link { color: #6B7280; }
+    .theme-aurora .dock-link.on { background: #111318; color: #fff; }
+    .theme-aurora .cmd-search { background: rgba(243,244,246,0.9); color: #6B7280; border: 1px solid #E5E7EB; }
+    .theme-aurora .kbd { background: #fff; color: #111318; border: 1px solid #E5E7EB; }
+    .theme-aurora .dock-cta { background: #7B5CFA; color: #fff; }
+
+    .theme-aurora .tile {
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.95);
+      box-shadow: 0 10px 32px rgba(17,19,24,0.04);
+    }
+    .theme-aurora .tile-accent {
+      background: linear-gradient(145deg, rgba(244,240,255,0.92), rgba(232,255,248,0.88));
+      border: 1px solid #E4DCFF;
+    }
+
+    /* ============================================================
+       TRENDY B: NEO POP & BUTTER CREAM (Musinsa / Lemon8 / Gen-Z)
+    ============================================================ */
+    .theme-neopop {
+      background: #0D0E12;
+      color: #FFFFFF;
+    }
+    .theme-neopop .app-dock {
+      background: rgba(24,25,31,0.92);
+      border: 1px solid #262833;
+    }
+    .theme-neopop .dock-link { color: #9CA3AF; }
+    .theme-neopop .dock-link.on { background: #F6E88A; color: #0D0E12; }
+    .theme-neopop .cmd-search { background: #181920; color: #9CA3AF; border: 1px solid #2A2C37; }
+    .theme-neopop .kbd { background: #262833; color: #E5E7EB; }
+    .theme-neopop .dock-cta { background: #B8A9FF; color: #0D0E12; }
+
+    .theme-neopop .tile-dark { background: #171820; border: 1px solid #262833; color: #fff; }
+    .theme-neopop .tile-butter { background: #F6E88A; color: #0D0E12; }
+    .theme-neopop .tile-lavender { background: #B8A9FF; color: #0D0E12; }
+    .theme-neopop .tile-white { background: #FFFFFF; color: #0D0E12; }
+    .theme-neopop .tile-mint { background: #BDF5E1; color: #0D0E12; }
+
+    /* Shared Widget Elements */
+    .tag-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 999px;
+    }
+    .avatar-stack { display: flex; align-items: center; }
+    .av {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; margin-left: -8px;
+    }
+    .av:first-child { margin-left: 0; }
+    .progress-track {
+      height: 8px; border-radius: 999px; overflow: hidden;
+    }
+    .progress-fill { height: 100%; border-radius: 999px; }
+    .glass-badge {
+      position: absolute; top: 14px; left: 14px;
+      background: rgba(255,255,255,0.88); backdrop-filter: blur(10px);
+      color: #111318; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 999px;
+    }
+    .glass-bottom {
+      position: absolute; left: 14px; right: 14px; bottom: 14px;
+      background: rgba(17,19,24,0.68); backdrop-filter: blur(12px);
+      color: #fff; border-radius: 18px; padding: 12px 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">2026 BENTO COMMUNITY</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">초모던 벤토 그리드 + 앱 위젯 커뮤니티 (2종 색감 후보)</div>
+        <div style="font-size:12px;color:#6B7280;">트렌디 A (오로라 글래스 — Linear/Arc/Toss) · 트렌디 B (네오 팝 &amp; 버터 크림 — 무신사/레몬8/젠지)</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">Both</button>
+      <button class="studio-tab" data-target="bento-a" onclick="setView('bento-a')">트렌디 A (오로라 글래스)</button>
+      <button class="studio-tab" data-target="bento-b" onclick="setView('bento-b')">트렌디 B (네오 팝)</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+
+    <!-- ============================================================
+         TRENDY A: AURORA GLASS
+    ============================================================ -->
+    <section class="cand-wrap" id="artboard-bento-a">
+      <div class="cand-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill" style="background:#7B5CFA;">트렌디 A</span> 오로라 글래스 (Linear · Arc · Toss 감성)
+        </div>
+        <span style="font-size:12px;color:#52525B;">은은한 바이올렛/민트 메쉬 그라데이션 · 26px 글래스 위젯 · 플로팅 앱 도크</span>
+      </div>
+
+      <div class="frame bento-shell theme-aurora">
+        <header class="app-dock">
+          <div class="dock-left">
+            <div class="dock-logo">
+              <span style="width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#7B5CFA,#2DD4BF);"></span>
+              WABA
+            </div>
+            <nav class="dock-nav">
+              <span class="dock-link on">라운지</span>
+              <span class="dock-link">건강 수첩</span>
+              <span class="dock-link">케어 저니</span>
+              <span class="dock-link">스냅</span>
+            </nav>
+          </div>
+          <div class="dock-right">
+            <div class="cmd-search">
+              <span>🔍 몽글이 기록, 수의사 질문 검색</span>
+              <span class="kbd">⌘K</span>
+            </div>
+            <span class="dock-cta">+ 새 기록</span>
+          </div>
+        </header>
+
+        <div class="bento-grid">
+          <!-- 1. AI Health Notebook Widget (5 cols x 2 rows) -->
+          <div class="tile span-health tile-accent">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="tag-chip" style="background:#fff;color:#7B5CFA;">✨ AI 건강 수첩 · 모아</span>
+              <span style="font-size:12px;font-weight:700;color:#10B981;">● 컨디션 최상</span>
+            </div>
+
+            <div style="margin:14px 0;">
+              <div style="font-size:13px;font-weight:600;color:#52525B;">오늘의 케어 리마인드</div>
+              <div style="font-size:26px;font-weight:800;letter-spacing:-0.03em;line-height:1.25;margin-top:4px;">
+                오늘 모아 발톱 관리 · <span style="color:#7B5CFA;">4.2kg</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <span class="tag-chip" style="background:rgba(255,255,255,0.85);color:#111318;">💉 종합백신 D-12</span>
+                <span class="tag-chip" style="background:rgba(255,255,255,0.85);color:#111318;">🐾 이번 주 산책 5/7</span>
+              </div>
+            </div>
+
+            <!-- Sparkline Card -->
+            <div style="background:rgba(255,255,255,0.88);border-radius:18px;padding:14px 16px;border:1px solid rgba(255,255,255,0.9);">
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#6B7280;margin-bottom:6px;">
+                <span>최근 6주 체중 추이</span>
+                <span style="color:#7B5CFA;">-0.2kg 안정화</span>
+              </div>
+              <svg viewBox="0 0 360 56" width="100%" height="56">
+                <defs>
+                  <linearGradient id="sparkA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="rgba(123,92,250,0.28)"/><stop offset="100%" stop-color="rgba(123,92,250,0)"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,38 C60,34 90,18 150,24 C210,30 260,14 360,18 L360,56 L0,56 Z" fill="url(#sparkA)"/>
+                <path d="M0,38 C60,34 90,18 150,24 C210,30 260,14 360,18" fill="none" stroke="#7B5CFA" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="360" cy="18" r="5" fill="#7B5CFA"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 2. Pet Snap Motion Tile (3 cols x 2 rows) -->
+          <div class="tile span-snap-tall" style="background:linear-gradient(155deg,#EFE8DC,#D9CEBC);">
+            <svg viewBox="0 0 300 360" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
+              <rect width="300" height="360" fill="#EAE2D4"/>
+              <rect x="0" y="250" width="300" height="110" fill="#CEB99E"/>
+              <rect x="45" y="175" width="210" height="80" rx="22" fill="#FAF7F0"/>
+              <ellipse cx="170" cy="268" rx="64" ry="20" fill="#E3DCF9"/>
+              <circle cx="168" cy="246" r="18" fill="#A97E58"/>
+            </svg>
+            <span class="glass-badge">🐾 몽글 · 말티푸</span>
+            <div class="glass-bottom">
+              <div style="font-size:13px;font-weight:700;">햇살 머무는 창가 낮잠 존</div>
+              <div style="font-size:11px;opacity:0.85;margin-top:3px;">♥ 184 · 🔖 저장 42</div>
+            </div>
+          </div>
+
+          <!-- 3. Live Hot Topic Card (4 cols x 1 row) -->
+          <div class="tile span-topic">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="tag-chip" style="background:#F3EFFF;color:#7B5CFA;">🔥 실시간 인기 펫 토픽</span>
+              <div class="avatar-stack">
+                <span class="av" style="background:#FDE68A;color:#111;">코</span>
+                <span class="av" style="background:#C4B5FD;color:#111;">김</span>
+                <span class="av" style="background:#A7F3D0;color:#111;">보</span>
+              </div>
+            </div>
+            <div style="font-size:16px;font-weight:800;line-height:1.38;margin:10px 0;">
+              “슬개골 2기 진단 후 거실 매트 교체, 정말 효과 있나요?”
+            </div>
+            <div style="background:#F3F4F6;border-radius:14px;padding:9px 12px;font-size:12px;color:#374151;">
+              💬 <strong>김다은 수의사</strong>: 마찰계수 0.6 이상 매트가 관절 부담을...
+            </div>
+          </div>
+
+          <!-- 4. Care Journey Story Tile (4 cols x 1 row) -->
+          <div class="tile span-journey">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="tag-chip" style="background:#E8FFF8;color:#059669;">🌿 케어 저니 진행 중</span>
+              <span style="font-size:12px;font-weight:800;color:#059669;">DAY 21 / 30</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;margin:10px 0 8px;">노령견 관절 &amp; 체중 관리 30일 챌린지</div>
+            <div>
+              <div class="progress-track" style="background:#E5E7EB;">
+                <div class="progress-fill" style="width:70%;background:linear-gradient(90deg,#7B5CFA,#2DD4BF);"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;margin-top:6px;">
+                <span>오늘의 미션: 저녁 산책 20분</span>
+                <span>70% 달성</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Vet Live Q&A Widget (4 cols x 1 row) -->
+          <div class="tile span-vet">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:800;color:#7B5CFA;">🩺 수의사 1분 Q&amp;A</span>
+              <span style="font-size:11px;color:#6B7280;">답변 완료 142건</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;line-height:1.4;margin:8px 0;">
+              겨울철 건조한 발바닥 습진, 산책 후 물티슈만 써도 될까요?
+            </div>
+            <span style="font-size:12px;font-weight:700;color:#111318;">전문가 답변 3초 만에 보기 →</span>
+          </div>
+
+          <!-- 6. Wide Photo Snap (5 cols x 1 row) -->
+          <div class="tile span-snap-wide" style="background:linear-gradient(125deg,#E2DDF0,#D2E8E1);">
+            <span class="glass-badge">🏡 24평 화이트 우드 펫 리빙</span>
+            <div class="glass-bottom" style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:14px;font-weight:700;">보리네 노령견 논슬립 거실 리모델링</div>
+                <div style="font-size:11px;opacity:0.85;">멘토 추천 스냅 · ♥ 214</div>
+              </div>
+              <span style="background:#fff;color:#111318;font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;">구경하기</span>
+            </div>
+          </div>
+
+          <!-- 7. Quick Log Mood Tile (3 cols x 1 row) -->
+          <div class="tile span-mood" style="background:#111318;color:#fff;">
+            <div style="font-size:11px;font-weight:700;color:#A78BFA;">QUICK CHECK-IN</div>
+            <div style="font-size:17px;font-weight:800;line-height:1.35;">오늘 우리 아이<br/>기분은 어땠나요?</div>
+            <div style="display:flex;gap:8px;font-size:18px;">
+              <span style="background:rgba(255,255,255,0.12);padding:6px 10px;border-radius:12px;">🥰</span>
+              <span style="background:rgba(255,255,255,0.12);padding:6px 10px;border-radius:12px;">😴</span>
+              <span style="background:rgba(255,255,255,0.12);padding:6px 10px;border-radius:12px;">🐾</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TRENDY B: NEO POP & BUTTER CREAM
+    ============================================================ -->
+    <section class="cand-wrap" id="artboard-bento-b">
+      <div class="cand-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill" style="background:#0D0E12;color:#F6E88A;">트렌디 B</span> 네오 팝 &amp; 버터 크림 (무신사 · 레몬8 · 젠지 감성)
+        </div>
+        <span style="font-size:12px;color:#52525B;">딥 블랙(#0D0E12) + 버터 옐로우(#F6E88A) + 일렉트릭 라벤더(#B8A9FF) 타일 교차</span>
+      </div>
+
+      <div class="frame bento-shell theme-neopop">
+        <header class="app-dock">
+          <div class="dock-left">
+            <div class="dock-logo" style="color:#fff;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#F6E88A;"></span>
+              WABA
+            </div>
+            <nav class="dock-nav">
+              <span class="dock-link on">라운지</span>
+              <span class="dock-link">건강 수첩</span>
+              <span class="dock-link">케어 저니</span>
+              <span class="dock-link">스냅</span>
+            </nav>
+          </div>
+          <div class="dock-right">
+            <div class="cmd-search">
+              <span>🔍 모아 기록, 인기 펫 토픽 검색</span>
+              <span class="kbd">⌘K</span>
+            </div>
+            <span class="dock-cta">+ 새 기록</span>
+          </div>
+        </header>
+
+        <div class="bento-grid">
+          <!-- 1. Butter Cream Health Widget -->
+          <div class="tile span-health tile-butter">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="tag-chip" style="background:#0D0E12;color:#F6E88A;">✨ AI 건강 수첩 · 모아</span>
+              <span style="font-size:12px;font-weight:800;">● 컨디션 100%</span>
+            </div>
+
+            <div style="margin:14px 0;">
+              <div style="font-size:13px;font-weight:700;opacity:0.75;">TODAY'S CARE LOG</div>
+              <div style="font-size:27px;font-weight:800;letter-spacing:-0.03em;line-height:1.25;margin-top:4px;">
+                오늘 모아 발톱 관리 · 4.2kg
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <span class="tag-chip" style="background:rgba(13,14,18,0.1);color:#0D0E12;">💉 종합백신 D-12</span>
+                <span class="tag-chip" style="background:rgba(13,14,18,0.1);color:#0D0E12;">🐾 산책 5/7</span>
+              </div>
+            </div>
+
+            <div style="background:#0D0E12;color:#fff;border-radius:18px;padding:14px 16px;">
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#9CA3AF;margin-bottom:6px;">
+                <span>6주 체중 스파크라인</span>
+                <span style="color:#F6E88A;">-0.2kg 목표 달성</span>
+              </div>
+              <svg viewBox="0 0 360 56" width="100%" height="56">
+                <path d="M0,38 C60,34 90,18 150,24 C210,30 260,14 360,18" fill="none" stroke="#F6E88A" stroke-width="3.5" stroke-linecap="round"/>
+                <circle cx="360" cy="18" r="5" fill="#B8A9FF"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 2. Tall Pet Snap -->
+          <div class="tile span-snap-tall" style="background:linear-gradient(155deg,#2A2C37,#1A1B23);border:1px solid #2D2F3D;">
+            <svg viewBox="0 0 300 360" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;">
+              <rect width="300" height="360" fill="#DCD4C6"/>
+              <rect x="0" y="250" width="300" height="110" fill="#C4B094"/>
+              <rect x="45" y="175" width="210" height="80" rx="22" fill="#FAF7F0"/>
+              <ellipse cx="170" cy="268" rx="64" ry="20" fill="#B8A9FF"/>
+              <circle cx="168" cy="246" r="18" fill="#8C6245"/>
+            </svg>
+            <span class="glass-badge" style="background:#0D0E12;color:#F6E88A;">🐾 몽글 · 말티푸</span>
+            <div class="glass-bottom" style="background:rgba(13,14,18,0.82);">
+              <div style="font-size:13px;font-weight:700;">햇살 머무는 창가 낮잠 존</div>
+              <div style="font-size:11px;color:#B8A9FF;margin-top:3px;">♥ 184 · 🔖 42</div>
+            </div>
+          </div>
+
+          <!-- 3. Electric Lavender Topic Tile -->
+          <div class="tile span-topic tile-lavender">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="tag-chip" style="background:#0D0E12;color:#fff;">🔥 인기 펫 토픽</span>
+              <div class="avatar-stack">
+                <span class="av" style="background:#F6E88A;color:#0D0E12;">코</span>
+                <span class="av" style="background:#fff;color:#0D0E12;">김</span>
+                <span class="av" style="background:#BDF5E1;color:#0D0E12;">보</span>
+              </div>
+            </div>
+            <div style="font-size:16px;font-weight:800;line-height:1.38;margin:10px 0;">
+              “슬개골 2기 진단 후 거실 매트 교체, 정말 효과 있나요?”
+            </div>
+            <div style="background:rgba(13,14,18,0.08);border-radius:14px;padding:9px 12px;font-size:12px;font-weight:600;">
+              💬 김다은 수의사 외 27개 답변 보기 →
+            </div>
+          </div>
+
+          <!-- 4. Crisp White Care Journey -->
+          <div class="tile span-journey tile-white">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="tag-chip" style="background:#BDF5E1;color:#0D0E12;">🌿 케어 저니</span>
+              <span style="font-size:12px;font-weight:800;">DAY 21 / 30</span>
+            </div>
+            <div style="font-size:15px;font-weight:800;margin:10px 0 8px;">노령견 관절 &amp; 체중 관리 30일 챌린지</div>
+            <div>
+              <div class="progress-track" style="background:#E5E7EB;">
+                <div class="progress-fill" style="width:70%;background:#0D0E12;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#52525B;margin-top:6px;">
+                <span>저녁 산책 20분</span>
+                <span><strong>70%</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Dark Vet Tile -->
+          <div class="tile span-vet tile-dark">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:800;color:#BDF5E1;">🩺 수의사 1분 Q&amp;A</span>
+              <span style="font-size:11px;color:#9CA3AF;">142건 해결</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;line-height:1.4;margin:8px 0;">
+              겨울철 건조한 발바닥 습진, 물티슈만 써도 될까요?
+            </div>
+            <span style="font-size:12px;font-weight:700;color:#F6E88A;">답변 확인하기 →</span>
+          </div>
+
+          <!-- 6. Wide Snap -->
+          <div class="tile span-snap-wide" style="background:linear-gradient(125deg,#3A3D4D,#252734);border:1px solid #2D2F3D;">
+            <span class="glass-badge" style="background:#BDF5E1;color:#0D0E12;">🏡 24평 화이트 우드 펫 리빙</span>
+            <div class="glass-bottom" style="display:flex;justify-content:space-between;align-items:center;background:rgba(13,14,18,0.85);">
+              <div>
+                <div style="font-size:14px;font-weight:700;">보리네 노령견 논슬립 거실 리모델링</div>
+                <div style="font-size:11px;color:#BDF5E1;">멘토 추천 스냅 · ♥ 214</div>
+              </div>
+              <span style="background:#F6E88A;color:#0D0E12;font-size:11px;font-weight:800;padding:6px 12px;border-radius:999px;">구경하기</span>
+            </div>
+          </div>
+
+          <!-- 7. Mint Quick Check-in -->
+          <div class="tile span-mood tile-mint">
+            <div style="font-size:11px;font-weight:800;">QUICK CHECK-IN</div>
+            <div style="font-size:17px;font-weight:800;line-height:1.35;">오늘 우리 아이<br/>기분은 어땠나요?</div>
+            <div style="display:flex;gap:8px;font-size:18px;">
+              <span style="background:#0D0E12;padding:6px 10px;border-radius:12px;">🥰</span>
+              <span style="background:#0D0E12;padding:6px 10px;border-radius:12px;">😴</span>
+              <span style="background:#0D0E12;padding:6px 10px;border-radius:12px;">🐾</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.cand-wrap');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['bento-a', 'bento-b'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

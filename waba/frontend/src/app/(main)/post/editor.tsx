@@ -62,7 +62,7 @@ import {
 } from './editor-components/types';
 import EditorBlockList from './editor-components/EditorBlockList';
 import AutoJournalCard from './editor-components/AutoJournalCard';
-import { FeedPreviewPane, FullPreviewModal } from './editor-components/FeedPreviewPane';
+import { FullPreviewModal } from './editor-components/FeedPreviewPane';
 import PinRegistrationModal from './editor-components/PinRegistrationModal';
 
 export type {
@@ -86,8 +86,10 @@ export default function Editor({
 }: EditorProps) {
     const router = useRouter();
 
-    // 1. Board Categories
-    const [boardId, setBoardId] = useState<string>(initialData?.board_id || 'SNAP');
+    // 1. Board Categories (신규 작성 시 미선택 '' 시작, 수정/임시저장 불러오기 시 기존 값 유지)
+    const [boardId, setBoardId] = useState<string>(initialData?.board_id || '');
+    const [highlightCategory, setHighlightCategory] = useState(false);
+    const categorySectionRef = useRef<HTMLDivElement>(null);
 
     // 2. Title & Metadata
     const [title, setTitle] = useState<string>(initialData?.title || '');
@@ -105,6 +107,7 @@ export default function Editor({
 
     // 4. In-stream Unified Blocks Flow (Clean slate: starts with 1 empty text canvas)
     const [isModeratingImages, setIsModeratingImages] = useState(false);
+    const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(null);
     const [blocks, setBlocks] = useState<EditorBlock[]>(() => {
         if (initialData?.blocks && initialData.blocks.length > 0) {
             return initialData.blocks;
@@ -500,15 +503,7 @@ export default function Editor({
                     pins: [],
                 };
 
-                // Seamless continuation text block below the newly inserted image
-                const newContinuationTextBlock: EditorTextBlock = {
-                    id: `block-text-${baseTimestamp}-${idx}-next`,
-                    type: 'text',
-                    content: '',
-                    format: 'p',
-                };
-
-                blocksToInsert.push(newImageBlock, newContinuationTextBlock);
+                blocksToInsert.push(newImageBlock);
             });
 
             if (blocksToInsert.length > 0) {
@@ -604,6 +599,20 @@ export default function Editor({
         setBlocks((prev) =>
             prev.map((b) => (b.id === id && b.type === 'text' ? { ...b, content } : b))
         );
+    };
+
+    const handleAppendTextBlock = () => {
+        const newId = `block-text-${Date.now()}`;
+        setBlocks((prev) => [
+            ...prev,
+            {
+                id: newId,
+                type: 'text',
+                content: '',
+                format: 'p',
+            },
+        ]);
+        setAutoFocusBlockId(newId);
     };
 
     const updateImageCaption = (id: string, caption: string) => {
@@ -902,6 +911,14 @@ export default function Editor({
             return;
         }
 
+        if (!boardId) {
+            toaster.create({ title: '카테고리를 선택해주세요.', type: 'error' });
+            categorySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHighlightCategory(true);
+            setTimeout(() => setHighlightCategory(false), 1800);
+            return;
+        }
+
         if (!title.trim()) {
             toaster.create({ title: '게시글 제목을 입력해주세요.', type: 'error' });
             return;
@@ -957,7 +974,7 @@ export default function Editor({
     const firstImagePreview = firstImageBlock?.previewUrl || null;
 
     return (
-        <Box minH="100vh" bg="#F9F9FB" color="#1A1C1D" pb={28}>
+        <Box minH="100vh" bg="var(--waba-bg)" color="var(--waba-ink)" pb={20} w="100%" overflowX="clip" minW={0}>
             {/* Hidden File Input for Image Upload */}
             <input
                 type="file"
@@ -971,22 +988,20 @@ export default function Editor({
             <MemberModal open={loginModalOpen} onOpenChange={setLoginModalOpen} showTrigger={false} />
 
             {/* ================================================================= */}
-            {/* 1. TOP STICKY APP BAR (Studio Action Header)                      */}
+            {/* 1. TOP STICKY APP BAR (Focused Studio Action Header)              */}
             {/* ================================================================= */}
             <Box
                 position="sticky"
                 top={0}
-                zIndex={45}
-                bg="rgba(255, 255, 255, 0.92)"
-                backdropFilter="blur(20px)"
+                zIndex={35}
+                bg="var(--waba-bg)"
                 borderBottom="1px solid"
-                borderColor="waba.border"
-                boxShadow="0 4px 20px -4px rgba(26,28,30,0.04)"
-                px={{ base: 4, lg: 10 }}
+                borderColor="var(--waba-line)"
+                px={{ base: 4, lg: 8 }}
                 py={3}
             >
-                <Flex maxW="1440px" mx="auto" align="center" justify="space-between">
-                    <HStack gap={{ base: 2, sm: 3.5 }}>
+                <Flex maxW="1240px" mx="auto" align="center" justify="space-between" gap={2} flexWrap="wrap">
+                    <HStack gap={{ base: 2, sm: 3 }}>
                         <IconButton
                             aria-label="뒤로가기"
                             onClick={() => {
@@ -998,251 +1013,99 @@ export default function Editor({
                             }}
                             rounded="full"
                             variant="outline"
-                            borderColor="waba.border"
-                            bg="white"
-                            color="waba.charcoal"
-                            _hover={{ borderColor: 'waba.charcoal', transform: 'translateX(-2px)' }}
+                            borderColor="var(--waba-line)"
+                            bg="var(--waba-card)"
+                            color="var(--waba-ink)"
                             size="sm"
                         >
-                            <ArrowLeft size={18} />
+                            <ArrowLeft size={16} />
                         </IconButton>
-                        <Box h="16px" w="1px" bg="waba.border" display={{ base: 'none', sm: 'block' }} />
-                        <HStack
-                            gap={1.5}
-                            cursor="pointer"
-                            onClick={() => router.push('/')}
-                            _hover={{ opacity: 0.8 }}
-                            display={{ base: 'none', sm: 'flex' }}
-                        >
-                            <Text fontSize="17px" fontWeight="800" letterSpacing="-0.03em" color="waba.charcoal">
-                                WABA
-                            </Text>
-                            <Box w="5px" h="5px" borderRadius="full" bg="waba.purple" />
-                        </HStack>
-                        <HStack gap={3}>
-                            <Box
-                                bg="waba.purpleLight"
-                                color="waba.purple"
-                                fontSize="11px"
-                                fontWeight="800"
-                                letterSpacing="0.05em"
-                                px={2.5}
-                                py={0.8}
-                                rounded="full"
-                                border="1px solid"
-                                borderColor="purple.200"
-                                display={{ base: 'none', md: 'inline-block' }}
-                            >
-                                STUDIO
-                            </Box>
-                            <Heading fontSize="17px" fontWeight="700" color="waba.charcoal" letterSpacing="-0.02em">
-                                {mode === 'edit' ? '이야기 수정' : '새 이야기 작성'}
-                            </Heading>
-                            <HStack gap={1.5} fontSize="12px" color="waba.muted" pl={2} display={{ base: 'none', md: 'flex' }}>
-                                <Box w="7px" h="7px" rounded="full" bg="emerald.500" />
-                                <Text>{autoSaveTime} 자동 저장됨</Text>
-                            </HStack>
+                        <Heading fontSize={{ base: '16px', md: '18px' }} fontWeight="800" color="var(--waba-ink)" letterSpacing="-0.02em">
+                            {mode === 'edit' ? '기록 수정' : '새 기록 작성'}
+                        </Heading>
+                        <HStack gap={1.5} fontSize="12px" color="var(--waba-ink-3)" pl={1} display={{ base: 'none', md: 'flex' }}>
+                            <Box w="7px" h="7px" rounded="full" bg="emerald.500" />
+                            <Text>{autoSaveTime} 자동 저장됨</Text>
                         </HStack>
                     </HStack>
 
-                    <HStack gap={2.5}>
-                        {/* Point 3: Draft Management Button with count & modal */}
+                    <HStack gap={2} flexWrap="wrap">
                         {mode !== 'edit' && (
-                        <Button
-                            variant="outline"
-                            borderColor={savedDraft ? 'purple.300' : 'waba.border'}
-                            bg={savedDraft ? 'purple.50' : 'white'}
-                            color={savedDraft ? 'waba.purple' : 'waba.muted'}
-                            _hover={{ color: 'waba.charcoal', borderColor: 'waba.charcoal' }}
-                            rounded="full"
-                            size="sm"
-                            px={4}
-                            fontSize="13px"
-                            fontWeight="600"
-                            onClick={() => setDraftModalOpen(true)}
-                        >
-                            <Bookmark size={15} />
-                            임시저장 {savedDraft ? '(1)' : ''}
-                        </Button>
+                            <Button
+                                variant="outline"
+                                borderColor={savedDraft ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
+                                bg={savedDraft ? 'var(--waba-purple-soft)' : 'var(--waba-card)'}
+                                color={savedDraft ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                                rounded="full"
+                                size="sm"
+                                px={{ base: 3, md: 4 }}
+                                fontSize="12px"
+                                fontWeight="600"
+                                onClick={() => setDraftModalOpen(true)}
+                            >
+                                <Bookmark size={14} />
+                                임시저장 {savedDraft ? '(1)' : ''}
+                            </Button>
                         )}
                         <Button
                             variant="outline"
-                            borderColor="waba.border"
-                            bg="white"
-                            color="waba.charcoal"
-                            _hover={{ borderColor: 'waba.charcoal' }}
+                            borderColor="var(--waba-line)"
+                            bg="var(--waba-card)"
+                            color="var(--waba-ink)"
                             rounded="full"
                             size="sm"
-                            px={4}
-                            fontSize="13px"
+                            px={{ base: 3, md: 4 }}
+                            fontSize="12px"
                             fontWeight="600"
                             onClick={() => setPreviewModalOpen(true)}
                         >
-                            <Eye size={15} />
+                            <Eye size={14} />
                             미리보기
                         </Button>
                         <Button
-                            bg="waba.charcoal"
-                            color="white"
-                            _hover={{ bg: 'waba.charcoalHover', transform: 'translateY(-1px)' }}
-                            _active={{ transform: 'scale(0.98)' }}
+                            bg="#6338A9"
+                            color="#FFFFFF"
+                            _hover={{ bg: '#522B8F' }}
                             rounded="full"
                             size="sm"
-                            px={5}
-                            fontSize="13px"
+                            px={{ base: 4, md: 5 }}
+                            fontSize="12px"
                             fontWeight="700"
                             onClick={handlePublishClick}
                             loading={isSubmitting || isModeratingImages}
                             disabled={isSubmitting || isModeratingImages}
-                            boxShadow="0 4px 14px rgba(26,28,30,0.18)"
                         >
-                            {mode === 'edit' ? '수정완료' : '발행하기'}
-                            <ArrowRight size={15} />
+                            {mode === 'edit' ? '수정 완료' : '발행하기'}
+                            <ArrowRight size={14} />
                         </Button>
                     </HStack>
                 </Flex>
             </Box>
 
             {/* ================================================================= */}
-            {/* 2. META BAR (Board Tabs & Real User Pets)                         */}
+            {/* 2. MAIN WORKSPACE (Editor Canvas + Right Utility Sidebar)         */}
             {/* ================================================================= */}
-            <Box bg="white" borderBottom="1px solid" borderColor="waba.border" py={3.5} px={{ base: 4, lg: 10 }}>
-                <Flex
-                    maxW="1440px"
-                    mx="auto"
-                    direction={{ base: 'column', md: 'row' }}
-                    align={{ base: 'stretch', md: 'center' }}
-                    justify="space-between"
-                    gap={4}
-                >
-                    {/* 4 Board Categories */}
-                    <HStack gap={2} overflowX="auto" pb={{ base: 1, md: 0 }}>
-                        {[
-                            { id: 'SNAP', name: '일상 스냅' },
-                            { id: 'LOOKBOOK', name: '공식 룩북' },
-                            { id: 'CARE_LOUNGE', name: '케어 라운지' },
-                            { id: 'QNA', name: '궁금증 Q&A' },
-                        ].map((b) => {
-                            const isSelected = boardId === b.id;
-                            return (
-                                <Button
-                                    key={b.id}
-                                    size="sm"
-                                    rounded="full"
-                                    px={4}
-                                    fontSize="13px"
-                                    fontWeight="600"
-                                    bg={isSelected ? 'waba.purple' : 'waba.subtle'}
-                                    color={isSelected ? 'white' : 'waba.muted'}
-                                    _hover={{ bg: isSelected ? 'waba.purpleHover' : 'gray.200', color: isSelected ? 'white' : 'waba.charcoal' }}
-                                    onClick={() => setBoardId(b.id)}
-                                    transition="all 0.15s ease"
-                                >
-                                    {isSelected && <Check size={14} />}
-                                    {b.name}
-                                </Button>
-                            );
-                        })}
-                    </HStack>
-
-                    {/* Real Member Registered Pets Selector */}
-                    <HStack gap={2} flexWrap="wrap">
-                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mr={1}>
-                            동반 반려동물:
-                        </Text>
-                        {userPetsList.length === 0 ? (
-                            <Text fontSize="12px" color="waba.faint">
-                                등록된 반려동물이 없습니다.
-                            </Text>
-                        ) : (
-                            userPetsList.map((pet) => {
-                                const isChecked = selectedPets.includes(pet.id);
-                                const speciesIcon = pet.species === 'CAT' ? '🐱' : pet.species === 'DOG' ? '🐶' : pet.species === 'RABBIT' ? '🐰' : '🐾';
-                                return (
-                                    <Box
-                                        key={pet.id}
-                                        as="button"
-                                        onClick={() => {
-                                            setSelectedPets((prev) =>
-                                                isChecked ? prev.filter((id) => id !== pet.id) : [...prev, pet.id]
-                                            );
-                                        }}
-                                        display="inline-flex"
-                                        alignItems="center"
-                                        gap={1.5}
-                                        bg={isChecked ? 'purple.50' : 'waba.subtle'}
-                                        border="1px solid"
-                                        borderColor={isChecked ? 'purple.300' : 'waba.border'}
-                                        color={isChecked ? 'waba.purple' : 'waba.charcoal'}
-                                        px={3}
-                                        py={1.5}
-                                        rounded="full"
-                                        fontSize="12px"
-                                        fontWeight="600"
-                                        cursor="pointer"
-                                        transition="all 0.15s ease"
-                                    >
-                                        {isChecked ? <Check size={13} color="#6338A9" /> : <span>{speciesIcon}</span>}
-                                        <span>
-                                            {pet.name} ({pet.breed}
-                                            {pet.latest_weight_kg !== null && pet.latest_weight_kg !== undefined && Number(pet.latest_weight_kg) > 0
-                                                ? ` ${Number(pet.latest_weight_kg).toFixed(1)}kg`
-                                                : ''})
-                                        </span>
-                                    </Box>
-                                );
-                            })
-                        )}
-
-                        {isMultiSpecies && (
-                            <Box
-                                bg="waba.purpleLight"
-                                color="waba.purple"
-                                fontSize="11px"
-                                fontWeight="700"
-                                px={3}
-                                py={1.5}
-                                rounded="full"
-                                border="1px solid"
-                                borderColor="purple.200"
-                                display="inline-flex"
-                                alignItems="center"
-                                gap={1.5}
-                            >
-                                <Sparkles size={13} />
-                                다종 합사 가구 (+20% 리워드 가중치 적용)
-                            </Box>
-                        )}
-                    </HStack>
-                </Flex>
-            </Box>
-
-            {/* ================================================================= */}
-            {/* 3. MAIN WORKSPACE (8:4 Unified Flow Layout)                       */}
-            {/* ================================================================= */}
-            <Container maxW="1440px" px={{ base: 4, lg: 10 }} py={8}>
-                <Flex direction={{ base: 'column', lg: 'row' }} gap={8} align="flex-start">
-                    {/* ============================================================= */}
-                    {/* [LEFT 8 COLUMNS] Continuous Unified Flow Canvas               */}
-                    {/* ============================================================= */}
+            <Container maxW="1240px" px={{ base: 4, md: 6, lg: 8 }} py={{ base: 5, md: 8 }} minW={0}>
+                <Flex direction={{ base: 'column', lg: 'row' }} gap={{ base: 6, lg: 8 }} align="flex-start" minW={0}>
+                    {/* [LEFT] Continuous Unified Flow Canvas */}
                     <Box
                         flex="1"
                         w="100%"
-                        bg="white"
-                        rounded="28px"
+                        minW={0}
+                        bg="var(--waba-card)"
+                        rounded="24px"
                         border="1px solid"
-                        borderColor="waba.border"
-                        p={{ base: 6, md: 10 }}
-                        boxShadow="0 8px 32px -4px rgba(26,28,30,0.04)"
+                        borderColor="var(--waba-line)"
+                        p={{ base: 5, md: 8 }}
                     >
-                        {/* Point 3: Saved Draft Top Callout Banner */}
+                        {/* Saved Draft Top Callout Banner */}
                         {showDraftBanner && savedDraft && (
                             <Box
                                 p={4}
-                                bg="purple.50"
+                                bg="var(--waba-purple-soft)"
                                 border="1px solid"
-                                borderColor="purple.200"
-                                rounded="20px"
+                                borderColor="var(--waba-purple-border)"
+                                rounded="18px"
                                 mb={6}
                                 display="flex"
                                 flexDirection={{ base: 'column', sm: 'row' }}
@@ -1255,7 +1118,7 @@ export default function Editor({
                                         w="32px"
                                         h="32px"
                                         rounded="full"
-                                        bg="waba.purple"
+                                        bg="#6338A9"
                                         color="white"
                                         display="flex"
                                         alignItems="center"
@@ -1265,10 +1128,10 @@ export default function Editor({
                                         <Bookmark size={16} />
                                     </Box>
                                     <Box>
-                                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                             이전에 작성 중이던 임시 저장 글이 있습니다.
                                         </Text>
-                                        <Text fontSize="11px" color="waba.muted">
+                                        <Text fontSize="11px" color="var(--waba-ink-3)">
                                             {savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString('ko-KR') : ''} 저장됨
                                             {savedDraft.data?.title ? ` • "${savedDraft.data.title}"` : ''}
                                         </Text>
@@ -1277,10 +1140,10 @@ export default function Editor({
 
                                 <HStack gap={2} alignSelf={{ base: 'flex-end', sm: 'center' }}>
                                     <Button
-                                        size="sm"
-                                        bg="waba.purple"
+                                        size="xs"
+                                        bg="#6338A9"
                                         color="white"
-                                        _hover={{ bg: 'waba.purpleHover' }}
+                                        _hover={{ bg: '#522B8F' }}
                                         rounded="full"
                                         px={4}
                                         fontSize="12px"
@@ -1290,11 +1153,10 @@ export default function Editor({
                                         불러오기
                                     </Button>
                                     <Button
-                                        size="sm"
+                                        size="xs"
                                         variant="outline"
-                                        borderColor="purple.200"
-                                        color="gray.600"
-                                        _hover={{ bg: 'white', color: 'red.500', borderColor: 'red.300' }}
+                                        borderColor="var(--waba-purple-border)"
+                                        color="var(--waba-ink-2)"
                                         rounded="full"
                                         px={3}
                                         fontSize="12px"
@@ -1306,31 +1168,84 @@ export default function Editor({
                             </Box>
                         )}
 
+                        {/* Category Selector Chips (제목 바로 위) */}
+                        <Box
+                            ref={categorySectionRef}
+                            mb={4}
+                            p={highlightCategory ? 3 : 0}
+                            rounded="16px"
+                            border="1.5px solid"
+                            borderColor={highlightCategory ? 'red.400' : 'transparent'}
+                            bg={highlightCategory ? 'rgba(239, 68, 68, 0.06)' : 'transparent'}
+                            transition="all 0.2s ease"
+                        >
+                            <Text fontSize="11px" fontWeight="700" color={highlightCategory ? 'red.500' : 'var(--waba-ink-3)'} mb={2}>
+                                카테고리 선택 {highlightCategory ? '(필수)' : ''}
+                            </Text>
+                            <HStack gap={2} flexWrap="wrap">
+                                {[
+                                    { id: 'SNAP', name: '일상 스냅' },
+                                    { id: 'LOOKBOOK', name: '공식 룩북' },
+                                    { id: 'CARE_LOUNGE', name: '케어 라운지' },
+                                    { id: 'QNA', name: '궁금증 Q&A' },
+                                ].map((b) => {
+                                    const isSelected = boardId === b.id;
+                                    return (
+                                        <Button
+                                            key={b.id}
+                                            size="xs"
+                                            h="32px"
+                                            rounded="full"
+                                            px={3.5}
+                                            fontSize="12px"
+                                            fontWeight="700"
+                                            bg={isSelected ? '#6338A9' : 'var(--waba-surface)'}
+                                            color={isSelected ? '#FFFFFF' : 'var(--waba-ink-2)'}
+                                            border="1px solid"
+                                            borderColor={isSelected ? '#6338A9' : 'var(--waba-line)'}
+                                            _hover={{
+                                                bg: isSelected ? '#522B8F' : 'var(--waba-purple-soft)',
+                                            }}
+                                            onClick={() => {
+                                                setBoardId(b.id);
+                                                setHighlightCategory(false);
+                                            }}
+                                            transition="all 0.15s ease"
+                                        >
+                                            {isSelected && <Check size={13} />}
+                                            {b.name}
+                                        </Button>
+                                    );
+                                })}
+                            </HStack>
+                        </Box>
+
                         {/* Title Input */}
                         <Box mb={4}>
                             <Input
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="제목을 입력하세요..."
-                                fontSize={{ base: '22px', md: '28px' }}
+                                fontSize={{ base: '22px', md: '26px' }}
                                 fontWeight="800"
-                                color="waba.charcoal"
+                                color="var(--waba-ink)"
                                 letterSpacing="-0.03em"
                                 border="none"
                                 outline="none"
                                 px={0}
                                 py={1}
                                 _focus={{ outline: 'none', boxShadow: 'none' }}
-                                _placeholder={{ color: 'waba.faint' }}
+                                _placeholder={{ color: 'var(--waba-ink-3)' }}
                             />
                             <HStack
                                 gap={3}
                                 fontSize="12px"
-                                color="waba.muted"
+                                color="var(--waba-ink-3)"
                                 mt={2}
                                 pt={3}
                                 borderTop="1px solid"
-                                borderColor="waba.subtle"
+                                borderColor="var(--waba-line)"
+                                flexWrap="wrap"
                             >
                                 <Text fontWeight="600">작성자: @{currentUser?.nickname || '크리에이터'}</Text>
                                 <Text>•</Text>
@@ -1342,27 +1257,25 @@ export default function Editor({
                             </HStack>
                         </Box>
 
-                        {/* Minimal Sticky In-stream Action Bar */}
+                        {/* Photo Insert Toolbar (+ 사진 추가만 유지) */}
                         <Box
                             position="sticky"
-                            top={18}
-                            zIndex={30}
-                            bg="rgba(255, 255, 255, 0.95)"
-                            backdropFilter="blur(14px)"
+                            top="68px"
+                            zIndex={25}
+                            bg="var(--waba-surface)"
                             border="1px solid"
-                            borderColor="waba.border"
+                            borderColor="var(--waba-line)"
                             px={3.5}
                             py={2}
                             rounded="full"
-                            mb={8}
-                            boxShadow="0 4px 16px rgba(0,0,0,0.04)"
+                            mb={6}
                             maxW="fit-content"
                         >
                             <HStack gap={2}>
                                 <Button
                                     size="xs"
-                                    bg="waba.charcoal"
-                                    _hover={{ bg: 'waba.charcoalHover' }}
+                                    bg="#6338A9"
+                                    _hover={{ bg: '#522B8F' }}
                                     color="white"
                                     rounded="full"
                                     px={3.5}
@@ -1371,19 +1284,19 @@ export default function Editor({
                                     onClick={() => triggerImageUpload(blocks.length - 1)}
                                 >
                                     <ImageIcon size={14} />
-                                    + 사진 삽입
+                                    + 사진 추가
                                 </Button>
-                                <Box h="14px" w="1px" bg="waba.border" mx={0.5} />
-                                <Text fontSize="12px" color="waba.muted" px={1}>
-                                    글을 작성하다가 사진을 넣고 싶은 위치에서 [+ 사진 삽입]을 누르세요
+                                <Text fontSize="12px" color="var(--waba-ink-3)" px={1} display={{ base: 'none', sm: 'block' }}>
+                                    사진 추가 후 클릭해 상품·반려동물 핀을 태그할 수 있어요
                                 </Text>
                             </HStack>
                         </Box>
 
-                        {/* Point 1: Continuous Story Writing Canvas with AutoResizeTextarea (No fixed height, No scrollbars) */}
+                        {/* Continuous Story Writing Canvas */}
                         <EditorBlockList
                             blocks={blocks}
                             activePinId={activePinId}
+                            autoFocusBlockId={autoFocusBlockId}
                             onSetActivePinId={setActivePinId}
                             onUpdateTextBlock={updateTextBlock}
                             onUpdateImageCaption={updateImageCaption}
@@ -1391,120 +1304,167 @@ export default function Editor({
                             onRemoveImageBlock={removeImageBlock}
                             onImageClickToPin={handleImageClickToPin}
                             onRemovePinFromImage={removePinFromImage}
+                            onAppendTextBlock={handleAppendTextBlock}
                         />
-
-                        {/* Bottom Tag Bar */}
-                        <Box pt={8} mt={6} borderTop="1px solid" borderColor="waba.subtle">
-                            <Flex align="center" flexWrap="wrap" gap={2}>
-                                <Text fontSize="12px" fontWeight="600" color="waba.muted" mr={1}>
-                                    연관 태그:
-                                </Text>
-                                {tags.length === 0 && (
-                                    <Text fontSize="12px" color="waba.faint" mr={2}>
-                                        (등록된 태그 없음)
-                                    </Text>
-                                )}
-                                {tags.map((tag) => (
-                                    <Box
-                                        key={tag}
-                                        display="inline-flex"
-                                        alignItems="center"
-                                        gap={1}
-                                        bg="waba.subtle"
-                                        border="1px solid"
-                                        borderColor="waba.border"
-                                        px={3}
-                                        py={1}
-                                        rounded="full"
-                                        fontSize="13px"
-                                        fontWeight="600"
-                                        color="waba.charcoal"
-                                    >
-                                        #{tag}
-                                        <CloseButton
-                                            size="2xs"
-                                            rounded="full"
-                                            color="waba.faint"
-                                            _hover={{ color: 'waba.charcoal' }}
-                                            onClick={() => handleRemoveTag(tag)}
-                                        />
-                                    </Box>
-                                ))}
-
-                                <HStack gap={1}>
-                                    <Input
-                                        value={newTagInput}
-                                        onChange={(e) => setNewTagInput(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleAddTag();
-                                            }
-                                        }}
-                                        placeholder="태그 입력 후 Enter"
-                                        size="xs"
-                                        w="140px"
-                                        rounded="full"
-                                        bg="white"
-                                        borderColor="waba.border"
-                                        fontSize="12px"
-                                    />
-                                    <Button
-                                        size="xs"
-                                        rounded="full"
-                                        variant="outline"
-                                        borderColor="waba.border"
-                                        onClick={handleAddTag}
-                                        fontSize="11px"
-                                    >
-                                        추가
-                                    </Button>
-                                </HStack>
-                            </Flex>
-                        </Box>
                     </Box>
 
-                    {/* ============================================================= */}
-                    {/* [RIGHT 4 COLUMNS] Real-time Inspector Sidebar                 */}
-                    {/* ============================================================= */}
+                    {/* [RIGHT] Utility Sidebar: AI 건강 수첩 자동 기록 + 태그 설정 */}
                     <Box
-                        w={{ base: '100%', lg: '380px' }}
+                        w={{ base: '100%', lg: '340px' }}
+                        flexShrink={0}
                         position={{ base: 'static', lg: 'sticky' }}
-                        top="80px"
+                        top="76px"
                         display="flex"
                         flexDirection="column"
-                        gap={6}
+                        gap={5}
+                        minW={0}
                     >
-                        {/* 0) ✨ 건강 수첩 자동 기록 카드 (내 반려동물을 1마리 이상 태그했을 때만 노출) */}
-                        {selectedPets.length > 0 && (
-                            <AutoJournalCard
-                                autoJournal={autoJournal}
-                                onAutoJournalChange={setAutoJournal}
-                                autoJournalPetId={autoJournalPetId}
-                                onAutoJournalPetIdChange={setAutoJournalPetId}
-                                autoJournalJourneyId={autoJournalJourneyId}
-                                onAutoJournalJourneyIdChange={setAutoJournalJourneyId}
-                                userPetsList={userPetsList}
-                                petJourneys={petJourneys}
-                            />
-                        )}
+                        {/* 1) 동반 반려동물 선택 카드 */}
+                        <Box
+                            bg="var(--waba-card)"
+                            rounded="20px"
+                            border="1px solid"
+                            borderColor="var(--waba-line)"
+                            p={5}
+                        >
+                            <Text fontSize="14px" fontWeight="800" color="var(--waba-ink)" mb={1}>
+                                🐾 동반 반려동물 선택
+                            </Text>
+                            <Text fontSize="12px" color="var(--waba-ink-3)" mb={3}>
+                                함께 기록할 아이를 선택하면 AI 건강 수첩과 연동됩니다.
+                            </Text>
+                            {userPetsList.length === 0 ? (
+                                <Text fontSize="12px" color="var(--waba-ink-3)">
+                                    등록된 반려동물이 없습니다.
+                                </Text>
+                            ) : (
+                                <HStack gap={2} flexWrap="wrap">
+                                    {userPetsList.map((pet) => {
+                                        const isChecked = selectedPets.includes(pet.id);
+                                        const speciesIcon = pet.species === 'CAT' ? '🐱' : pet.species === 'DOG' ? '🐶' : pet.species === 'RABBIT' ? '🐰' : '🐾';
+                                        return (
+                                            <Box
+                                                key={pet.id}
+                                                as="button"
+                                                onClick={() => {
+                                                    setSelectedPets((prev) =>
+                                                        isChecked ? prev.filter((id) => id !== pet.id) : [...prev, pet.id]
+                                                    );
+                                                }}
+                                                display="inline-flex"
+                                                alignItems="center"
+                                                gap={1.5}
+                                                bg={isChecked ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                                border="1px solid"
+                                                borderColor={isChecked ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
+                                                color={isChecked ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                                                px={3}
+                                                py={1.5}
+                                                rounded="full"
+                                                fontSize="12px"
+                                                fontWeight="600"
+                                                cursor="pointer"
+                                            >
+                                                {isChecked ? <Check size={13} /> : <span>{speciesIcon}</span>}
+                                                <span>{pet.name}</span>
+                                            </Box>
+                                        );
+                                    })}
+                                </HStack>
+                            )}
+                        </Box>
 
-                        <FeedPreviewPane
-                            boardId={boardId}
-                            title={title}
-                            currentUser={currentUser}
-                            firstImagePreview={firstImagePreview}
-                            allProductPins={allProductPins}
-                            productPinsCount={productPinsCount}
-                            totalImagesCount={totalImagesCount}
-                            calculatedPoints={calculatedPoints}
-                            isMultiSpecies={isMultiSpecies}
-                            readinessPercentage={readinessPercentage}
-                            isTitleValid={isTitleValid}
-                            isContentValid={isContentValid}
-                            isImageValid={isImageValid}
-                            isPinValid={isPinValid}
+                        {/* 2) ✨ AI 건강 수첩 자동 기록 카드 */}
+                        <AutoJournalCard
+                            autoJournal={autoJournal}
+                            onAutoJournalChange={setAutoJournal}
+                            autoJournalPetId={autoJournalPetId}
+                            onAutoJournalPetIdChange={setAutoJournalPetId}
+                            autoJournalJourneyId={autoJournalJourneyId}
+                            onAutoJournalJourneyIdChange={setAutoJournalJourneyId}
+                            userPetsList={userPetsList}
+                            petJourneys={petJourneys}
                         />
+
+                        {/* 3) 태그 설정 카드 */}
+                        <Box
+                            bg="var(--waba-card)"
+                            rounded="20px"
+                            border="1px solid"
+                            borderColor="var(--waba-line)"
+                            p={5}
+                        >
+                            <Text fontSize="14px" fontWeight="800" color="var(--waba-ink)" mb={1}>
+                                🏷️ 태그 설정
+                            </Text>
+                            <Text fontSize="12px" color="var(--waba-ink-3)" mb={3}>
+                                검색과 큐레이션에 활용되는 키워드를 추가해 보세요.
+                            </Text>
+
+                            <HStack gap={1.5} mb={tags.length > 0 ? 3 : 0}>
+                                <Input
+                                    value={newTagInput}
+                                    onChange={(e) => setNewTagInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddTag();
+                                        }
+                                    }}
+                                    placeholder="태그 입력 후 Enter"
+                                    size="sm"
+                                    rounded="full"
+                                    bg="var(--waba-surface)"
+                                    borderColor="var(--waba-line)"
+                                    color="var(--waba-ink)"
+                                    fontSize="12px"
+                                />
+                                <Button
+                                    size="sm"
+                                    rounded="full"
+                                    bg="#6338A9"
+                                    color="white"
+                                    _hover={{ bg: '#522B8F' }}
+                                    onClick={handleAddTag}
+                                    fontSize="12px"
+                                    fontWeight="700"
+                                    px={4}
+                                    flexShrink={0}
+                                >
+                                    추가
+                                </Button>
+                            </HStack>
+
+                            {tags.length > 0 && (
+                                <Flex flexWrap="wrap" gap={1.5}>
+                                    {tags.map((tag) => (
+                                        <Box
+                                            key={tag}
+                                            display="inline-flex"
+                                            alignItems="center"
+                                            gap={1}
+                                            bg="var(--waba-purple-soft)"
+                                            border="1px solid"
+                                            borderColor="var(--waba-purple-border)"
+                                            px={2.5}
+                                            py={1}
+                                            rounded="full"
+                                            fontSize="12px"
+                                            fontWeight="600"
+                                            color="var(--waba-purple-text)"
+                                        >
+                                            #{tag}
+                                            <CloseButton
+                                                size="2xs"
+                                                rounded="full"
+                                                color="var(--waba-purple-text)"
+                                                onClick={() => handleRemoveTag(tag)}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Flex>
+                            )}
+                        </Box>
                     </Box>
                 </Flex>
             </Container>

@@ -625,6 +625,10 @@ export const getPetJourneys = async (userId, petId) => {
             DATE_FORMAT(pj.start_date, '%Y-%m-%d') AS start_date,
             DATE_FORMAT(pj.end_date, '%Y-%m-%d') AS end_date,
             (pj.is_ongoing = 1) AS is_ongoing,
+            pj.status,
+            pj.category,
+            pj.goal_summary,
+            pj.completed_at,
             pj.share_slug,
             pj.share_scope,
             (
@@ -662,6 +666,10 @@ export const getPetJourneyById = async (userId, petId, journeyId) => {
             DATE_FORMAT(pj.start_date, '%Y-%m-%d') AS start_date,
             DATE_FORMAT(pj.end_date, '%Y-%m-%d') AS end_date,
             (pj.is_ongoing = 1) AS is_ongoing,
+            pj.status,
+            pj.category,
+            pj.goal_summary,
+            pj.completed_at,
             pj.share_slug,
             pj.share_scope,
             (
@@ -702,27 +710,44 @@ export const createPetJourney = async (userId, petId, data) => {
         start_date,
         end_date = null,
         is_ongoing = 1,
-        share_scope = 'LINK_ONLY'
+        share_scope = 'LINK_ONLY',
+        category = null,
+        goal_summary = null,
+        status
     } = data;
 
     const allowedScopes = ['PRIVATE', 'LINK_ONLY', 'PUBLIC'];
+    const allowedStatuses = ['ACTIVE', 'CURED', 'COMPLETED'];
     const finalScope = allowedScopes.includes(share_scope) ? share_scope : 'LINK_ONLY';
-    const isOngoingBool = is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1';
-    const finalEndDate = isOngoingBool ? null : (end_date || null);
+    const isOngoingInput = is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1';
+    const upperStatus = status ? String(status).toUpperCase() : '';
+    const finalStatus = allowedStatuses.includes(upperStatus)
+        ? upperStatus
+        : (isOngoingInput ? 'ACTIVE' : 'COMPLETED');
+    const finalIsOngoing = finalStatus === 'ACTIVE' ? 1 : 0;
+    const finalEndDate = finalIsOngoing ? null : (end_date || null);
+    const finalCategory = category ? String(category).trim().slice(0, 50) : null;
+    const finalGoalSummary = goal_summary ? String(goal_summary).trim().slice(0, 255) : null;
+    const finalStartDate = (start_date && String(start_date).trim())
+        ? String(start_date).trim()
+        : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
     const shareSlug = crypto.randomBytes(16).toString('hex');
 
     const [res] = await db.query(
         `INSERT INTO pet_journeys (
-            pet_id, user_id, title, description, start_date, end_date, is_ongoing, share_slug, share_scope, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            pet_id, user_id, title, description, start_date, end_date, is_ongoing, status, category, goal_summary, completed_at, share_slug, share_scope, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${finalStatus === 'ACTIVE' ? 'NULL' : 'NOW()'}, ?, ?, NOW(), NOW())`,
         [
             petId,
             userId,
             title,
             description || null,
-            start_date,
+            finalStartDate,
             finalEndDate,
-            isOngoingBool ? 1 : 0,
+            finalIsOngoing,
+            finalStatus,
+            finalCategory,
+            finalGoalSummary,
             shareSlug,
             finalScope
         ]
@@ -745,24 +770,42 @@ export const updatePetJourney = async (userId, petId, journeyId, data) => {
         start_date = existing.start_date,
         end_date = existing.end_date,
         is_ongoing = existing.is_ongoing,
-        share_scope = existing.share_scope
+        share_scope = existing.share_scope,
+        category,
+        goal_summary,
+        status
     } = data;
 
     const allowedScopes = ['PRIVATE', 'LINK_ONLY', 'PUBLIC'];
+    const allowedStatuses = ['ACTIVE', 'CURED', 'COMPLETED'];
     const finalScope = allowedScopes.includes(share_scope) ? share_scope : existing.share_scope;
-    const isOngoingBool = is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1';
-    const finalEndDate = isOngoingBool ? null : (end_date || null);
+    const isOngoingInput = is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1';
+    const upperStatus = status !== undefined ? String(status || '').toUpperCase() : '';
+    const finalStatus = allowedStatuses.includes(upperStatus)
+        ? upperStatus
+        : (data.is_ongoing !== undefined
+            ? (isOngoingInput ? 'ACTIVE' : (existing.status === 'CURED' ? 'CURED' : 'COMPLETED'))
+            : (existing.status || 'ACTIVE'));
+    const finalIsOngoing = finalStatus === 'ACTIVE' ? 1 : 0;
+    const finalEndDate = finalIsOngoing ? null : (end_date || null);
+    const finalCategory = category !== undefined ? (category ? String(category).trim().slice(0, 50) : null) : existing.category;
+    const finalGoalSummary = goal_summary !== undefined ? (goal_summary ? String(goal_summary).trim().slice(0, 255) : null) : existing.goal_summary;
 
     await db.query(
         `UPDATE pet_journeys SET
-            title = ?, description = ?, start_date = ?, end_date = ?, is_ongoing = ?, share_scope = ?, updated_at = NOW()
+            title = ?, description = ?, start_date = ?, end_date = ?, is_ongoing = ?, status = ?, category = ?, goal_summary = ?,
+            completed_at = ${finalStatus === 'ACTIVE' ? 'NULL' : 'COALESCE(completed_at, NOW())'},
+            share_scope = ?, updated_at = NOW()
          WHERE id = ? AND pet_id = ? AND user_id = ?`,
         [
             title,
             description !== undefined ? (description || null) : existing.description,
             start_date,
             finalEndDate,
-            isOngoingBool ? 1 : 0,
+            finalIsOngoing,
+            finalStatus,
+            finalCategory,
+            finalGoalSummary,
             finalScope,
             journeyId,
             petId,
@@ -789,8 +832,124 @@ export const deletePetJourney = async (userId, petId, journeyId) => {
 };
 
 /**
- * 펫 라이프 & 메디컬 히스토리(pet_histories) CRUD (케어 저니 & 룩북 글 N:M 연동 확장)
+ * 펫 라이프 & 메디컬 히스토리(pet_histories) CRUD (케어 저니 & 룩북 글 & 다중 펫 N:M 연동 확장)
  */
+const HISTORY_SELECT_SQL = `
+    SELECT 
+        ph.id, ph.pet_id, ph.user_id, ph.journey_id,
+        DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS date,
+        DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date, 
+        ph.category, ph.title, ph.description, ph.description AS notes, ph.hospital_name, 
+        ph.weight_kg, ph.is_ai_generated, ph.created_at, ph.updated_at,
+        CASE 
+            WHEN pj.id IS NOT NULL THEN JSON_OBJECT('id', pj.id, 'title', pj.title, 'is_ongoing', pj.is_ongoing = 1)
+            ELSE NULL
+        END AS journey,
+        COALESCE((
+            SELECT JSON_ARRAYAGG(
+                JSON_OBJECT(
+                    'id', pt.id,
+                    'name', pt.name,
+                    'current_avatar_url', pt.current_avatar_url
+                )
+            )
+            FROM pet_history_pets phpets
+            JOIN pets pt ON phpets.pet_id = pt.id
+            WHERE phpets.history_id = ph.id AND pt.is_deleted = 0
+        ), JSON_ARRAY()) AS pets,
+        COALESCE((
+            SELECT JSON_ARRAYAGG(
+                JSON_OBJECT(
+                    'id', p.id,
+                    'title', p.title,
+                    'thumbnail_url', (
+                        SELECT pi.image_url 
+                        FROM post_images pi 
+                        WHERE pi.post_id = p.id 
+                        ORDER BY pi.is_thumbnail DESC, pi.sort_order ASC 
+                        LIMIT 1
+                    )
+                )
+            )
+            FROM pet_history_posts php
+            JOIN posts p ON php.post_id = p.id
+            WHERE php.history_id = ph.id
+        ), JSON_ARRAY()) AS posts
+    FROM pet_histories ph
+    LEFT JOIN pet_journeys pj ON ph.journey_id = pj.id
+`;
+
+const formatHistoryRow = (r) => ({
+    ...r,
+    weight_kg: r.weight_kg !== null ? Number(r.weight_kg) : null,
+    is_ai_generated: Number(r.is_ai_generated) === 1 ? 1 : 0,
+    pets: Array.isArray(r.pets) ? r.pets : [],
+    posts: Array.isArray(r.posts) ? r.posts : []
+});
+
+const normalizeOwnedPetIds = async (userId, rawPetIds = []) => {
+    const unique = [...new Set((Array.isArray(rawPetIds) ? rawPetIds : [rawPetIds]).filter((id) => id && String(id).trim()).map((id) => String(id).trim()))];
+    if (unique.length === 0) return [];
+    const [rows] = await db.query(
+        `SELECT id FROM pets WHERE user_id = ? AND is_deleted = 0 AND id IN (?)`,
+        [userId, unique]
+    );
+    const ownedSet = new Set(rows.map((r) => r.id));
+    if (ownedSet.size !== unique.length) {
+        const error = new Error('PET_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+    return unique;
+};
+
+const syncPetsLatestWeight = async (userId, petIds = []) => {
+    const unique = [...new Set(petIds.filter(Boolean))];
+    for (const pid of unique) {
+        const [latestWeightRow] = await db.query(
+            `SELECT ph.weight_kg
+             FROM pet_histories ph
+             WHERE ph.user_id = ?
+               AND ph.weight_kg IS NOT NULL
+               AND (
+                   ph.pet_id = ?
+                   OR EXISTS (
+                       SELECT 1 FROM pet_history_pets phpets
+                       WHERE phpets.history_id = ph.id AND phpets.pet_id = ?
+                   )
+               )
+             ORDER BY ph.event_date DESC, ph.id DESC
+             LIMIT 1`,
+            [userId, pid, pid]
+        );
+        const newWeight = latestWeightRow[0]?.weight_kg !== undefined ? latestWeightRow[0].weight_kg : null;
+        await db.query(
+            `UPDATE pets SET latest_weight_kg = ?, updated_at = NOW() WHERE id = ? AND user_id = ?`,
+            [newWeight, pid, userId]
+        );
+    }
+};
+
+export const getUserHistories = async (userId) => {
+    const sql = `
+        ${HISTORY_SELECT_SQL}
+        WHERE ph.user_id = ?
+        ORDER BY ph.event_date DESC, ph.id DESC
+    `;
+    const [rows] = await db.query(sql, [userId]);
+    return rows.map(formatHistoryRow);
+};
+
+export const getUserHistoryById = async (userId, historyId) => {
+    const sql = `
+        ${HISTORY_SELECT_SQL}
+        WHERE ph.id = ? AND ph.user_id = ?
+        LIMIT 1
+    `;
+    const [rows] = await db.query(sql, [historyId, userId]);
+    return rows[0] ? formatHistoryRow(rows[0]) : null;
+};
+
 export const getPetHistories = async (userId, petId) => {
     const pet = await getUserPetById(userId, petId);
     if (!pet) {
@@ -800,88 +959,36 @@ export const getPetHistories = async (userId, petId) => {
     }
 
     const sql = `
-        SELECT 
-            ph.id, ph.pet_id, ph.user_id, ph.journey_id,
-            DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS date,
-            DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date, 
-            ph.category, ph.title, ph.description, ph.description AS notes, ph.hospital_name, 
-            ph.weight_kg, ph.is_ai_generated, ph.created_at, ph.updated_at,
-            CASE 
-                WHEN pj.id IS NOT NULL THEN JSON_OBJECT('id', pj.id, 'title', pj.title, 'is_ongoing', pj.is_ongoing = 1)
-                ELSE NULL
-            END AS journey,
-            COALESCE((
-                SELECT JSON_ARRAYAGG(
-                    JSON_OBJECT(
-                        'id', p.id,
-                        'title', p.title,
-                        'thumbnail_url', (
-                            SELECT pi.image_url 
-                            FROM post_images pi 
-                            WHERE pi.post_id = p.id 
-                            ORDER BY pi.is_thumbnail DESC, pi.sort_order ASC 
-                            LIMIT 1
-                        )
-                    )
-                )
-                FROM pet_history_posts php
-                JOIN posts p ON php.post_id = p.id
-                WHERE php.history_id = ph.id
-            ), JSON_ARRAY()) AS posts
-        FROM pet_histories ph
-        LEFT JOIN pet_journeys pj ON ph.journey_id = pj.id
-        WHERE ph.pet_id = ? AND ph.user_id = ?
+        ${HISTORY_SELECT_SQL}
+        WHERE ph.user_id = ?
+          AND (
+              ph.pet_id = ?
+              OR EXISTS (
+                  SELECT 1 FROM pet_history_pets phpets
+                  WHERE phpets.history_id = ph.id AND phpets.pet_id = ?
+              )
+          )
         ORDER BY ph.event_date DESC, ph.id DESC
     `;
-    const [rows] = await db.query(sql, [petId, userId]);
-    return rows.map(r => ({
-        ...r,
-        weight_kg: r.weight_kg !== null ? Number(r.weight_kg) : null,
-        posts: r.posts || []
-    }));
+    const [rows] = await db.query(sql, [userId, petId, petId]);
+    return rows.map(formatHistoryRow);
 };
 
 export const getPetHistoryById = async (userId, petId, historyId) => {
     const sql = `
-        SELECT 
-            ph.id, ph.pet_id, ph.user_id, ph.journey_id,
-            DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS date,
-            DATE_FORMAT(ph.event_date, '%Y-%m-%d') AS event_date, 
-            ph.category, ph.title, ph.description, ph.description AS notes, ph.hospital_name, 
-            ph.weight_kg, ph.is_ai_generated, ph.created_at, ph.updated_at,
-            CASE 
-                WHEN pj.id IS NOT NULL THEN JSON_OBJECT('id', pj.id, 'title', pj.title, 'is_ongoing', pj.is_ongoing = 1)
-                ELSE NULL
-            END AS journey,
-            COALESCE((
-                SELECT JSON_ARRAYAGG(
-                    JSON_OBJECT(
-                        'id', p.id,
-                        'title', p.title,
-                        'thumbnail_url', (
-                            SELECT pi.image_url 
-                            FROM post_images pi 
-                            WHERE pi.post_id = p.id 
-                            ORDER BY pi.is_thumbnail DESC, pi.sort_order ASC 
-                            LIMIT 1
-                        )
-                    )
-                )
-                FROM pet_history_posts php
-                JOIN posts p ON php.post_id = p.id
-                WHERE php.history_id = ph.id
-            ), JSON_ARRAY()) AS posts
-        FROM pet_histories ph
-        LEFT JOIN pet_journeys pj ON ph.journey_id = pj.id
-        WHERE ph.id = ? AND ph.pet_id = ? AND ph.user_id = ?
+        ${HISTORY_SELECT_SQL}
+        WHERE ph.id = ? AND ph.user_id = ?
+          AND (
+              ph.pet_id = ?
+              OR EXISTS (
+                  SELECT 1 FROM pet_history_pets phpets
+                  WHERE phpets.history_id = ph.id AND phpets.pet_id = ?
+              )
+          )
+        LIMIT 1
     `;
-    const [rows] = await db.query(sql, [historyId, petId, userId]);
-    if (!rows[0]) return null;
-    return {
-        ...rows[0],
-        weight_kg: rows[0].weight_kg !== null ? Number(rows[0].weight_kg) : null,
-        posts: rows[0].posts || []
-    };
+    const [rows] = await db.query(sql, [historyId, userId, petId, petId]);
+    return rows[0] ? formatHistoryRow(rows[0]) : null;
 };
 
 export const getPetHistoriesByPostId = async (userId, postId) => {
@@ -905,12 +1012,16 @@ export const getPetHistoriesByPostId = async (userId, postId) => {
 };
 
 export const createPetHistory = async (userId, petId, historyData) => {
-    const pet = await getUserPetById(userId, petId);
-    if (!pet) {
-        const error = new Error('PET_NOT_FOUND');
-        error.status = 404;
+    const requestedPetIds = Array.isArray(historyData?.pet_ids) && historyData.pet_ids.length > 0
+        ? historyData.pet_ids
+        : [petId];
+    const validPetIds = await normalizeOwnedPetIds(userId, requestedPetIds);
+    if (validPetIds.length === 0) {
+        const error = new Error('PET_IDS_REQUIRED');
+        error.status = 400;
         throw error;
     }
+    const primaryPetId = validPetIds[0];
 
     const {
         event_date,
@@ -936,10 +1047,18 @@ export const createPetHistory = async (userId, petId, historyData) => {
         `INSERT INTO pet_histories (
             pet_id, user_id, journey_id, event_date, category, title, description, hospital_name, weight_kg, is_ai_generated, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [petId, userId, finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, finalIsAiGenerated]
+        [primaryPetId, userId, finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, finalIsAiGenerated]
     );
 
     const insertedId = res.insertId;
+
+    // 다중 반려동물(pet_history_pets) 매핑 저장
+    for (const pid of validPetIds) {
+        await db.query(
+            `INSERT IGNORE INTO pet_history_pets (history_id, pet_id) VALUES (?, ?)`,
+            [insertedId, pid]
+        );
+    }
 
     // 연결된 룩북 글(pet_history_posts) 매핑 저장
     if (Array.isArray(post_ids) && post_ids.length > 0) {
@@ -953,27 +1072,33 @@ export const createPetHistory = async (userId, petId, historyData) => {
         }
     }
 
-    // 체중 동기화 (최신 일자 기준인 경우 pets.latest_weight_kg 업데이트)
+    // 체중 동기화 (선택된 모든 펫의 latest_weight_kg 업데이트)
     if (parsedWeight !== null) {
-        const [latestWeightRow] = await db.query(
-            `SELECT weight_kg FROM pet_histories 
-             WHERE pet_id = ? AND weight_kg IS NOT NULL 
-             ORDER BY event_date DESC, id DESC LIMIT 1`,
-            [petId]
-        );
-        if (latestWeightRow[0] && latestWeightRow[0].weight_kg !== null) {
-            await db.query(
-                `UPDATE pets SET latest_weight_kg = ?, updated_at = NOW() WHERE id = ? AND user_id = ?`,
-                [latestWeightRow[0].weight_kg, petId, userId]
-            );
-        }
+        await syncPetsLatestWeight(userId, validPetIds);
     }
 
-    return await getPetHistoryById(userId, petId, insertedId);
+    return await getUserHistoryById(userId, insertedId);
+};
+
+export const createUserHistory = async (userId, historyData) => {
+    const rawPetIds = Array.isArray(historyData?.pet_ids) && historyData.pet_ids.length > 0
+        ? historyData.pet_ids
+        : (historyData?.pet_id ? [historyData.pet_id] : []);
+    if (rawPetIds.length === 0) {
+        const error = new Error('PET_IDS_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    return await createPetHistory(userId, rawPetIds[0], {
+        ...historyData,
+        pet_ids: rawPetIds
+    });
 };
 
 export const updatePetHistory = async (userId, petId, historyId, historyData) => {
-    const existing = await getPetHistoryById(userId, petId, historyId);
+    const existing = petId
+        ? await getPetHistoryById(userId, petId, historyId)
+        : await getUserHistoryById(userId, historyId);
     if (!existing) {
         const error = new Error('HISTORY_NOT_FOUND');
         error.status = 404;
@@ -989,8 +1114,25 @@ export const updatePetHistory = async (userId, petId, historyId, historyData) =>
         weight_kg = existing.weight_kg,
         journey_id,
         post_ids,
+        pet_ids,
         is_ai_generated = 0
     } = historyData;
+
+    const oldPetIds = [
+        existing.pet_id,
+        ...((existing.pets || []).map((p) => p.id))
+    ].filter(Boolean);
+
+    let nextPetIds = null;
+    if (Array.isArray(pet_ids)) {
+        nextPetIds = await normalizeOwnedPetIds(userId, pet_ids);
+        if (nextPetIds.length === 0) {
+            const error = new Error('PET_IDS_REQUIRED');
+            error.status = 400;
+            throw error;
+        }
+    }
+    const finalPrimaryPetId = nextPetIds ? nextPetIds[0] : existing.pet_id;
 
     const allowedCategories = ['SURGERY', 'VACCINE', 'CHECKUP', 'WEIGHT', 'EVENT', 'OTHER'];
     const finalCategory = allowedCategories.includes(category) ? category : existing.category;
@@ -1000,14 +1142,42 @@ export const updatePetHistory = async (userId, petId, historyId, historyData) =>
     const finalJourneyId = journey_id !== undefined
         ? (journey_id ? Number(journey_id) : null)
         : existing.journey_id;
-    const finalIsAiGenerated = is_ai_generated ? 1 : 0;
+
+    // journey_id(소속 수첩 그룹)만 변경되고 나머지 내용 필드가 동일하면 is_ai_generated 기존 값 유지
+    const isSameDate = String(event_date || '') === String(existing.event_date || '');
+    const isSameCategory = finalCategory === existing.category;
+    const isSameTitle = String(title || '') === String(existing.title || '');
+    const isSameDescription = (description || null) === (existing.description || null);
+    const isSameHospital = (hospital_name || null) === (existing.hospital_name || null);
+    const existingWeight = existing.weight_kg !== null && existing.weight_kg !== undefined ? Number(existing.weight_kg) : null;
+    const isSameWeight = parsedWeight === existingWeight;
+    const existingPetSet = new Set(oldPetIds);
+    const isSamePets = !nextPetIds || (nextPetIds.length === existingPetSet.size && nextPetIds.every((id) => existingPetSet.has(id)));
+    const existingPostSet = new Set((existing.posts || []).map((p) => p.id));
+    const normalizedPostIds = Array.isArray(post_ids) ? post_ids.filter(Boolean) : null;
+    const isSamePosts = !normalizedPostIds || (normalizedPostIds.length === existingPostSet.size && normalizedPostIds.every((id) => existingPostSet.has(id)));
+
+    const onlyJourneyChanged = isSameDate && isSameCategory && isSameTitle && isSameDescription && isSameHospital && isSameWeight && isSamePets && isSamePosts;
+    const finalIsAiGenerated = is_ai_generated
+        ? 1
+        : (onlyJourneyChanged ? (Number(existing.is_ai_generated) === 1 ? 1 : 0) : 0);
 
     await db.query(
         `UPDATE pet_histories SET
-            journey_id = ?, event_date = ?, category = ?, title = ?, description = ?, hospital_name = ?, weight_kg = ?, is_ai_generated = ?, updated_at = NOW()
-         WHERE id = ? AND pet_id = ? AND user_id = ?`,
-        [finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, finalIsAiGenerated, historyId, petId, userId]
+            pet_id = ?, journey_id = ?, event_date = ?, category = ?, title = ?, description = ?, hospital_name = ?, weight_kg = ?, is_ai_generated = ?, updated_at = NOW()
+         WHERE id = ? AND user_id = ?`,
+        [finalPrimaryPetId, finalJourneyId, event_date, finalCategory, title, description || null, hospital_name || null, parsedWeight, finalIsAiGenerated, historyId, userId]
     );
+
+    if (nextPetIds) {
+        await db.query(`DELETE FROM pet_history_pets WHERE history_id = ?`, [historyId]);
+        for (const pid of nextPetIds) {
+            await db.query(
+                `INSERT IGNORE INTO pet_history_pets (history_id, pet_id) VALUES (?, ?)`,
+                [historyId, pid]
+            );
+        }
+    }
 
     // 연결된 룩북 글(pet_history_posts) 재동기화
     if (Array.isArray(post_ids)) {
@@ -1022,57 +1192,70 @@ export const updatePetHistory = async (userId, petId, historyId, historyData) =>
         }
     }
 
-    // 체중 동기화
-    const [latestWeightRow] = await db.query(
-        `SELECT weight_kg FROM pet_histories 
-         WHERE pet_id = ? AND weight_kg IS NOT NULL 
-         ORDER BY event_date DESC, id DESC LIMIT 1`,
-        [petId]
-    );
-    if (latestWeightRow[0] && latestWeightRow[0].weight_kg !== null) {
-        await db.query(
-            `UPDATE pets SET latest_weight_kg = ?, updated_at = NOW() WHERE id = ? AND user_id = ?`,
-            [latestWeightRow[0].weight_kg, petId, userId]
-        );
-    }
+    // 체중 동기화 (기존 + 신규 연결 펫 전체)
+    await syncPetsLatestWeight(userId, [...oldPetIds, ...(nextPetIds || [])]);
 
-    return await getPetHistoryById(userId, petId, historyId);
+    return await getUserHistoryById(userId, historyId);
+};
+
+export const updateUserHistory = async (userId, historyId, historyData) => {
+    return await updatePetHistory(userId, null, historyId, historyData);
 };
 
 export const deletePetHistory = async (userId, petId, historyId) => {
-    const existing = await getPetHistoryById(userId, petId, historyId);
+    const existing = petId
+        ? await getPetHistoryById(userId, petId, historyId)
+        : await getUserHistoryById(userId, historyId);
     if (!existing) {
         const error = new Error('HISTORY_NOT_FOUND');
         error.status = 404;
         throw error;
     }
 
+    const affectedPetIds = [
+        existing.pet_id,
+        ...((existing.pets || []).map((p) => p.id))
+    ].filter(Boolean);
+
+    await db.query(`DELETE FROM pet_history_pets WHERE history_id = ?`, [historyId]);
     await db.query(`DELETE FROM pet_history_posts WHERE history_id = ?`, [historyId]);
     await db.query(
-        `DELETE FROM pet_histories WHERE id = ? AND pet_id = ? AND user_id = ?`,
-        [historyId, petId, userId]
+        `DELETE FROM pet_histories WHERE id = ? AND user_id = ?`,
+        [historyId, userId]
     );
 
     // 삭제 후 최신 체중 재동기화
-    const [latestWeightRow] = await db.query(
-        `SELECT weight_kg FROM pet_histories 
-         WHERE pet_id = ? AND weight_kg IS NOT NULL 
-         ORDER BY event_date DESC, id DESC LIMIT 1`,
-        [petId]
-    );
-    const newWeight = latestWeightRow[0]?.weight_kg !== undefined ? latestWeightRow[0].weight_kg : null;
-    await db.query(
-        `UPDATE pets SET latest_weight_kg = ?, updated_at = NOW() WHERE id = ? AND user_id = ?`,
-        [newWeight, petId, userId]
-    );
+    await syncPetsLatestWeight(userId, affectedPetIds);
 
-    return { deletedId: historyId, petId };
+    return { deletedId: historyId, petId: existing.pet_id };
+};
+
+export const deleteUserHistory = async (userId, historyId) => {
+    return await deletePetHistory(userId, null, historyId);
 };
 
 /**
  * 글 연결 모달용 내가 쓴 룩북 글 간략 목록
  */
-export const getUserSimplePosts = async (userId) => {
+export const getUserSimplePosts = async (userId, { page = 1, limit = 10, q = '' } = {}) => {
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+    const offset = (safePage - 1) * safeLimit;
+    const trimmedQ = typeof q === 'string' ? q.trim() : '';
+
+    let whereSql = `p.user_id = ? AND p.status = 'PUBLISHED'`;
+    const baseParams = [userId];
+    if (trimmedQ) {
+        whereSql += ` AND p.title LIKE ?`;
+        baseParams.push(`%${trimmedQ}%`);
+    }
+
+    const [countRows] = await db.query(
+        `SELECT COUNT(*) AS total FROM posts p WHERE ${whereSql}`,
+        baseParams
+    );
+    const total = Number(countRows[0]?.total || 0);
+
     const sql = `
         SELECT 
             p.id,
@@ -1086,11 +1269,20 @@ export const getUserSimplePosts = async (userId) => {
             ) AS thumbnail_url,
             p.created_at
         FROM posts p
-        WHERE p.user_id = ? AND p.status = 'PUBLISHED'
-        ORDER BY p.created_at DESC
+        WHERE ${whereSql}
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT ? OFFSET ?
     `;
-    const [rows] = await db.query(sql, [userId]);
-    return rows;
+    const [rows] = await db.query(sql, [...baseParams, safeLimit, offset]);
+    const hasMore = offset + rows.length < total;
+
+    return {
+        posts: rows,
+        total,
+        page: safePage,
+        limit: safeLimit,
+        hasMore
+    };
 };
 
 /**
@@ -1107,6 +1299,10 @@ export const getPublicJourneyBySlug = async (slug) => {
             DATE_FORMAT(pj.start_date, '%Y-%m-%d') AS start_date,
             DATE_FORMAT(pj.end_date, '%Y-%m-%d') AS end_date,
             (pj.is_ongoing = 1) AS is_ongoing,
+            pj.status,
+            pj.category,
+            pj.goal_summary,
+            pj.completed_at,
             pj.share_slug,
             pj.share_scope,
             pj.created_at,

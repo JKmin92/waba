@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA — Health Notebooks (List &amp; Detail)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #FFFFFF;
+      --surface: #F7F7FA;
+      --ink: #111115;
+      --ink-2: #4E4E58;
+      --ink-3: #8E8E98;
+      --line: #EAEAEF;
+      --purple: #7C5CFC;
+      --purple-soft: #F3F0FF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #ECECF2; color: var(--ink); -webkit-font-smoothing: antialiased;
+    }
+
+    .studio-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-tabs { display: flex; gap: 6px; background: var(--surface); padding: 4px; border-radius: 999px; border: 1px solid var(--line); }
+    .studio-tab {
+      border: none; background: transparent; color: var(--ink-2);
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .studio-tab.active { background: var(--purple); color: #fff; }
+
+    .canvas { padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .artboard { width: 1440px; display: flex; flex-direction: column; gap: 12px; }
+    .art-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .pill { background: var(--purple); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+
+    .frame-pc {
+      width: 1440px; background: var(--bg); border-radius: 20px; overflow: hidden;
+      border: 1px solid #DFDFE8; box-shadow: 0 24px 60px rgba(17,17,21,0.08);
+    }
+
+    body.single-mode .studio-bar { display: none; }
+    body.single-mode .canvas { padding: 20px; }
+    body.single-mode .artboard { display: none; }
+    body.single-mode .artboard.is-target { display: flex; }
+
+    /* Shared A-1 Shell & Lucide Sidebar */
+    .shell { display: grid; grid-template-columns: 236px 1fr; min-height: 920px; background: #fff; }
+    .left-rail {
+      border-right: 1px solid var(--line); padding: 26px 18px 22px;
+      display: flex; flex-direction: column; justify-content: space-between; background: #fff;
+    }
+    .brand-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+    .brand-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); }
+    .side-nav { display: grid; gap: 4px; margin-top: 26px; }
+    .side-item {
+      padding: 11px 12px; border-radius: 13px; font-size: 14px; font-weight: 600;
+      color: var(--ink-2); display: flex; align-items: center; gap: 11px;
+    }
+    .side-item.on { background: var(--purple-soft); color: var(--purple); font-weight: 700; }
+    .cta-upload {
+      margin-top: 18px; height: 44px; border-radius: 14px; background: var(--purple); color: #fff;
+      font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 8px 20px rgba(124, 92, 252, 0.24);
+    }
+    .pet-widget {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 10px;
+    }
+    .pet-widget-top { display: flex; align-items: center; gap: 10px; }
+    .pet-widget-top img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }
+
+    /* Shared Controls */
+    .page-pad { padding: 26px 36px 44px; display: flex; flex-direction: column; gap: 20px; }
+    .top-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line); padding-bottom: 12px;
+    }
+    .ul-tabs { display: flex; gap: 24px; }
+    .ul-tab {
+      font-size: 14px; font-weight: 600; color: var(--ink-3); position: relative; padding-bottom: 12px; margin-bottom: -13px;
+    }
+    .ul-tab.on { color: var(--ink); font-weight: 800; }
+    .ul-tab.on::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px; background: var(--purple); border-radius: 999px;
+    }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2);
+    }
+    .chip.on { background: var(--purple); color: #fff; }
+    .pill-btn {
+      height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .search-pill {
+      width: 250px; height: 36px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+      padding: 0 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3);
+    }
+    .badge-purple {
+      display: inline-block; background: var(--purple-soft); color: var(--purple);
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    }
+
+    /* Notebook List 3-Col Grid */
+    .nb-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .nb-card {
+      background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 18px;
+      display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
+    }
+    .nb-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .nb-pet-row { display: flex; align-items: center; gap: 10px; }
+    .nb-pet-row img { width: 46px; height: 46px; border-radius: 14px; object-fit: cover; }
+    .scrap-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+      background: #fff; display: flex; align-items: center; justify-content: center; color: var(--ink-2); flex-shrink: 0;
+    }
+    .scrap-btn.on { background: var(--purple-soft); border-color: #DDD6FE; color: var(--purple); }
+    .nb-stats {
+      display: flex; gap: 8px; font-size: 11px; font-weight: 600; color: var(--ink-2);
+    }
+    .nb-stat-pill { background: var(--surface); padding: 4px 10px; border-radius: 999px; }
+
+    /* Notebook Detail */
+    .detail-wrap { max-width: 880px; width: 100%; margin: 0 auto; display: grid; gap: 22px; }
+    .nb-hero-card {
+      background: linear-gradient(135deg, #FFFFFF 0%, #F7F5FF 100%);
+      border: 1px solid #E5DDFB; border-radius: 24px; padding: 24px 28px;
+      display: grid; gap: 18px;
+    }
+    .nb-summary-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    .summary-box {
+      background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+    }
+    .timeline-box {
+      background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 22px 24px; display: grid; gap: 14px;
+    }
+    .tl-item {
+      display: grid; grid-template-columns: 96px 1fr auto; gap: 16px; align-items: center;
+      padding: 16px 18px; border-radius: 16px; background: var(--surface);
+    }
+    .comment-panel {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 20px; display: grid; gap: 12px;
+    }
+    .comment-item {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="studio-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="pill">WABA HEALTH NOTEBOOKS</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;">건강 수첩 리스트 &amp; 상세 페이지 (Lucide 라인 아이콘 + A-1 디자인 시스템)</div>
+        <div style="font-size:12px;color:var(--ink-3);">공유된 수첩 그룹 탐색 · 스크랩 · AI 자동 누적 타임라인 · 응원/질문 댓글</div>
+      </div>
+    </div>
+    <div class="studio-tabs">
+      <button class="studio-tab active" data-target="overview" onclick="setView('overview')">Both (List &amp; Detail)</button>
+      <button class="studio-tab" data-target="notebook-list" onclick="setView('notebook-list')">1. 건강 수첩 리스트</button>
+      <button class="studio-tab" data-target="notebook-detail" onclick="setView('notebook-detail')">2. 건강 수첩 상세</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+
+    <!-- ============================================================
+         1. HEALTH NOTEBOOK LIST (/notebooks)
+    ============================================================ -->
+    <section class="artboard" id="artboard-notebook-list">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">탭 1 · 건강 수첩 리스트</span> 공유된 수첩 그룹 탐색 + 내 스크랩
+        </div>
+      </div>
+
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> 홈</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 커뮤니티</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> 케어 저니</div>
+                <div class="side-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 건강 수첩</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div><div style="font-size:13px;font-weight:800;">몽글 · 3.8kg</div><div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div></div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="page-pad">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+              <div>
+                <div style="font-size:11px;font-weight:800;color:var(--purple);">SHARED HEALTH NOTEBOOKS</div>
+                <h1 style="font-size:24px;font-weight:800;margin-top:2px;">건강 수첩 탐색</h1>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <div class="search-pill">🔍 증상, 케어 루틴, 견종 검색</div>
+                <span class="pill-btn" style="background:var(--purple);color:#fff;border-color:var(--purple);">+ 내 수첩 만들기</span>
+              </div>
+            </div>
+
+            <div class="top-controls">
+              <div class="ul-tabs">
+                <span class="ul-tab on">전체 공유 수첩</span>
+                <span class="ul-tab">인기 수첩</span>
+                <span class="ul-tab">내가 스크랩한 수첩</span>
+              </div>
+              <span style="font-size:12px;color:var(--ink-3);">총 328개의 공유 수첩</span>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div class="chips">
+                <span class="chip on">전체</span>
+                <span class="chip">슬개골·관절</span>
+                <span class="chip">피부·알러지</span>
+                <span class="chip">치아·위생</span>
+                <span class="chip">노령견 케어</span>
+                <span class="chip">다이어트</span>
+              </div>
+              <div class="chips" style="background:var(--surface);padding:3px;border-radius:999px;border:1px solid var(--line);">
+                <span class="chip on" style="padding:5px 12px;font-size:11px;">상태: 전체</span>
+                <span class="chip" style="padding:5px 12px;font-size:11px;background:transparent;">진행 중</span>
+                <span class="chip" style="padding:5px 12px;font-size:11px;background:transparent;">완치</span>
+                <span class="chip" style="padding:5px 12px;font-size:11px;background:transparent;">목표 달성</span>
+              </div>
+            </div>
+
+            <!-- 3-Col Notebook Group Cards -->
+            <div class="nb-grid-3">
+              <article class="nb-card">
+                <div class="nb-card-top">
+                  <div class="nb-pet-row">
+                    <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                    <div>
+                      <span class="badge-purple" style="padding:2px 8px;font-size:10px;">슬개골·관절</span>
+                      <div style="font-size:12px;color:var(--ink-2);margin-top:3px;">몽글 · 말티푸 3.8kg</div>
+                    </div>
+                  </div>
+                  <span class="scrap-btn on" title="스크랩됨">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">몽글이 슬개골 2기 비수술 루틴 8주 기록</div>
+                <div class="nb-stats">
+                  <span class="nb-stat-pill" style="background:#F3F0FF;color:#7C5CFC;">진행 중 · D+56</span>
+                  <span class="nb-stat-pill">기록 14건</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;">
+                  <span>by <strong>몽글맘</strong></span><span>스크랩 89 · ♥ 142</span>
+                </div>
+              </article>
+
+              <article class="nb-card">
+                <div class="nb-card-top">
+                  <div class="nb-pet-row">
+                    <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=200&q=80" alt="보리" />
+                    <div>
+                      <span class="badge-purple" style="padding:2px 8px;font-size:10px;">노령견 케어</span>
+                      <div style="font-size:12px;color:var(--ink-2);margin-top:3px;">보리 · 믹스 6.2kg</div>
+                    </div>
+                  </div>
+                  <span class="scrap-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">12세 노령견 디스크 수중 재활 &amp; 온찜질 노트</div>
+                <div class="nb-stats">
+                  <span class="nb-stat-pill" style="background:#ECFDF5;color:#059669;">완치 완료 · 총 42일</span>
+                  <span class="nb-stat-pill">기록 22건</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;">
+                  <span>by <strong>보리집사</strong></span><span>스크랩 154 · ♥ 342</span>
+                </div>
+              </article>
+
+              <article class="nb-card">
+                <div class="nb-card-top">
+                  <div class="nb-pet-row">
+                    <img src="https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=200&q=80" alt="모찌" />
+                    <div>
+                      <span class="badge-purple" style="padding:2px 8px;font-size:10px;">피부·알러지</span>
+                      <div style="font-size:12px;color:var(--ink-2);margin-top:3px;">모찌 · 웰시코기 10.4kg</div>
+                    </div>
+                  </div>
+                  <span class="scrap-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">아토피 피부염 3주간 가수분해 식단·보습 일지</div>
+                <div class="nb-stats">
+                  <span class="nb-stat-pill" style="background:#ECFDF5;color:#059669;">완치 완료 · 총 21일</span>
+                  <span class="nb-stat-pill">기록 9건</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;">
+                  <span>by <strong>모찌네</strong></span><span>스크랩 67 · ♥ 91</span>
+                </div>
+              </article>
+
+              <article class="nb-card">
+                <div class="nb-card-top">
+                  <div class="nb-pet-row">
+                    <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&q=80" alt="코코" />
+                    <div>
+                      <span class="badge-purple" style="padding:2px 8px;font-size:10px;">치아·위생</span>
+                      <div style="font-size:12px;color:var(--ink-2);margin-top:3px;">코코 · 비숑 4.1kg</div>
+                    </div>
+                  </div>
+                  <span class="scrap-btn on">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">예민한 강아지 발톱 깎기 &amp; 양치 적응 타임라인</div>
+                <div class="nb-stats">
+                  <span class="nb-stat-pill" style="background:#F3F0FF;color:#7C5CFC;">진행 중 · D+35</span>
+                  <span class="nb-stat-pill">기록 11건</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;">
+                  <span>by <strong>코코네</strong></span><span>스크랩 112 · ♥ 185</span>
+                </div>
+              </article>
+
+              <article class="nb-card">
+                <div class="nb-card-top">
+                  <div class="nb-pet-row">
+                    <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&q=80" alt="루이" />
+                    <div>
+                      <span class="badge-purple" style="padding:2px 8px;font-size:10px;">다이어트</span>
+                      <div style="font-size:12px;color:var(--ink-2);margin-top:3px;">루이 · 코숏 3.9kg</div>
+                    </div>
+                  </div>
+                  <span class="scrap-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">고양이 음수량 늘리기 &amp; 4.5kg→3.9kg 감량 기록</div>
+                <div class="nb-stats">
+                  <span class="nb-stat-pill" style="background:#EFF6FF;color:#2563EB;">목표 달성 · 4.5kg → 3.9kg</span>
+                  <span class="nb-stat-pill">기록 16건</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;">
+                  <span>by <strong>루이맘</strong></span><span>스크랩 74 · ♥ 112</span>
+                </div>
+              </article>
+
+              <article class="nb-card">
+                <div class="nb-card-top">
+                  <div class="nb-pet-row">
+                    <img src="https://images.unsplash.com/photo-1560807707-8cc77767d783?w=200&q=80" alt="두부" />
+                    <div>
+                      <span class="badge-purple" style="padding:2px 8px;font-size:10px;">피부·알러지</span>
+                      <div style="font-size:12px;color:var(--ink-2);margin-top:3px;">두부 · 카발리에 5.6kg</div>
+                    </div>
+                  </div>
+                  <span class="scrap-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </span>
+                </div>
+                <div style="font-size:16px;font-weight:800;line-height:1.4;">눈물 자국 개선 4주 식이 테스트 &amp; 귀 세정 기록</div>
+                <div class="nb-stats">
+                  <span class="nb-stat-pill" style="background:#EFF6FF;color:#2563EB;">목표 달성 · 눈물 80% 감소</span>
+                  <span class="nb-stat-pill">기록 10건</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:10px;">
+                  <span>by <strong>두부네</strong></span><span>스크랩 58 · ♥ 73</span>
+                </div>
+              </article>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         2. HEALTH NOTEBOOK DETAIL (/notebooks/[id])
+    ============================================================ -->
+    <section class="artboard" id="artboard-notebook-detail">
+      <div class="art-head">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;">
+          <span class="pill">탭 2 · 건강 수첩 상세</span> 수첩 헤더 + AI 누적 타임라인 + 응원/질문 댓글
+        </div>
+      </div>
+
+      <div class="frame-pc">
+        <div class="shell">
+          <aside class="left-rail">
+            <div>
+              <div class="brand-logo">WABA<span class="brand-dot"></span></div>
+              <nav class="side-nav">
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg> 홈</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 커뮤니티</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg> 케어 저니</div>
+                <div class="side-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> 건강 수첩</div>
+                <div class="side-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 마이페이지</div>
+              </nav>
+              <div class="cta-upload">+ 올리기</div>
+            </div>
+            <div class="pet-widget">
+              <div class="pet-widget-top">
+                <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" />
+                <div><div style="font-size:13px;font-weight:800;">몽글 · 3.8kg</div><div style="font-size:11px;color:var(--purple);font-weight:600;">✓ 접종 D-12</div></div>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:7px 10px;font-size:11px;color:var(--ink-2);">최근: <strong>발톱 깎기 완료</strong></div>
+            </div>
+          </aside>
+
+          <main class="page-pad">
+            <div class="detail-wrap">
+              <div style="font-size:12px;color:var(--ink-3);">건강 수첩 &gt; <strong style="color:var(--purple);">슬개골·관절</strong></div>
+
+              <!-- Notebook Header Card -->
+              <section class="nb-hero-card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+                  <div style="display:flex;align-items:center;gap:14px;">
+                    <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&q=80" alt="몽글" style="width:58px;height:58px;border-radius:18px;object-fit:cover;border:2px solid #fff;" />
+                    <div>
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="badge-purple">슬개골·관절</span>
+                        <span style="background:#F3F0FF;color:#7C5CFC;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;">진행 중 · D+56</span>
+                        <span style="font-size:12px;color:var(--ink-2);"><strong>몽글</strong> · 말티푸 · 3.8kg · by 몽글맘</span>
+                      </div>
+                      <h1 style="font-size:22px;font-weight:800;margin-top:6px;">몽글이 슬개골 2기 비수술 루틴 8주 기록</h1>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-shrink:0;">
+                    <span class="pill-btn" style="background:var(--purple);color:#fff;border-color:var(--purple);">+ 기록 직접 추가</span>
+                    <span class="pill-btn" style="background:#fff;color:var(--purple);border-color:#DDD6FE;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                      스크랩 (89)
+                    </span>
+                    <span class="pill-btn">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                      공유
+                    </span>
+                  </div>
+                </div>
+
+                <div class="nb-summary-grid">
+                  <div class="summary-box"><div style="font-size:11px;color:var(--ink-3);">진행 기간</div><div style="font-size:16px;font-weight:800;margin-top:2px;">D+56 (8주차)</div></div>
+                  <div class="summary-box"><div style="font-size:11px;color:var(--ink-3);">누적 기록</div><div style="font-size:16px;font-weight:800;margin-top:2px;">총 14건</div></div>
+                  <div class="summary-box"><div style="font-size:11px;color:var(--ink-3);">체중 변화</div><div style="font-size:16px;font-weight:800;margin-top:2px;color:var(--purple);">3.9kg → 3.8kg</div></div>
+                </div>
+              </section>
+
+              <!-- Cumulative AI & Direct Timeline -->
+              <section class="timeline-box">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div style="font-size:16px;font-weight:800;">누적 케어 타임라인</div>
+                  <span class="badge-purple">발톱 깎음 → 실패 → 성공</span>
+                </div>
+
+                <div class="tl-item" style="background:#F8F6FF;border:1px solid #E5DDFB;">
+                  <div style="font-size:12px;font-weight:800;color:var(--purple);">2026.11.18<br/><span style="font-weight:500;">DAY 56</span></div>
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple">✨ AI 자동 생성</span><strong>발톱 깎기 성공 &amp; 미끄럼 방지 스텝 적응</strong></div>
+                    <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">간식 보상과 함께 한 발씩 천천히 진행해 스트레스 없이 완료</div>
+                  </div>
+                  <span style="font-size:12px;font-weight:700;color:var(--purple);white-space:nowrap;">원본 글 →</span>
+                </div>
+
+                <div class="tl-item">
+                  <div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.10<br/>DAY 48</div>
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple" style="background:#EAEAEE;color:#4E4E58;">직접 기록</span><strong>체중 3.8kg 측정 및 관절 영양제 급여 체크</strong></div>
+                    <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">저녁 식후 관절 영양제 1정 급여 완료, 산책 시 절뚝거림 없음</div>
+                  </div>
+                  <span style="font-size:11px;color:var(--ink-3);white-space:nowrap;">수첩 단독 메모</span>
+                </div>
+
+                <div class="tl-item">
+                  <div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.11.04<br/>DAY 42</div>
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple">✨ AI 자동 생성</span><span class="badge-purple" style="background:#FFEFEF;color:#DC2626;">실패 · 재시도</span><strong>발톱 깎기 실패 (예민 반응)</strong></div>
+                    <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">발 만지는 것을 거부해 2발만 정리 후 중단하고 발 터치 둔감화 훈련 시작</div>
+                  </div>
+                  <span style="font-size:12px;font-weight:700;color:var(--purple);white-space:nowrap;">원본 글 →</span>
+                </div>
+
+                <div class="tl-item">
+                  <div style="font-size:12px;font-weight:700;color:var(--ink-3);">2026.10.19<br/>DAY 26</div>
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;"><span class="badge-purple" style="background:#EAEAEE;color:#4E4E58;">직접 기록</span><strong>발톱 깎음 · 첫 체중 3.9kg 기록</strong></div>
+                    <div style="font-size:12px;color:var(--ink-2);margin-top:4px;">병원 정기검진 후 체중 감량 및 발바닥 패드 털 정리 시작</div>
+                  </div>
+                  <span style="font-size:11px;color:var(--ink-3);white-space:nowrap;">수첩 단독 메모</span>
+                </div>
+              </section>
+
+              <!-- Bottom Comments for Notebook -->
+              <section class="comment-panel">
+                <div style="font-size:15px;font-weight:800;">💬 이 수첩에 대한 응원 &amp; 질문 (6)</div>
+                <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:12px;color:var(--ink-3);">수첩 작성자에게 응원이나 질문을 남겨보세요...</span>
+                  <span style="background:var(--purple);color:#fff;font-size:11px;font-weight:700;padding:6px 14px;border-radius:999px;">등록</span>
+                </div>
+                <div class="comment-item">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;"><strong>코코네</strong><span style="color:var(--ink-3);">15분 전</span></div>
+                  <div style="font-size:13px;color:var(--ink-2);">실패했던 기록까지 솔직하게 쌓여 있어서 큰 힘이 되네요! 바로 스크랩했어요 :)</div>
+                </div>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setView(mode) {
+      document.querySelectorAll('.studio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === mode);
+      });
+      const boards = document.querySelectorAll('.artboard');
+      if (mode === 'overview') {
+        document.body.classList.remove('single-mode');
+        boards.forEach(b => b.classList.remove('is-target'));
+      } else {
+        document.body.classList.add('single-mode');
+        boards.forEach(b => b.classList.toggle('is-target', b.id === 'artboard-' + mode));
+      }
+      if (window.location.hash !== '#' + mode) {
+        history.replaceState(null, '', '#' + mode);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['notebook-list', 'notebook-detail'].includes(hash)) setView(hash);
+    });
+  </script>
+</body>
+</html>

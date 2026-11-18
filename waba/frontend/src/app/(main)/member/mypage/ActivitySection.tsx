@@ -1,5 +1,6 @@
 'use client'
 
+import { LuDog } from 'react-icons/lu';
 import {
     Avatar,
     Badge,
@@ -349,7 +350,9 @@ export default function ActivitySection({
                                             {selectedPet.current_avatar_url ? (
                                                 <Avatar.Image src={selectedPet.current_avatar_url} alt={selectedPet.name} />
                                             ) : (
-                                                <Text fontSize="24px">{getSpeciesEmoji(selectedPet.species)}</Text>
+                                                <Avatar.Fallback bg="var(--waba-surface)" color="var(--waba-ink-3)">
+                                                    <LuDog size={24} />
+                                                </Avatar.Fallback>
                                             )}
                                         </Avatar.Root>
                                         <Box>

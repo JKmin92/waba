@@ -413,11 +413,6 @@ export const createUserPet = async (userId, data, file = null) => {
         error.status = 400;
         throw error;
     }
-    if (!trimmedBreed) {
-        const error = new Error('PET_BREED_REQUIRED');
-        error.status = 400;
-        throw error;
-    }
 
     const allowedSpecies = ['DOG', 'CAT', 'RABBIT', 'HAMSTER', 'GUINEAPIG', 'CHINCHILA', 'OTHER'];
     const finalSpecies = allowedSpecies.includes(species) ? species : 'OTHER';
@@ -483,15 +478,10 @@ export const updateUserPet = async (userId, petId, data, file = null) => {
     } = data;
 
     const trimmedName = String(name ?? existingPet.name ?? '').trim();
-    const trimmedBreed = String(breed ?? existingPet.breed ?? '').trim();
+    const trimmedBreed = breed !== undefined ? String(breed || '').trim() : (existingPet.breed ?? '');
 
     if (!trimmedName) {
         const error = new Error('PET_NAME_REQUIRED');
-        error.status = 400;
-        throw error;
-    }
-    if (!trimmedBreed) {
-        const error = new Error('PET_BREED_REQUIRED');
         error.status = 400;
         throw error;
     }
@@ -608,6 +598,85 @@ export const restoreUserPet = async (userId, petId) => {
     };
 };
 
+export const getUserHistories = async (userId) => {
+    return await userModel.getUserHistories(userId);
+};
+
+export const createUserHistory = async (userId, data) => {
+    const rawDate = data?.event_date || data?.date;
+    const rawDescription = data?.description !== undefined ? data?.description : data?.notes;
+    const { title, category, hospital_name, weight_kg, journey_id, post_ids, pet_ids, pet_id } = data || {};
+
+    const resolvedPetIds = Array.isArray(pet_ids) && pet_ids.length > 0
+        ? pet_ids
+        : (pet_id ? [pet_id] : []);
+    if (resolvedPetIds.length === 0) {
+        const error = new Error('PET_IDS_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    if (!rawDate || !String(rawDate).trim()) {
+        const error = new Error('EVENT_DATE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    if (!title || !String(title).trim()) {
+        const error = new Error('TITLE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+
+    return await userModel.createUserHistory(userId, {
+        event_date: String(rawDate).trim(),
+        title: String(title).trim(),
+        category,
+        description: rawDescription ? String(rawDescription).trim() : null,
+        hospital_name: hospital_name ? String(hospital_name).trim() : null,
+        weight_kg,
+        journey_id,
+        post_ids,
+        pet_ids: resolvedPetIds,
+        is_ai_generated: 0
+    });
+};
+
+export const updateUserHistory = async (userId, historyId, data) => {
+    const rawDate = data?.event_date !== undefined ? data.event_date : data?.date;
+    const rawDescription = data?.description !== undefined ? data.description : data?.notes;
+    const { title, category, hospital_name, weight_kg, journey_id, post_ids, pet_ids, pet_id } = data || {};
+
+    if (rawDate !== undefined && (!rawDate || !String(rawDate).trim())) {
+        const error = new Error('EVENT_DATE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    if (title !== undefined && (!title || !String(title).trim())) {
+        const error = new Error('TITLE_REQUIRED');
+        error.status = 400;
+        throw error;
+    }
+    const resolvedPetIds = pet_ids !== undefined
+        ? (Array.isArray(pet_ids) ? pet_ids : (pet_ids ? [pet_ids] : []))
+        : (pet_id ? [pet_id] : undefined);
+
+    return await userModel.updateUserHistory(userId, historyId, {
+        event_date: rawDate ? String(rawDate).trim() : undefined,
+        title: title ? String(title).trim() : undefined,
+        category,
+        description: rawDescription !== undefined ? (rawDescription ? String(rawDescription).trim() : null) : undefined,
+        hospital_name: hospital_name !== undefined ? (hospital_name ? String(hospital_name).trim() : null) : undefined,
+        weight_kg,
+        journey_id,
+        post_ids,
+        pet_ids: resolvedPetIds,
+        is_ai_generated: 0
+    });
+};
+
+export const deleteUserHistory = async (userId, historyId) => {
+    return await userModel.deleteUserHistory(userId, historyId);
+};
+
 export const getPetHistories = async (userId, petId) => {
     return await userModel.getPetHistories(userId, petId);
 };
@@ -681,7 +750,7 @@ export const getPetJourneys = async (userId, petId) => {
 };
 
 export const createPetJourney = async (userId, petId, data) => {
-    const { title, description, start_date, end_date, is_ongoing, share_scope } = data || {};
+    const { title, description, start_date, end_date, is_ongoing, share_scope, category, goal_summary, status } = data || {};
     if (!title || !String(title).trim()) {
         const error = new Error('TITLE_REQUIRED');
         error.status = 400;
@@ -694,13 +763,16 @@ export const createPetJourney = async (userId, petId, data) => {
         description: description ? String(description).trim() : null,
         start_date: start_date ? String(start_date).trim() : null,
         end_date: end_date ? String(end_date).trim() : null,
-        is_ongoing: is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1',
-        share_scope: validScope
+        is_ongoing: is_ongoing === undefined ? true : (is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1'),
+        share_scope: validScope,
+        category: category ? String(category).trim() : null,
+        goal_summary: goal_summary ? String(goal_summary).trim() : null,
+        status: status ? String(status).trim().toUpperCase() : undefined
     });
 };
 
 export const updatePetJourney = async (userId, petId, journeyId, data) => {
-    const { title, description, start_date, end_date, is_ongoing, share_scope } = data || {};
+    const { title, description, start_date, end_date, is_ongoing, share_scope, category, goal_summary, status } = data || {};
     if (title !== undefined && (!title || !String(title).trim())) {
         const error = new Error('TITLE_REQUIRED');
         error.status = 400;
@@ -716,7 +788,10 @@ export const updatePetJourney = async (userId, petId, journeyId, data) => {
         start_date: start_date !== undefined ? (start_date ? String(start_date).trim() : null) : undefined,
         end_date: end_date !== undefined ? (end_date ? String(end_date).trim() : null) : undefined,
         is_ongoing: is_ongoing !== undefined ? (is_ongoing === 'true' || is_ongoing === true || is_ongoing === 1 || is_ongoing === '1') : undefined,
-        share_scope: validScope
+        share_scope: validScope,
+        category: category !== undefined ? (category ? String(category).trim() : null) : undefined,
+        goal_summary: goal_summary !== undefined ? (goal_summary ? String(goal_summary).trim() : null) : undefined,
+        status: status !== undefined ? (status ? String(status).trim().toUpperCase() : undefined) : undefined
     });
 };
 
@@ -724,8 +799,8 @@ export const deletePetJourney = async (userId, petId, journeyId) => {
     return await userModel.deletePetJourney(userId, petId, journeyId);
 };
 
-export const getUserSimplePosts = async (userId) => {
-    return await userModel.getUserSimplePosts(userId);
+export const getUserSimplePosts = async (userId, options = {}) => {
+    return await userModel.getUserSimplePosts(userId, options);
 };
 
 export const getPublicJourneyBySlug = async (slug) => {
