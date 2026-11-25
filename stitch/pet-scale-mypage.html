@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA - 대량 펫 마이페이지 헤더 & 필터 바 시안 (#1, #2, #5)</title>
+  <style>
+    :root {
+      --primary: #6338A9;
+      --primary-light: #F3EEFA;
+      --primary-hover: #522D8F;
+      --bg: #F8F7FC;
+      --card: #FFFFFF;
+      --text: #1E1B2E;
+      --muted: #6E6A80;
+      --border: #E6E2F0;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-pill: 9999px;
+      --shadow: 0 8px 24px rgba(99, 56, 169, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 32px; line-height: 1.5; }
+    .container { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+    .badge-title { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 6px 12px; border-radius: var(--radius-pill); margin-bottom: 8px; }
+
+    /* #1 마이페이지 상단 프로필 & 대량 펫 영역 */
+    .profile-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .user-info { display: flex; align-items: center; gap: 16px; }
+    .user-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #6338A9, #9B6EE8); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; }
+    .user-meta h2 { font-size: 20px; font-weight: 700; }
+    .user-meta p { font-size: 13px; color: var(--muted); }
+
+    .pets-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pet-mini-card { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FAF9FD; }
+    .pet-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+    .pet-name { font-size: 13px; font-weight: 600; }
+    .pet-breed { font-size: 11px; color: var(--muted); }
+    .btn-more-pets { padding: 10px 16px; border-radius: var(--radius-pill); border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-add-pet { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 20px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* #2, #5 필터 바 & 검색 팝오버 */
+    .filter-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow); position: relative; }
+    .filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .chip { padding: 8px 14px; border-radius: var(--radius-pill); border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .chip-trigger { background: var(--primary-light); color: var(--primary); border-color: #D9CCF2; font-weight: 700; }
+
+    /* 팝오버 시안 */
+    .popover-demo { margin-top: 16px; width: 340px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 12px 32px rgba(30, 27, 46, 0.14); padding: 14px; }
+    .search-input { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 13px; outline: none; margin-bottom: 10px; }
+    .search-input:focus { border-color: var(--primary); }
+    .popover-section-label { font-size: 11px; font-weight: 700; color: var(--muted); margin: 6px 0; }
+    .pet-check-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .pet-check-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .pet-check-item:hover { background: #F5F2FA; }
+    .pet-check-left { display: flex; align-items: center; gap: 8px; }
+    .checkbox { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; }
+    .checkbox.checked { background: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <span class="badge-title">PATTERN 1 · #1 마이페이지 상단 프로필</span>
+      <div class="profile-card">
+        <div class="user-info">
+          <div class="user-avatar">W</div>
+          <div class="user-meta">
+            <h2>와바미 집사님</h2>
+            <p>등록된 반려동물 1,240마리 · 게시글 348 · 건강수첩 89</p>
+          </div>
+        </div>
+        <div class="pets-header-right">
+          <div class="pet-mini-card">
+            <div class="pet-avatar">초</div>
+            <div><div class="pet-name">초코</div><div class="pet-breed">푸들 · 3살</div></div>
+          </div>
+          <div class="pet-mini-card">
+            <div class="pet-avatar">보</div>
+            <div><div class="pet-name">보리</div><div class="pet-breed">코숏 · 2살</div></div>
+          </div>
+          <button class="btn-more-pets">+1,238마리 전체보기</button>
+          <button class="btn-add-pet" title="반려동물 추가">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <span class="badge-title">PATTERN 1 · #2 건강수첩 & #5 게시글 퀵 필터 바</span>
+      <div class="filter-section">
+        <div class="filter-bar">
+          <button class="chip active">전체 (1,240)</button>
+          <button class="chip active">초코 ✕</button>
+          <button class="chip active">보리 ✕</button>
+          <button class="chip">두부</button>
+          <button class="chip chip-trigger">반려동물 검색·선택 (2) ▾</button>
+        </div>
+
+        <div class="popover-demo">
+          <input class="search-input" type="text" placeholder="이름, 품종으로 검색 (1,240마리)..." />
+          <div class="popover-section-label">선택됨 (2)</div>
+          <div class="pet-check-list" style="max-height: 84px; margin-bottom: 6px;">
+            <div class="pet-check-item"><div class="pet-check-left"><span class="checkbox checked">✓</span><strong>초코</strong> <span style="color:#6E6A80;font-size:11px;">푸들</span></div></div>
+            <div class="pet-check-item"><div class="pet-check-left"><span class="checkbox checked">✓</span><strong>보리</strong> <span style="color:#6E6A80;font-size:11px;">코숏</span></div></div>
+          </div>
+          <div class="popover-section-label">전체 목록 (가상 스크롤)</div>
+          <div class="pet-check-list">
+            <div class="pet-check-item"><div class="pet-check-left"><span class="checkbox"></span>두부 <span style="color:#6E6A80;font-size:11px;">말티즈</span></div></div>
+            <div class="pet-check-item"><div class="pet-check-left"><span class="checkbox"></span>콩이 <span style="color:#6E6A80;font-size:11px;">포메라니안</span></div></div>
+            <div class="pet-check-item"><div class="pet-check-left"><span class="checkbox"></span>루이 <span style="color:#6E6A80;font-size:11px;">러시안블루</span></div></div>
+            <div class="pet-check-item"><div class="pet-check-left"><span class="checkbox"></span>모모 <span style="color:#6E6A80;font-size:11px;">비숑</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

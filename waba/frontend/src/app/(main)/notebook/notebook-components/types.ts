@@ -17,6 +17,7 @@ export interface NotebookAuthorInfo {
 
 export interface NotebookItem {
     id: string | number;
+    note_code?: string;
     user_id?: string;
     pet_id?: string | number;
     title: string;

@@ -5,7 +5,8 @@ import { moderatePostUploadFiles, moderateImageBuffer } from '../service/moderat
 import {
     validatePostPinUrls,
     getActiveAllowedDomains,
-    isValidAffiliateUrl
+    isValidAffiliateUrl,
+    verifyUrlRedirectWhitelist
 } from '../service/affiliateWhitelistService.js';
 import { generatePostId } from '../../utils/simpleUtils.js';
 import { convertToCoupangPartnersUrl, isCoupangUrl } from '../../utils/coupangPartners.js';
@@ -442,10 +443,15 @@ export const getUserDraft = async (req, res, next) => {
         if (!userId) {
             return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
         }
-        const draft = await postService.getUserDraft(userId);
+        const draftId = typeof req.query?.draftId === 'string' ? req.query.draftId.trim() : null;
+        const [draft, drafts] = await Promise.all([
+            postService.getUserDraft(userId, draftId),
+            postService.getUserDrafts(userId)
+        ]);
         return res.status(200).json({
             success: true,
-            draft
+            draft,
+            drafts
         });
     } catch (e) {
         next(e);
@@ -492,7 +498,7 @@ export const parseUrlMetadata = async (req, res, next) => {
         }
 
         const allowedDomains = await getActiveAllowedDomains();
-        if (!isValidAffiliateUrl(trimmedUrl, allowedDomains)) {
+        if (!isValidAffiliateUrl(trimmedUrl, allowedDomains) || !(await verifyUrlRedirectWhitelist(trimmedUrl, allowedDomains))) {
             return res.status(400).json({
                 success: false,
                 message: '허용되지 않은 외부 쇼핑몰 링크입니다. 제휴 쇼핑몰(쿠팡, 네이버 등) URL만 등록할 수 있습니다.'
@@ -898,6 +904,66 @@ export const togglePinComment = async (req, res, next) => {
         }
         if (e.message === 'PIN_LIMIT_EXCEEDED') {
             return res.status(400).json({ success: false, message: '댓글은 최대 2개까지만 고정할 수 있습니다.' });
+        }
+        next(e);
+    }
+};
+
+export const getUserReportedDeletedPosts = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+        const posts = await postService.getUserReportedDeletedPosts(userId);
+        return res.status(200).json({ success: true, posts });
+    } catch (e) {
+        next(e);
+    }
+};
+
+export const submitPostAppeal = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+        const { id } = req.params;
+        const { reason } = req.body || {};
+        const result = await postService.submitPostAppeal(userId, id, reason);
+        return res.status(200).json(result);
+    } catch (e) {
+        if (e.status) {
+            return res.status(e.status).json({ success: false, message: e.message });
+        }
+        next(e);
+    }
+};
+
+export const createPostReport = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+        const { id } = req.params;
+        const { reason, detail } = req.body || {};
+        const result = await postService.createPostReport(userId, id, { reason, detail });
+        return res.status(201).json(result);
+    } catch (e) {
+        if (e.status) {
+            return res.status(e.status).json({ success: false, message: e.message });
+        }
+        next(e);
+    }
+};
+
+export const toggleCommentLike = async (req, res, next) => {
+    try {
+        const { commentId } = req.params;
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const result = await postService.toggleCommentLike(commentId, userId);
+        return res.status(200).json({ success: true, ...result });
+    } catch (e) {
+        if (e.message === 'COMMENT_NOT_FOUND') {
+            return res.status(404).json({ success: false, message: '댓글을 찾을 수 없습니다.' });
         }
         next(e);
     }

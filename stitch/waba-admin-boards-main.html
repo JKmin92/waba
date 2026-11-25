@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 게시판 관리</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --danger: #DC2626;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 920px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #475569; }
+    .nav-item.active { background: #0F172A; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-primary { padding: 9px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .table-panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .filter-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pill-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 600; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .search-box { display: flex; gap: 8px; flex: 1; min-width: 240px; }
+    .search-input { flex: 1; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #F8FAFC; }
+    .btn-search { padding: 8px 16px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+
+    .order-cell { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+    .order-btn { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); background: #fff; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-active { background: var(--emerald-soft); color: var(--emerald); }
+    .b-inactive { background: var(--danger-soft); color: var(--danger); }
+    .b-mono { font-family: ui-monospace, monospace; background: #F1F5F9; color: #334155; font-size: 10px; padding: 2px 7px; border-radius: 999px; }
+    .b-feat { background: var(--primary-soft); color: var(--primary); }
+
+    .role-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid var(--border); background: #fff; color: #334155; }
+    .role-editor { border-color: #BFDBFE; background: #EFF6FF; color: #1D4ED8; }
+    .role-admin { border-color: #0F172A; background: #0F172A; color: #fff; }
+    .btn-detail { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드</div>
+      <div class="nav-item">회원 · 반려동물</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item">게시글 · 댓글 · 큐레이션</div>
+      <div class="nav-item">건강 수첩 · AI 분석</div>
+      <div class="nav-item">수의사 검증 · 질병</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item active">게시판 관리</div>
+      <div class="nav-item">감사 로그</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>게시판 관리</h1>
+        <p>커뮤니티 게시판의 노출 순서, 작성 권한, 기능 옵션 및 활성 상태를 관리합니다.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary">+ 새 게시판 추가</button>
+        <button class="btn-icon" title="새로고침">↻</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">전체 게시판</div><div class="kpi-val">5</div><div class="kpi-sub">활성 4개 · 비활성 1개</div></div>
+      <div class="kpi-card"><div class="kpi-label">전체 등록 게시글</div><div class="kpi-val">25</div><div class="kpi-sub">게시 중 24건 · 임시저장 제외</div></div>
+      <div class="kpi-card"><div class="kpi-label">권한 제한 게시판</div><div class="kpi-val" style="color:var(--primary);">2</div><div class="kpi-sub">에디터 이상 1 · 관리자 전용 1</div></div>
+      <div class="kpi-card"><div class="kpi-label">특화 기능 활성</div><div class="kpi-val">4</div><div class="kpi-sub">상품 핀 허용 4개 · 수의사 검증 2개</div></div>
+    </div>
+
+    <section class="table-panel">
+      <div class="filter-row">
+        <div class="pill-group">
+          <span class="pill active">전체</span>
+          <span class="pill">활성</span>
+          <span class="pill">비활성</span>
+          <span style="width:1px;height:18px;background:var(--border);margin:0 4px;"></span>
+          <span class="pill active">전체 권한</span>
+          <span class="pill">일반 유저</span>
+          <span class="pill">에디터 이상</span>
+          <span class="pill">관리자 전용</span>
+        </div>
+        <div class="search-box">
+          <input class="search-input" type="text" placeholder="게시판명, 코드(ID), 설명 검색..." />
+          <button class="btn-search">검색</button>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--muted);">순서(↑/↓) 버튼으로 커뮤니티 노출 순서를 즉시 조정할 수 있습니다.</div>
+
+      <table>
+        <thead>
+          <tr><th>순서</th><th>상태</th><th>게시판 정보</th><th>최소 작성 권한</th><th>기능 옵션</th><th>게시글 수</th><th>액션</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="order-cell"><span>1</span><span class="order-btn">↑</span><span class="order-btn">↓</span></div></td>
+            <td><span class="badge b-active">활성</span></td>
+            <td><div style="display:flex;gap:6px;align-items:center;"><strong>공식 룩북</strong><span class="b-mono">LOOKBOOK</span></div><div style="color:var(--muted);font-size:11px;margin-top:2px;">와바미 공식 화보 및 선정된 베스트 펫-리빙 룩북</div></td>
+            <td><span class="role-badge role-editor">에디터</span></td>
+            <td><span class="badge b-feat">상품 핀</span></td>
+            <td>3건 (게시 3)</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><div class="order-cell"><span>2</span><span class="order-btn">↑</span><span class="order-btn">↓</span></div></td>
+            <td><span class="badge b-active">활성</span></td>
+            <td><div style="display:flex;gap:6px;align-items:center;"><strong>일상 스냅</strong><span class="b-mono">SNAP</span></div><div style="color:var(--muted);font-size:11px;margin-top:2px;">반려동물과 함께하는 일상과 추천 아이템 핀 공유</div></td>
+            <td><span class="role-badge">일반 유저</span></td>
+            <td><span class="badge b-feat">상품 핀</span></td>
+            <td>16건 (게시 15)</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><div class="order-cell"><span>3</span><span class="order-btn">↑</span><span class="order-btn">↓</span></div></td>
+            <td><span class="badge b-active">활성</span></td>
+            <td><div style="display:flex;gap:6px;align-items:center;"><strong>케어 라운지</strong><span class="b-mono">CARE_LOUNGE</span></div><div style="color:var(--muted);font-size:11px;margin-top:2px;">질병 치유 히스토리와 육아 노하우 아티클</div></td>
+            <td><span class="role-badge">일반 유저</span></td>
+            <td><span class="badge b-feat">상품 핀</span> <span class="badge b-feat">수의사 검증</span></td>
+            <td>3건 (게시 3)</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><div class="order-cell"><span>4</span><span class="order-btn">↑</span><span class="order-btn">↓</span></div></td>
+            <td><span class="badge b-active">활성</span></td>
+            <td><div style="display:flex;gap:6px;align-items:center;"><strong>질문/고민</strong><span class="b-mono">QNA</span></div><div style="color:var(--muted);font-size:11px;margin-top:2px;">초보 집사들의 궁금증과 선배 멘토들의 답변</div></td>
+            <td><span class="role-badge">일반 유저</span></td>
+            <td><span class="badge b-feat">상품 핀</span> <span class="badge b-feat">수의사 검증</span></td>
+            <td>3건 (게시 3)</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><div class="order-cell"><span>5</span><span class="order-btn">↑</span><span class="order-btn">↓</span></div></td>
+            <td><span class="badge b-inactive">비활성</span></td>
+            <td><div style="display:flex;gap:6px;align-items:center;"><strong>이벤트 라운지</strong><span class="b-mono">EVENT_LOUNGE</span></div><div style="color:var(--muted);font-size:11px;margin-top:2px;">시즌 캠페인 및 체험단 모집 게시판</div></td>
+            <td><span class="role-badge role-admin">관리자</span></td>
+            <td><span class="badge b-feat">상품 핀</span></td>
+            <td>0건</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

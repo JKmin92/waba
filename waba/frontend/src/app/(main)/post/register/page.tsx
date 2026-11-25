@@ -193,7 +193,7 @@ export default function PostRegisterPage() {
     };
 
     return (
-        <Box minH="100vh" bg="#F9F9FB">
+        <Box minH="100vh" bg="var(--waba-bg)">
             {/* Reusable In-stream Block Editor Component (Dedicated Studio Header Mode) */}
             <Editor
                 mode="create"

@@ -10,6 +10,7 @@ import userRoutes from './src/routes/userRoutes.js';
 import searchRoutes from './src/routes/searchRoutes.js';
 import publicRoutes from './src/routes/publicRoutes.js';
 import notebookRoutes from './src/routes/notebookRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +39,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/notebooks', notebookRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((err, req, res, next) => {
     console.error('🔥 Server Error:', err);

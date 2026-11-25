@@ -43,6 +43,26 @@ export const joinUser = async (req, res, next) => {
         if (e.message === 'ALREADY_EXIST_NICKNAME') {
             return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
         }
+        if (e.status === 400) {
+            return res.status(400).json({ success: false, code: e.code, message: e.message });
+        }
+        next(e);
+    }
+};
+
+export const changePassword = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const { currentPassword, newPassword } = req.body || {};
+        const result = await userService.changeUserPassword(userId, { currentPassword, newPassword });
+        return res.status(200).json({ success: true, ...result });
+    } catch (e) {
+        if (e.status) {
+            return res.status(e.status).json({ success: false, code: e.code, message: e.message });
+        }
         next(e);
     }
 };
@@ -248,8 +268,9 @@ export const getUserHistories = async (req, res, next) => {
         if (!userId) {
             return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
         }
-        const histories = await userService.getUserHistories(userId);
-        return res.status(200).json({ success: true, histories });
+        const { pet_id, pet_ids, unclassified, limit, offset } = req.query || {};
+        const result = await userService.getUserHistories(userId, { pet_id, pet_ids, unclassified, limit, offset });
+        return res.status(200).json({ success: true, ...result });
     } catch (e) {
         next(e);
     }

@@ -20,7 +20,7 @@ import {
     LuChevronRight,
     LuEllipsis,
     LuEye,
-    LuHeart,
+    LuFlag,
     LuPencil,
     LuShare2,
     LuTrash2,
@@ -29,6 +29,7 @@ import { useRouter } from 'next/navigation';
 import { PostDetail as PostDetailType } from '@/interface';
 import { formatDate } from '@/utils/simpleUtils';
 import UserAvatar from '../../../common/UserAvatar';
+import LikeBurstButton from '../../../common/LikeBurstButton';
 
 interface PostDetailHeaderProps {
     postId: string;
@@ -41,6 +42,7 @@ interface PostDetailHeaderProps {
     onToggleLike: () => void;
     onToggleBookmark: () => void;
     onOpenShare: () => void;
+    onOpenReport?: () => void;
     onOpenDelete: () => void;
 }
 
@@ -55,6 +57,7 @@ export default function PostDetailHeader({
     onToggleLike,
     onToggleBookmark,
     onOpenShare,
+    onOpenReport,
     onOpenDelete,
 }: PostDetailHeaderProps) {
     const router = useRouter();
@@ -123,24 +126,14 @@ export default function PostDetailHeader({
                         </Text>
                     </Box>
 
-                    <Box
-                        {...actionPillStyle}
-                        as="button"
-                        cursor="pointer"
-                        onClick={onToggleLike}
-                        borderColor={isLiked ? 'red.300' : 'var(--waba-line)'}
-                        bg={isLiked ? 'rgba(239, 68, 68, 0.1)' : 'var(--waba-card)'}
-                        color={isLiked ? 'red.500' : 'var(--waba-ink-2)'}
-                    >
-                        <LuHeart
-                            size={14}
-                            fill={isLiked ? '#EF4444' : 'none'}
-                            color={isLiked ? '#EF4444' : 'currentColor'}
-                        />
-                        <Text fontWeight={isLiked ? '700' : '600'}>
-                            <FormatNumber value={likeCount} />
-                        </Text>
-                    </Box>
+                    <LikeBurstButton
+                        variant="pill"
+                        size="md"
+                        isLiked={isLiked}
+                        likeCount={likeCount}
+                        onToggle={onToggleLike}
+                        ariaLabel={isLiked ? '게시글 좋아요 취소' : '게시글 좋아요'}
+                    />
 
                     <Box
                         {...actionPillStyle}
@@ -169,6 +162,18 @@ export default function PostDetailHeader({
                         <LuShare2 size={14} />
                         <Text>공유</Text>
                     </Box>
+
+                    {!isAuthor && onOpenReport && (
+                        <Box
+                            {...actionPillStyle}
+                            as="button"
+                            cursor="pointer"
+                            onClick={onOpenReport}
+                        >
+                            <LuFlag size={14} />
+                            <Text>신고</Text>
+                        </Box>
+                    )}
                 </HStack>
             </Flex>
 
@@ -246,6 +251,8 @@ export default function PostDetailHeader({
                                                         borderRadius="10px"
                                                         py={2}
                                                         px={3}
+                                                        color="var(--waba-ink)"
+                                                        _hover={{ bg: 'var(--waba-surface)' }} _highlighted={{ bg: 'var(--waba-surface)' }}
                                                         onClick={() => router.push(`/post/edit/${postId}`)}
                                                     >
                                                         <LuPencil size={14} />
@@ -258,7 +265,7 @@ export default function PostDetailHeader({
                                                         py={2}
                                                         px={3}
                                                         color="red.500"
-                                                        _hover={{ bg: 'red.50' }}
+                                                        _hover={{ bg: 'rgba(239, 68, 68, 0.12)' }} _highlighted={{ bg: 'rgba(239, 68, 68, 0.12)' }}
                                                         onClick={onOpenDelete}
                                                     >
                                                         <LuTrash2 size={14} />
@@ -283,17 +290,29 @@ export default function PostDetailHeader({
                         {postDetail.post_pets.map((pet) => (
                             <Badge
                                 key={pet.pet_id}
+                                display="inline-flex"
+                                alignItems="center"
+                                gap={1.5}
                                 bg="var(--waba-surface)"
                                 border="1px solid"
                                 borderColor="var(--waba-line)"
                                 color="var(--waba-ink-2)"
                                 fontSize="11px"
                                 fontWeight="600"
-                                px={2.5}
+                                pl={1.5}
+                                pr={2.5}
                                 py={1}
                                 borderRadius="full"
                             >
-                                🐾 {pet.name}
+                                <UserAvatar
+                                    src={pet.avatar_url}
+                                    alt={pet.name}
+                                    w="18px"
+                                    h="18px"
+                                    iconSize={11}
+                                    fallbackType="pet"
+                                />
+                                {pet.name}
                             </Badge>
                         ))}
                     </HStack>

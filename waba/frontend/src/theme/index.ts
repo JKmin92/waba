@@ -15,6 +15,7 @@ const customConfig = defineConfig({
       '--waba-purple-text': '#6338A9',
       '--waba-purple-border': '#E5D4F3',
       '--waba-glass-btn': 'rgba(255, 255, 255, 0.92)',
+      '--waba-avatar-shadow': '0 2px 8px rgba(0, 0, 0, 0.22)',
     },
     '[data-theme="dark"]': {
       '--waba-bg': '#0F1014',
@@ -29,6 +30,7 @@ const customConfig = defineConfig({
       '--waba-purple-text': '#A984EE',
       '--waba-purple-border': '#3B285B',
       '--waba-glass-btn': 'rgba(20, 22, 29, 0.88)',
+      '--waba-avatar-shadow': '0 2px 10px rgba(255, 255, 255, 0.22)',
     },
     body: {
       bg: 'var(--waba-bg)',
@@ -67,6 +69,24 @@ const customConfig = defineConfig({
         bento: { value: '24px' },
         bentoLg: { value: '28px' },
         pill: { value: '9999px' },
+      },
+    },
+    recipes: {
+      button: {
+        variants: {
+          variant: {
+            outline: {
+              color: 'var(--waba-ink)',
+              borderColor: 'var(--waba-line)',
+              bg: 'transparent',
+              _hover: { bg: 'var(--waba-surface)' },
+            },
+            ghost: {
+              color: 'var(--waba-ink)',
+              _hover: { bg: 'var(--waba-surface)' },
+            },
+          },
+        },
       },
     },
   },

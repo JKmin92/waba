@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA - 글 상세 대량 태그 펫 요약 뷰 시안 (#8, #9)</title>
+  <style>
+    :root {
+      --primary: #6338A9;
+      --primary-light: #F3EEFA;
+      --bg: #F8F7FC;
+      --card: #FFFFFF;
+      --text: #1E1B2E;
+      --muted: #6E6A80;
+      --border: #E6E2F0;
+      --radius-lg: 20px;
+      --radius-pill: 9999px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 32px; }
+    .container { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+
+    /* #8 상단 Tagged Pets Mini Badges */
+    .post-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .avatar-stack { display: flex; align-items: center; cursor: pointer; background: #FAF9FD; border: 1px solid var(--border); padding: 6px 12px; border-radius: var(--radius-pill); gap: 8px; }
+    .stack-imgs { display: flex; }
+    .stack-img { width: 26px; height: 26px; border-radius: 50%; background: var(--primary-light); color: var(--primary); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-left: -8px; }
+    .stack-img:first-child { margin-left: 0; }
+    .stack-label { font-size: 13px; font-weight: 600; }
+    .stack-more { background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); }
+
+    /* #9 하단 연결된 반려동물 영역 */
+    .journey-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+    .pet-card { border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; align-items: center; gap: 10px; background: #FAF9FD; }
+    .pet-av { width: 38px; height: 38px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .toggle-btn { margin-top: 14px; width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: #fff; color: var(--primary); font-weight: 700; font-size: 13px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="post-header">
+        <div>
+          <h2 style="font-size:20px;margin-bottom:4px;">주말 한강 피크닉 기록 🐾</h2>
+          <p style="font-size:13px;color:#6E6A80;">와바미 집사님 · 2026.11.20</p>
+        </div>
+        <div class="avatar-stack" title="클릭 시 전체 태그 펫 목록 팝오버">
+          <div class="stack-imgs">
+            <div class="stack-img">초</div>
+            <div class="stack-img">보</div>
+            <div class="stack-img">두</div>
+          </div>
+          <span class="stack-label">초코, 보리</span>
+          <span class="stack-more">+48</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="journey-header">
+        <h3 style="font-size:16px;">연결된 반려동물 (50마리)</h3>
+        <span style="font-size:12px;color:#6338A9;font-weight:700;cursor:pointer;">검색하여 찾기</span>
+      </div>
+      <div class="pet-grid">
+        <div class="pet-card"><div class="pet-av">초</div><div><div style="font-size:13px;font-weight:700;">초코</div><div style="font-size:11px;color:#6E6A80;">푸들</div></div></div>
+        <div class="pet-card"><div class="pet-av">보</div><div><div style="font-size:13px;font-weight:700;">보리</div><div style="font-size:11px;color:#6E6A80;">코숏</div></div></div>
+        <div class="pet-card"><div class="pet-av">두</div><div><div style="font-size:13px;font-weight:700;">두부</div><div style="font-size:11px;color:#6E6A80;">말티즈</div></div></div>
+        <div class="pet-card"><div class="pet-av">콩</div><div><div style="font-size:13px;font-weight:700;">콩이</div><div style="font-size:11px;color:#6E6A80;">포메라니안</div></div></div>
+      </div>
+      <button class="toggle-btn">외 46마리 더보기 (검색형 모달 열기)</button>
+    </div>
+  </div>
+</body>
+</html>

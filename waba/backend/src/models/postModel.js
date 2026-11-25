@@ -11,6 +11,7 @@ export const getMainPostList = async () => {
                 'board_id', p.board_id,
                 'user_id', p.user_id,
                 'curation_grade', p.curation_grade,
+                'curation_target_species', p.curation_target_species,
                 'title', p.title,
                 'content', p.content,
                 'related_disease_id', p.related_disease_id,
@@ -70,7 +71,8 @@ export const getMainPostList = async () => {
                         'custom_species', pt.custom_species,
                         'breed', pt.breed,
                         'weight_kg', COALESCE(pp.weight_at_post_kg, pt.latest_weight_kg),
-                        'age_months', pp.age_months_at_post
+                        'age_months', pp.age_months_at_post,
+                        'avatar_url', pt.current_avatar_url
                     )
                 )
                 FROM pets pt
@@ -194,6 +196,7 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                 'board_id', p.board_id,
                 'user_id', p.user_id,
                 'curation_grade', p.curation_grade,
+                'curation_target_species', p.curation_target_species,
                 'title', p.title,
                 'content', p.content, -- 블록 에디터 JSON 배열 ([{type:'text',...}, {type:'image', image_id:...}])
                 'related_disease_id', p.related_disease_id,
@@ -338,6 +341,12 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                         'user_id', c.user_id,
                         'content', c.content,
                         'like_count', c.like_count,
+                        'is_liked', COALESCE((
+                            SELECT 1
+                            FROM comment_likes cl
+                            WHERE cl.comment_id = c.id AND cl.user_id = ?
+                            LIMIT 1
+                        ), 0) = 1,
                         'is_anonymous', (c.is_anonymous = 1),
                         'is_pinned', (c.is_pinned = 1),
                         'pinned_at', c.pinned_at,
@@ -373,11 +382,13 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
         WHERE p.id = ? AND p.status = 'PUBLISHED'
         LIMIT 1`;
 
-    const [rows] = await db.query(sql, [userId || '', userId || '', postId]);
+    const [rows] = await db.query(sql, [userId || '', userId || '', userId || '', postId]);
     if (!rows[0]) return null;
 
     const sortedComments = Array.isArray(rows[0].comments)
-        ? [...rows[0].comments].sort((a, b) => {
+        ? [...rows[0].comments]
+            .map((c) => ({ ...c, is_liked: Boolean(c.is_liked) }))
+            .sort((a, b) => {
             const pinDiff = (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
             if (pinDiff !== 0) return pinDiff;
             if (a.is_pinned && b.is_pinned) {
@@ -387,11 +398,24 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
         })
         : [];
 
+    const [linkedJourneyRows] = await db.query(
+        `SELECT DISTINCT pj.id, pj.note_code, pj.title
+         FROM pet_history_posts php
+         JOIN pet_histories ph ON ph.id = php.history_id
+         JOIN pet_journeys pj ON pj.id = ph.journey_id
+         WHERE php.post_id = ?
+           AND ph.journey_id IS NOT NULL
+           AND pj.share_scope = 'PUBLIC'
+         ORDER BY pj.id DESC`,
+        [postId]
+    );
+
     return {
         ...rows[0],
         comments: sortedComments,
         is_liked: Boolean(rows[0].is_liked),
-        is_bookmarked: Boolean(rows[0].is_bookmarked)
+        is_bookmarked: Boolean(rows[0].is_bookmarked),
+        linked_journeys: Array.isArray(linkedJourneyRows) ? linkedJourneyRows : []
     };
 }
 
@@ -529,6 +553,7 @@ export const createComment = async (postId, userId, { content, parent_id = null,
             user_id: userId,
             content: created.content,
             like_count: created.like_count || 0,
+            is_liked: false,
             created_at: created.created_at,
             is_anonymous: Boolean(created.is_anonymous),
             author: {
@@ -691,6 +716,7 @@ export const getPostList = async (boardId) => {
                 'board_id', p.board_id,
                 'user_id', p.user_id,
                 'curation_grade', p.curation_grade,
+                'curation_target_species', p.curation_target_species,
                 'title', p.title,
                 'content', p.content,
                 'related_disease_id', p.related_disease_id,
@@ -743,7 +769,8 @@ export const getPostList = async (boardId) => {
                         'custom_species', pt.custom_species,
                         'breed', pt.breed,
                         'weight_kg', COALESCE(pp.weight_at_post_kg, pt.latest_weight_kg),
-                        'age_months', pp.age_months_at_post
+                        'age_months', pp.age_months_at_post,
+                        'avatar_url', pt.current_avatar_url
                     )
                 )
                 FROM pets pt
@@ -879,7 +906,8 @@ const getPostListBaseQuery = (whereClause, orderBy = 'p.created_at DESC') => `
                     'custom_species', pt.custom_species,
                     'breed', pt.breed,
                     'weight_kg', COALESCE(pp.weight_at_post_kg, pt.latest_weight_kg),
-                    'age_months', pp.age_months_at_post
+                    'age_months', pp.age_months_at_post,
+                    'avatar_url', pt.current_avatar_url
                 )
             )
             FROM pets pt
@@ -1143,7 +1171,20 @@ export const createOrUpdatePost = async (userId, {
 export const createPost = createOrUpdatePost;
 export const getPostDetailById = getPostDetail;
 
-export const getUserDraft = async (userId) => {
+export const getUserDraft = async (userId, draftId = null) => {
+    if (draftId) {
+        const [targetedRows] = await db.query(
+            `SELECT p.id, p.board_id, p.title, p.content, p.created_at, p.updated_at
+             FROM posts p
+             WHERE p.user_id = ? AND p.status = 'DRAFT' AND p.id = ?
+             LIMIT 1`,
+            [userId, draftId]
+        );
+        if (targetedRows.length > 0) {
+            return await buildEditablePost(targetedRows[0]);
+        }
+    }
+
     const [rows] = await db.query(
         `SELECT p.id, p.board_id, p.title, p.content, p.created_at, p.updated_at
          FROM posts p
@@ -1154,6 +1195,17 @@ export const getUserDraft = async (userId) => {
     );
     if (rows.length === 0) return null;
     return await buildEditablePost(rows[0]);
+};
+
+export const getUserDrafts = async (userId) => {
+    const [rows] = await db.query(
+        `SELECT p.id, p.board_id, p.title, p.content, p.created_at, p.updated_at
+         FROM posts p
+         WHERE p.user_id = ? AND p.status = 'DRAFT'
+         ORDER BY p.updated_at DESC`,
+        [userId]
+    );
+    return await Promise.all(rows.map(buildEditablePost));
 };
 
 // 수정용: 본인의 발행된 게시글을 에디터 형식으로 반환
@@ -1276,7 +1328,12 @@ const buildEditablePost = async (draft) => {
         };
     });
 
+    const baseTime = new Date(draft.updated_at || draft.created_at || Date.now()).getTime();
+    const expiresAtMs = baseTime + 30 * 24 * 60 * 60 * 1000;
+    const daysRemaining = Math.max(0, Math.ceil((expiresAtMs - Date.now()) / (24 * 60 * 60 * 1000)));
+
     return {
+        id: draft.id,
         postId: draft.id,
         board_id: draft.board_id,
         title: draft.title,
@@ -1284,7 +1341,11 @@ const buildEditablePost = async (draft) => {
         selectedPets: pets.map(p => p.pet_id),
         tags: tags.map(t => t.tag_name),
         createdAt: draft.created_at,
-        updatedAt: draft.updated_at
+        updatedAt: draft.updated_at,
+        created_at: draft.created_at,
+        updated_at: draft.updated_at,
+        expires_at: new Date(expiresAtMs).toISOString(),
+        days_remaining: daysRemaining
     };
 };
 
@@ -1340,11 +1401,331 @@ export const deletePost = async (userId, postId, userRole = 'USER') => {
         throw error;
     }
 
-    // Soft delete or delete post
-    await db.query(`UPDATE posts SET status = 'DELETED' WHERE id = ?`, [postId]);
+    const deleteType = (userRole === 'ADMIN' && post.user_id !== userId) ? 'ADMIN_REPORT' : 'USER';
 
-    // Delete folder from disk
-    await deletePostFolder(postId, post.created_at);
+    await db.query(
+        `UPDATE posts
+         SET status = 'DELETED',
+             deleted_at = NOW(),
+             delete_type = ?,
+             deleted_by = ?,
+             purge_scheduled_at = DATE_ADD(NOW(), INTERVAL 30 DAY),
+             admin_extended_days = 0,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [deleteType, userId, postId]
+    );
 
     return { success: true, deletedPostId: postId };
+};
+
+const APPROVED_USER_NOTICE = '승인되어 게시글이 다시 오픈되었습니다. 다만 추가로 신고가 있을 시 다시 삭제될 수 있는 점 유의 바랍니다.';
+
+export const getUserReportedDeletedPosts = async (userId) => {
+    const [rows] = await db.query(
+        `SELECT
+            p.id, p.board_id, b.name AS board_name, p.title, p.status,
+            p.deleted_at, p.delete_reason, p.purge_scheduled_at,
+            p.admin_extended_days, p.appeal_blocked, p.created_at
+         FROM posts p
+         LEFT JOIN boards b ON p.board_id = b.id
+         WHERE p.user_id = ?
+           AND (
+             (p.status = 'DELETED' AND p.delete_type = 'ADMIN_REPORT' AND p.purge_scheduled_at IS NOT NULL AND p.purge_scheduled_at > NOW())
+             OR
+             (p.status = 'PUBLISHED' AND EXISTS (
+               SELECT 1 FROM post_appeals pa WHERE pa.post_id = p.id AND pa.status = 'APPROVED'
+             ))
+           )
+         ORDER BY CASE WHEN p.status = 'DELETED' THEN 0 ELSE 1 END, COALESCE(p.deleted_at, p.updated_at) DESC, p.id DESC`,
+        [userId]
+    );
+
+    if (rows.length === 0) return [];
+
+    const postIds = rows.map((r) => r.id);
+    const placeholders = postIds.map(() => '?').join(', ');
+    const [appealRows] = await db.query(
+        `SELECT id, post_id, attempt_no, reason, status, extended_by_appeal, blocked_reappeal, admin_note, handled_at, created_at
+         FROM post_appeals
+         WHERE post_id IN (${placeholders})
+         ORDER BY attempt_no ASC, id ASC`,
+        postIds
+    );
+
+    const appealsByPost = new Map();
+    for (const a of appealRows) {
+        if (!appealsByPost.has(a.post_id)) appealsByPost.set(a.post_id, []);
+        let mappedAppeal;
+        if (a.status === 'APPROVED') {
+            mappedAppeal = { ...a, admin_note: null, user_notice: APPROVED_USER_NOTICE };
+        } else if (a.status === 'REJECTED') {
+            mappedAppeal = { ...a, admin_note: a.admin_note || null, user_notice: null };
+        } else {
+            mappedAppeal = { ...a, admin_note: null, user_notice: null };
+        }
+        appealsByPost.get(a.post_id).push(mappedAppeal);
+    }
+
+    return rows.map((r) => {
+        const appeals = appealsByPost.get(r.id) || [];
+        const latest = appeals.length > 0 ? appeals[appeals.length - 1] : null;
+        return {
+            ...r,
+            appeal_blocked: Boolean(Number(r.appeal_blocked || 0)),
+            appeals,
+            appeal_id: latest?.id || null,
+            appeal_status: latest?.status || null,
+            appeal_reason: latest?.reason || null,
+            appeal_attempt_no: latest?.attempt_no || 0,
+            extended_by_appeal: latest ? Number(latest.extended_by_appeal || 0) : 0,
+            blocked_reappeal: latest ? Number(latest.blocked_reappeal || 0) : 0,
+            admin_note: latest?.status === 'REJECTED' ? (latest.admin_note || null) : null,
+            approval_notice: latest?.status === 'APPROVED' ? APPROVED_USER_NOTICE : null,
+            appeal_created_at: latest?.created_at || null
+        };
+    });
+};
+
+export const submitPostAppeal = async (userId, postId, reason) => {
+    const trimmedReason = String(reason || '').trim();
+    if (!trimmedReason) {
+        const err = new Error('이의 제기 사유를 입력해주세요.');
+        err.status = 400;
+        throw err;
+    }
+    if (trimmedReason.length > 1000) {
+        const err = new Error('이의 제기 사유는 1000자 이내로 입력해주세요.');
+        err.status = 400;
+        throw err;
+    }
+
+    const [postRows] = await db.query(
+        `SELECT id, user_id, status, delete_type, purge_scheduled_at, appeal_blocked FROM posts WHERE id = ? LIMIT 1`,
+        [postId]
+    );
+    const post = postRows[0];
+    if (!post) {
+        const err = new Error('게시글을 찾을 수 없습니다.');
+        err.status = 404;
+        throw err;
+    }
+    if (post.user_id !== userId) {
+        const err = new Error('본인의 게시글에만 이의 제기를 할 수 있습니다.');
+        err.status = 403;
+        throw err;
+    }
+    if (post.status !== 'DELETED' || post.delete_type !== 'ADMIN_REPORT') {
+        const err = new Error('신고 삭제된 게시글만 이의 제기가 가능합니다.');
+        err.status = 400;
+        throw err;
+    }
+    if (Number(post.appeal_blocked) === 1) {
+        const err = new Error('관리자에 의해 해당 게시글의 추가 이의 제기가 제한되었습니다.');
+        err.status = 403;
+        throw err;
+    }
+    if (!post.purge_scheduled_at || new Date(post.purge_scheduled_at).getTime() <= Date.now()) {
+        const err = new Error('이의 제기 가능 기간(30일)이 만료되었습니다.');
+        err.status = 400;
+        throw err;
+    }
+
+    const [priorAppeals] = await db.query(
+        `SELECT id, attempt_no, status, extended_by_appeal FROM post_appeals WHERE post_id = ? ORDER BY attempt_no DESC, id DESC`,
+        [postId]
+    );
+    if (priorAppeals.length > 0 && priorAppeals[0].status === 'PENDING') {
+        const err = new Error('현재 심사 중인 이의 제기가 있습니다.');
+        err.status = 409;
+        throw err;
+    }
+
+    const attemptNo = (priorAppeals[0]?.attempt_no || priorAppeals.length || 0) + 1;
+    const alreadyExtended = priorAppeals.some((a) => Number(a.extended_by_appeal) === 1);
+
+    const remainingMs = new Date(post.purge_scheduled_at).getTime() - Date.now();
+    let extendedByAppeal = 0;
+    if (!alreadyExtended && remainingMs < 10 * 24 * 60 * 60 * 1000) {
+        await db.query(
+            `UPDATE posts SET purge_scheduled_at = DATE_ADD(purge_scheduled_at, INTERVAL 10 DAY), updated_at = NOW() WHERE id = ?`,
+            [postId]
+        );
+        extendedByAppeal = 1;
+    }
+
+    await db.query(
+        `INSERT INTO post_appeals (post_id, user_id, attempt_no, reason, status, extended_by_appeal) VALUES (?, ?, ?, ?, 'PENDING', ?)`,
+        [postId, userId, attemptNo, trimmedReason, extendedByAppeal]
+    );
+
+    const [[updatedPost]] = await db.query(
+        `SELECT purge_scheduled_at FROM posts WHERE id = ? LIMIT 1`,
+        [postId]
+    );
+
+    return {
+        success: true,
+        attemptNo,
+        extendedByAppeal: Boolean(extendedByAppeal),
+        purge_scheduled_at: updatedPost?.purge_scheduled_at || post.purge_scheduled_at
+    };
+};
+
+export const cleanupExpiredPostsAndDrafts = async () => {
+    const [expiredDrafts] = await db.query(
+        `SELECT id, created_at FROM posts WHERE status = 'DRAFT' AND updated_at < DATE_SUB(NOW(), INTERVAL 30 DAY)`
+    );
+    const [expiredDeleted] = await db.query(
+        `SELECT id, created_at FROM posts WHERE status = 'DELETED' AND purge_scheduled_at IS NOT NULL AND purge_scheduled_at <= NOW()`
+    );
+
+    const purgeSinglePost = async (row) => {
+        for (const sql of [
+            `DELETE FROM pet_history_posts WHERE post_id = ?`,
+            `DELETE FROM product_pins WHERE post_id = ?`,
+            `DELETE FROM post_appeals WHERE post_id = ?`
+        ]) {
+            try {
+                await db.query(sql, [row.id]);
+            } catch {
+                // 테이블/컬럼 미존재 시 무시
+            }
+        }
+        await db.query(`DELETE FROM posts WHERE id = ?`, [row.id]);
+        await deletePostFolder(row.id, row.created_at);
+    };
+
+    for (const row of expiredDrafts) {
+        await purgeSinglePost(row);
+    }
+    for (const row of expiredDeleted) {
+        await purgeSinglePost(row);
+    }
+
+    return {
+        purgedDrafts: expiredDrafts.length,
+        purgedDeletedPosts: expiredDeleted.length
+    };
+};
+
+export const createPostReport = async (reporterUserId, postId, { reason, detail = '' } = {}) => {
+    const [reporterRows] = await db.query(
+        `SELECT role, status FROM users WHERE id = ? LIMIT 1`,
+        [reporterUserId]
+    );
+    const reporter = reporterRows[0];
+    if (!reporter || reporter.status !== 'ACTIVE') {
+        const err = new Error('활성 상태의 로그인 회원만 게시글을 신고할 수 있습니다.');
+        err.status = 403;
+        throw err;
+    }
+
+    const trimmedReason = String(reason || '').trim();
+    if (!trimmedReason) {
+        const err = new Error('신고 사유를 입력해주세요.');
+        err.status = 400;
+        throw err;
+    }
+    if (trimmedReason.length > 100) {
+        const err = new Error('신고 사유는 100자 이내로 입력해주세요.');
+        err.status = 400;
+        throw err;
+    }
+
+    const trimmedDetail = String(detail || '').trim();
+    if (!trimmedDetail) {
+        const err = new Error('신고 상세 내용을 입력해주세요.');
+        err.status = 400;
+        throw err;
+    }
+    if (trimmedDetail.length > 2000) {
+        const err = new Error('신고 상세 내용은 2000자 이내로 입력해주세요.');
+        err.status = 400;
+        throw err;
+    }
+
+    const [postRows] = await db.query(
+        `SELECT id, user_id, status FROM posts WHERE id = ? LIMIT 1`,
+        [postId]
+    );
+    const post = postRows[0];
+    if (!post || post.status !== 'PUBLISHED') {
+        const err = new Error('신고할 수 있는 게시글을 찾을 수 없습니다.');
+        err.status = 404;
+        throw err;
+    }
+    if (post.user_id === reporterUserId) {
+        const err = new Error('본인이 작성한 게시글은 신고할 수 없습니다.');
+        err.status = 400;
+        throw err;
+    }
+
+    const [existing] = await db.query(
+        `SELECT id FROM reports WHERE reporter_user_id = ? AND target_type = 'POST' AND target_id = ? AND status = 'PENDING' LIMIT 1`,
+        [reporterUserId, postId]
+    );
+    if (existing.length > 0) {
+        const err = new Error('이미 신고가 접수되어 검토 중인 게시글입니다.');
+        err.status = 409;
+        throw err;
+    }
+
+    const [result] = await db.query(
+        `INSERT INTO reports (reporter_user_id, target_type, target_id, reason, detail, status)
+         VALUES (?, 'POST', ?, ?, ?, 'PENDING')`,
+        [reporterUserId, postId, trimmedReason, trimmedDetail]
+    );
+
+    return { success: true, reportId: result.insertId };
+};
+
+export const toggleCommentLike = async (commentId, userId) => {
+    const [commentCheck] = await db.query(
+        `SELECT id FROM comments WHERE id = ? AND status = 'ACTIVE' LIMIT 1`,
+        [commentId]
+    );
+    if (commentCheck.length === 0) {
+        const error = new Error('COMMENT_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+
+    const [existing] = await db.query(
+        `SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ? LIMIT 1`,
+        [commentId, userId]
+    );
+
+    let isLiked = false;
+    if (existing.length > 0) {
+        await db.query(`DELETE FROM comment_likes WHERE id = ?`, [existing[0].id]);
+        await db.query(
+            `UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?`,
+            [commentId]
+        );
+        isLiked = false;
+    } else {
+        const [insertResult] = await db.query(
+            `INSERT IGNORE INTO comment_likes (comment_id, user_id, created_at) VALUES (?, ?, NOW())`,
+            [commentId, userId]
+        );
+        if (insertResult.affectedRows > 0) {
+            await db.query(
+                `UPDATE comments SET like_count = like_count + 1 WHERE id = ?`,
+                [commentId]
+            );
+        }
+        isLiked = true;
+    }
+
+    const [commentRows] = await db.query(
+        `SELECT like_count FROM comments WHERE id = ?`,
+        [commentId]
+    );
+
+    return {
+        comment_id: commentId,
+        is_liked: isLiked,
+        like_count: commentRows[0]?.like_count ?? 0
+    };
 };

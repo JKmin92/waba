@@ -114,7 +114,7 @@ export default function PostEditClient({ postId }: { postId: string }) {
 
     if (!initialData) {
         return (
-            <Box minH="100vh" bg="#F9F9FB" display="flex" alignItems="center" justifyContent="center">
+            <Box minH="100vh" bg="var(--waba-bg)" display="flex" alignItems="center" justifyContent="center">
                 <VStack gap={3}>
                     <Spinner color="waba.purple" />
                     <Text fontSize="sm" color="gray.500">게시글을 불러오는 중...</Text>
@@ -124,7 +124,7 @@ export default function PostEditClient({ postId }: { postId: string }) {
     }
 
     return (
-        <Box minH="100vh" bg="#F9F9FB">
+        <Box minH="100vh" bg="var(--waba-bg)">
             <Editor
                 mode="edit"
                 postId={postId}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     Box,
     Button,
@@ -16,6 +16,7 @@ import {
     VStack
 } from "@chakra-ui/react";
 import { Check, Copy, Link2 } from "lucide-react";
+import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 
 declare global {
@@ -41,32 +42,71 @@ export default function ShareModal({
 }: ShareModalProps) {
     const [currentUrl, setCurrentUrl] = useState('');
     const [isCopied, setIsCopied] = useState(false);
+    const shortUrlCacheRef = useRef<Record<string, string>>({});
+
+    const getShortUrl = useCallback(async (channel: 'SHARE_COPY' | 'SHARE_KAKAO') => {
+        if (typeof window === 'undefined') return '';
+        const pathname = window.location.pathname || '/';
+        const cacheKey = `${pathname}::${channel}`;
+        const cached = shortUrlCacheRef.current[cacheKey];
+        if (cached) return cached;
+
+        try {
+            const res = await axiosInstance.post('/public/short-links', {
+                targetPath: pathname,
+                channel,
+            });
+            const code = res.data?.code;
+            if (code) {
+                const shortUrl = `${window.location.origin}/s/${code}`;
+                shortUrlCacheRef.current[cacheKey] = shortUrl;
+                return shortUrl;
+            }
+        } catch {
+            // 단축 URL 발급 실패 시 원본 URL 폴백
+        }
+        return window.location.href;
+    }, []);
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setCurrentUrl(window.location.href);
-
-            // 카카오 SDK 스크립트 동적 로드 (미로드 시)
-            if (!window.Kakao) {
-                const script = document.createElement('script');
-                script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
-                script.integrity = 'sha384-TiCUE00h649CAMonG018J2mOGnr6go3Ex0228poQEYs5GtTXV50WuOX8HR+JAjk';
-                script.crossOrigin = 'anonymous';
-                script.async = true;
-                script.onload = () => {
-                    const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-                    if (window.Kakao && !window.Kakao.isInitialized() && kakaoKey) {
-                        window.Kakao.init(kakaoKey);
-                    }
-                };
-                document.head.appendChild(script);
-            }
+        if (typeof window !== 'undefined' && !window.Kakao) {
+            const script = document.createElement('script');
+            script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
+            script.integrity = 'sha384-TiCUE00h649CAMonG018J2mOGnr6go3Ex0228poQEYs5GtTXV50WuOX8HR+JAjk';
+            script.crossOrigin = 'anonymous';
+            script.async = true;
+            script.onload = () => {
+                const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+                if (window.Kakao && !window.Kakao.isInitialized() && kakaoKey) {
+                    window.Kakao.init(kakaoKey);
+                }
+            };
+            document.head.appendChild(script);
         }
     }, []);
 
+    useEffect(() => {
+        if (!open || typeof window === 'undefined') return;
+        let cancelled = false;
+        setIsCopied(false);
+        setCurrentUrl(window.location.href);
+
+        getShortUrl('SHARE_COPY').then((shortUrl) => {
+            if (!cancelled && shortUrl) {
+                setCurrentUrl(shortUrl);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [open, getShortUrl]);
+
     // 1. 링크 복사 핸들러
     const handleCopyLink = async () => {
-        const url = currentUrl || (typeof window !== 'undefined' ? window.location.href : '');
+        const url = currentUrl.includes('/s/')
+            ? currentUrl
+            : await getShortUrl('SHARE_COPY');
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(url);
@@ -79,6 +119,7 @@ export default function ShareModal({
                 document.body.removeChild(textArea);
             }
 
+            setCurrentUrl(url);
             setIsCopied(true);
             toaster.create({
                 title: '링크가 복사되었습니다.',
@@ -96,8 +137,8 @@ export default function ShareModal({
     };
 
     // 2. 카카오톡 공유 핸들러
-    const handleKakaoShare = () => {
-        const shareUrl = currentUrl || (typeof window !== 'undefined' ? window.location.href : '');
+    const handleKakaoShare = async () => {
+        const shareUrl = await getShortUrl('SHARE_KAKAO');
         const shareTitle = title || 'WABA 커뮤니티 룩북 & 케어 라이프';
         const shareDesc = description || '반려동물과 함께하는 감각적인 공간과 이야기';
 
@@ -158,19 +199,19 @@ export default function ShareModal({
                         borderRadius="28px"
                         p={6}
                         boxShadow="0 20px 40px -8px rgba(26, 28, 30, 0.16)"
-                        bg="white"
+                        bg="var(--waba-card)"
                     >
                         {/* 닫기 버튼 */}
                         <Dialog.CloseTrigger asChild position="absolute" top={4} right={4}>
-                            <CloseButton size="sm" borderRadius="full" bg="waba.subtle" />
+                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" color="var(--waba-ink)" _hover={{ bg: 'var(--waba-line)' }} />
                         </Dialog.CloseTrigger>
 
                         {/* 헤더 */}
                         <Dialog.Header p={0} mb={4}>
-                            <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
+                            <Dialog.Title fontSize="18px" fontWeight="800" color="var(--waba-ink)">
                                 공유하기
                             </Dialog.Title>
-                            <Text fontSize="12px" color="waba.faint" mt={0.5}>
+                            <Text fontSize="12px" color="var(--waba-ink-3)" mt={0.5}>
                                 친구들과 감각적인 반려동물 공간을 함께 나눠보세요
                             </Text>
                         </Dialog.Header>
@@ -181,7 +222,7 @@ export default function ShareModal({
                                 <HStack
                                     p={3}
                                     borderRadius="18px"
-                                    bg="waba.subtle"
+                                    bg="var(--waba-surface)"
                                     gap={3}
                                     mb={6}
                                 >
@@ -200,7 +241,7 @@ export default function ShareModal({
                                         <Text
                                             fontSize="10px"
                                             fontWeight="800"
-                                            color="waba.purple"
+                                            color="var(--waba-purple-text)"
                                             letterSpacing="0.08em"
                                         >
                                             WABA CURATED
@@ -208,7 +249,7 @@ export default function ShareModal({
                                         <Text
                                             fontSize="13px"
                                             fontWeight="700"
-                                            color="waba.charcoal"
+                                            color="var(--waba-ink)"
                                             lineClamp={2}
                                         >
                                             {title}
@@ -242,7 +283,7 @@ export default function ShareModal({
                                             <path d="M12 3C6.477 3 2 6.477 2 10.764c0 2.766 1.875 5.187 4.707 6.544l-.958 3.55a.44.44 0 0 0 .61.503l4.24-2.802c.453.053.918.083 1.401.083 5.523 0 10-3.477 10-7.764C22 6.477 17.523 3 12 3z" />
                                         </svg>
                                     </Flex>
-                                    <Text fontSize="12px" fontWeight="700" color="waba.charcoal">
+                                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink)">
                                         카카오톡
                                     </Text>
                                 </VStack>
@@ -260,8 +301,8 @@ export default function ShareModal({
                                         w="58px"
                                         h="58px"
                                         borderRadius="20px"
-                                        bg={isCopied ? "green.500" : "waba.subtle"}
-                                        color={isCopied ? "white" : "waba.charcoal"}
+                                        bg={isCopied ? "green.500" : "var(--waba-surface)"}
+                                        color={isCopied ? "white" : "var(--waba-ink)"}
                                         align="center"
                                         justify="center"
                                         boxShadow="0 6px 16px rgba(26, 28, 30, 0.08)"
@@ -269,7 +310,7 @@ export default function ShareModal({
                                     >
                                         {isCopied ? <Check size={22} /> : <Link2 size={22} />}
                                     </Flex>
-                                    <Text fontSize="12px" fontWeight="700" color="waba.charcoal">
+                                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink)">
                                         {isCopied ? "복사 완료!" : "링크 복사"}
                                     </Text>
                                 </VStack>
@@ -277,17 +318,17 @@ export default function ShareModal({
 
                             {/* 하단 URL 복사 인풋 바 */}
                             <HStack
-                                bg="waba.subtle"
+                                bg="var(--waba-surface)"
                                 p="6px"
                                 pl={3}
                                 borderRadius="full"
                                 border="1px solid"
-                                borderColor="blackAlpha.100"
+                                borderColor="var(--waba-line)"
                             >
                                 <Text
                                     flex="1"
                                     fontSize="12px"
-                                    color="waba.muted"
+                                    color="var(--waba-ink-2)"
                                     truncate
                                 >
                                     {currentUrl}
@@ -297,11 +338,11 @@ export default function ShareModal({
                                     borderRadius="full"
                                     px={4}
                                     h="32px"
-                                    bg={isCopied ? "green.500" : "waba.charcoal"}
+                                    bg={isCopied ? "green.500" : "#6338A9"}
                                     color="white"
                                     fontSize="12px"
                                     fontWeight="700"
-                                    _hover={{ bg: isCopied ? "green.600" : "waba.purple" }}
+                                    _hover={{ bg: isCopied ? "green.600" : "#532d91" }}
                                     onClick={handleCopyLink}
                                     gap={1.5}
                                 >

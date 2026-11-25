@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Box,
     Button,
@@ -45,6 +45,7 @@ interface NotebookGroupModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     pet: Pet | null;
+    pets?: Pet[];
     editingJourney?: MypageJourneyRecord | null;
     onSaved: () => void;
 }
@@ -53,27 +54,47 @@ export default function NotebookGroupModal({
     open,
     onOpenChange,
     pet,
+    pets = [],
     editingJourney = null,
     onSaved,
 }: NotebookGroupModalProps) {
     const todayStr = new Date().toISOString().slice(0, 10);
 
+    const availablePets = useMemo(
+        () => (pets.length > 0 ? pets : pet ? [pet] : []),
+        [pets, pet]
+    );
+
+    const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
     const [title, setTitle] = useState('');
-    const [category, setCategory] = useState<JourneyCategory>('DISEASE');
+    const [category, setCategory] = useState<JourneyCategory | ''>('');
     const [status, setStatus] = useState<JourneyStatus>('ACTIVE');
     const [goalSummary, setGoalSummary] = useState('');
     const [description, setDescription] = useState('');
-    const [shareScope, setShareScope] = useState<JourneyShareScope>('PUBLIC');
+    const [shareScope, setShareScope] = useState<JourneyShareScope>('PRIVATE');
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (!open) return;
 
         if (editingJourney) {
+            const restoredIds =
+                editingJourney.pets && editingJourney.pets.length > 0
+                    ? editingJourney.pets.map((p) => String(p.id))
+                    : editingJourney.pet_ids && editingJourney.pet_ids.length > 0
+                        ? editingJourney.pet_ids.map((id) => String(id))
+                        : editingJourney.pet_id
+                            ? [String(editingJourney.pet_id)]
+                            : pet?.id
+                                ? [String(pet.id)]
+                                : availablePets[0]?.id
+                                    ? [String(availablePets[0].id)]
+                                    : [];
+            setSelectedPetIds(restoredIds);
             setTitle(editingJourney.title || '');
             const nextCat = CATEGORY_OPTIONS.some((c) => c.key === editingJourney.category)
                 ? (editingJourney.category as JourneyCategory)
-                : 'DISEASE';
+                : '';
             setCategory(nextCat);
 
             const resolvedStatus =
@@ -87,21 +108,36 @@ export default function NotebookGroupModal({
 
             setGoalSummary(editingJourney.goal_summary || '');
             setDescription(editingJourney.description || '');
-            setShareScope(editingJourney.share_scope === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC');
+            setShareScope(editingJourney.share_scope === 'PUBLIC' ? 'PUBLIC' : 'PRIVATE');
         } else {
+            setSelectedPetIds([]);
             setTitle('');
-            setCategory('DISEASE');
+            setCategory('');
             setStatus('ACTIVE');
             setGoalSummary('');
             setDescription('');
-            setShareScope('PUBLIC');
+            setShareScope('PRIVATE');
         }
     }, [open, editingJourney]);
 
+    const togglePetSelection = (petId: string) => {
+        setSelectedPetIds((prev) =>
+            prev.includes(petId) ? prev.filter((id) => id !== petId) : [...prev, petId]
+        );
+    };
+
     const handleSave = async () => {
-        if (!pet?.id) return;
+        if (selectedPetIds.length === 0) {
+            toaster.create({ title: '반려동물을 1마리 이상 선택해주세요.', type: 'warning' });
+            return;
+        }
+        const targetPetId = String(editingJourney?.pet_id || selectedPetIds[0]);
         if (!title.trim()) {
             toaster.create({ title: '그룹 이름을 입력해주세요.', type: 'warning' });
+            return;
+        }
+        if (!category) {
+            toaster.create({ title: '카테고리를 선택해주세요.', type: 'warning' });
             return;
         }
 
@@ -111,6 +147,7 @@ export default function NotebookGroupModal({
                 ? String(editingJourney.start_date).slice(0, 10)
                 : todayStr;
             const payload = {
+                pet_ids: selectedPetIds,
                 title: title.trim(),
                 start_date: resolvedStartDate,
                 category,
@@ -122,10 +159,10 @@ export default function NotebookGroupModal({
             };
 
             if (editingJourney?.id) {
-                await axiosInstance.put(`/user/pets/${pet.id}/journeys/${editingJourney.id}`, payload);
+                await axiosInstance.put(`/user/pets/${targetPetId}/journeys/${editingJourney.id}`, payload);
                 toaster.create({ title: '수첩 그룹이 수정되었습니다.', type: 'success' });
             } else {
-                await axiosInstance.post(`/user/pets/${pet.id}/journeys`, payload);
+                await axiosInstance.post(`/user/pets/${targetPetId}/journeys`, payload);
                 toaster.create({ title: '새 수첩 그룹이 생성되었습니다.', type: 'success' });
             }
 
@@ -141,7 +178,7 @@ export default function NotebookGroupModal({
         }
     };
 
-    if (!pet) return null;
+    if (availablePets.length === 0 && !pet) return null;
 
     return (
         <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} placement="center" size="lg">
@@ -168,22 +205,9 @@ export default function NotebookGroupModal({
                             borderBottom="1px solid"
                             borderColor="var(--waba-line)"
                         >
-                            <HStack gap={3} minW={0}>
-                                <UserAvatar
-                                    src={pet.current_avatar_url}
-                                    alt={pet.name}
-                                    size="sm"
-                                    fallbackType="pet"
-                                />
-                                <Box minW={0}>
-                                    <Text fontSize="11px" fontWeight="700" color="var(--waba-purple-text)">
-                                        {pet.name}
-                                    </Text>
-                                    <Text fontSize="16px" fontWeight="800" color="var(--waba-ink)">
-                                        {editingJourney ? '수첩 그룹 수정' : '새 수첩 그룹 만들기'}
-                                    </Text>
-                                </Box>
-                            </HStack>
+                            <Text fontSize="16px" fontWeight="800" color="var(--waba-ink)">
+                                {editingJourney ? '수첩 그룹 수정' : '새 수첩 그룹 만들기'}
+                            </Text>
                             <CloseButton
                                 size="sm"
                                 rounded="full"
@@ -197,6 +221,47 @@ export default function NotebookGroupModal({
                         {/* 바디 */}
                         <Box px={{ base: 5, md: 6 }} py={5} maxH="74vh" overflowY="auto">
                             <VStack align="stretch" gap={4.5}>
+                                {/* 0. 반려동물 선택 */}
+                                {availablePets.length > 0 && (
+                                    <Box>
+                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={1.5}>
+                                            반려동물 선택 * (1마리 이상)
+                                        </Text>
+                                        <HStack gap={1.5} flexWrap="wrap">
+                                            {availablePets.map((p) => {
+                                                const active = selectedPetIds.includes(String(p.id));
+                                                return (
+                                                    <Button
+                                                        key={p.id}
+                                                        type="button"
+                                                        size="xs"
+                                                        h="30px"
+                                                        pl="6px"
+                                                        pr="10px"
+                                                        rounded="full"
+                                                        border="1px solid"
+                                                        borderColor={active ? '#6338A9' : 'var(--waba-line)'}
+                                                        bg={active ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                                        color={active ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                                                        fontWeight={active ? '700' : '600'}
+                                                        gap={1.5}
+                                                        cursor="pointer"
+                                                        onClick={() => togglePetSelection(String(p.id))}
+                                                    >
+                                                        <UserAvatar
+                                                            src={p.current_avatar_url}
+                                                            alt={p.name}
+                                                            size="2xs"
+                                                            fallbackType="pet"
+                                                        />
+                                                        <Text fontSize="12px">{p.name}</Text>
+                                                    </Button>
+                                                );
+                                            })}
+                                        </HStack>
+                                    </Box>
+                                )}
+
                                 {/* 1. 그룹 이름 */}
                                 <Box>
                                     <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={1.5}>
@@ -218,7 +283,7 @@ export default function NotebookGroupModal({
                                 {/* 2. 카테고리 */}
                                 <Box>
                                     <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={1.5}>
-                                        카테고리
+                                        카테고리 *
                                     </Text>
                                     <HStack gap={1.5} flexWrap="wrap">
                                         {CATEGORY_OPTIONS.map((opt) => {

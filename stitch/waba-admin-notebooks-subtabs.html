@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 수첩 상세 Dialog &amp; AI 추출 기록 분석</title>
+  <style>
+    :root {
+      --bg: #FAFBFD;
+      --card: #FFFFFF;
+      --border: #EAEAEF;
+      --text: #111115;
+      --muted: #6E6E7A;
+      --primary: #6338A9;
+      --primary-soft: #F6EBFB;
+      --danger: #D9383A;
+      --success: #16803C;
+      --success-soft: #EAF7EE;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { width: 1440px; min-height: 1180px; background: var(--bg); color: var(--text); padding: 28px 32px; display: flex; flex-direction: column; gap: 28px; }
+    .sec-banner { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 800; margin-bottom: 12px; }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .b-cat { background: var(--primary-soft); color: var(--primary); }
+    .b-pub { background: var(--success-soft); color: var(--success); }
+    .b-ing { background: #FEF3C7; color: #B45309; }
+    .b-ai { background: #EEF6FF; color: #1D4ED8; }
+    .role-badge { display: inline-flex; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; border: 1px solid var(--border); background: #fff; }
+    .role-vet { border-color: #C7B3E8; background: var(--primary-soft); color: var(--primary); }
+
+    .btn-pill { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+    .btn-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-dark { padding: 8px 16px; border-radius: 999px; border: none; background: #111115; color: #fff; font-size: 12px; font-weight: 700; }
+    .input-sm { flex: 1; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 12px; }
+
+    .timeline-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: #FAFBFD; }
+
+    /* Section B Analytics */
+    .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .bar-bg { height: 14px; border-radius: 999px; background: #EFEFF4; overflow: hidden; display: flex; }
+    .bar-ai { width: 68.4%; background: var(--primary); }
+    .bar-manual { width: 31.6%; background: #C7B3E8; }
+    .dist-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+    .dist-track { flex: 1; height: 10px; border-radius: 999px; background: #EFEFF4; overflow: hidden; }
+    .dist-fill { height: 100%; background: var(--primary); border-radius: 999px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 12px 8px; border-bottom: 1px solid #F3F3F7; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <!-- 섹션 A -->
+  <div>
+    <span class="sec-banner">섹션 A · 수첩 상세 관리 Dialog 미리보기</span>
+    <div class="panel" style="max-width:920px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <span class="badge b-cat">치료·질병</span>
+            <span class="badge b-pub">전체 공개</span>
+            <span class="badge b-ing">진행 중</span>
+          </div>
+          <h2 style="font-size:18px;font-weight:800;">구름이 아토피 피부염 12주 치료 기록 ↗</h2>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">김와바 <span class="role-badge role-vet">수의사</span> · 구름이(고양이) · 2026.09.04 ~ 진행 중</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted);">✕</span>
+      </div>
+
+      <div style="padding:14px;border-radius:14px;background:#FAFBFD;border:1px solid var(--border);display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;font-weight:800;">공개 범위 관리</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-pill active">전체 공개</button>
+          <button class="btn-pill">링크 공유</button>
+          <button class="btn-pill">비공개</button>
+          <input class="input-sm" type="text" placeholder="관리자 조치 사유 입력..." />
+          <button class="btn-dark">적용</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:12px;font-weight:800;">타임라인 건강 기록 (18건)</div>
+        <div class="timeline-row">
+          <div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--muted);font-weight:700;">2026.11.24</span>
+              <span class="badge b-cat">진료/검사</span>
+              <span class="badge b-ai">AI 자동</span>
+            </div>
+            <div style="font-size:13px;font-weight:700;">피부 소양감 재진 및 약용 샴푸 처방</div>
+            <div style="font-size:11px;color:var(--muted);">와바동물의료센터 · 체중 4.3kg</div>
+          </div>
+          <button class="btn-pill" style="color:var(--danger);border-color:#F5C2C2;">삭제</button>
+        </div>
+        <div class="timeline-row">
+          <div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--muted);font-weight:700;">2026.11.17</span>
+              <span class="badge b-cat">투약</span>
+            </div>
+            <div style="font-size:13px;font-weight:700;">아포퀠 3.6mg 1일 1회 복용 완료</div>
+            <div style="font-size:11px;color:var(--muted);">직접 작성 · 체중 4.2kg</div>
+          </div>
+          <button class="btn-pill" style="color:var(--danger);border-color:#F5C2C2;">삭제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 B -->
+  <div>
+    <span class="sec-banner">섹션 B · AI 추출 기록 · 분석 탭</span>
+    <div class="panel">
+      <div class="analytics-grid">
+        <div style="padding:16px;border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-size:13px;font-weight:800;">AI 자동 추출 vs 직접 작성 비율</div>
+          <div class="bar-bg"><div class="bar-ai"></div><div class="bar-manual"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);">
+            <span><strong style="color:var(--primary);">AI 자동 추출</strong> 21,512건 (68.4%)</span>
+            <span><strong>직접 작성</strong> 9,938건 (31.6%)</span>
+          </div>
+        </div>
+        <div style="padding:16px;border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:13px;font-weight:800;">카테고리별 기록 분포</div>
+          <div class="dist-row"><span style="width:60px;">진료/검사</span><div class="dist-track"><div class="dist-fill" style="width:76%;"></div></div><span>38%</span></div>
+          <div class="dist-row"><span style="width:60px;">체중</span><div class="dist-track"><div class="dist-fill" style="width:48%;"></div></div><span>24%</span></div>
+          <div class="dist-row"><span style="width:60px;">접종</span><div class="dist-track"><div class="dist-fill" style="width:32%;"></div></div><span>16%</span></div>
+          <div class="dist-row"><span style="width:60px;">투약</span><div class="dist-track"><div class="dist-fill" style="width:28%;"></div></div><span>14%</span></div>
+          <div class="dist-row"><span style="width:60px;">일상</span><div class="dist-track"><div class="dist-fill" style="width:16%;"></div></div><span>8%</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-pill active">전체</button>
+        <button class="btn-pill">AI 자동 추출</button>
+        <button class="btn-pill">직접 작성</button>
+        <input class="input-sm" type="text" placeholder="기록 제목, 병원명, 반려동물명 검색..." />
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>구분 / 날짜</th><th>카테고리</th><th>기록 제목 및 메타</th><th>연결 펫 · 수첩</th><th>작성자</th><th>액션</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-ai">AI 자동</span><br/><span style="color:var(--muted);font-size:11px;">2026.11.24</span></td>
+            <td><span class="badge b-cat">진료/검사</span></td>
+            <td><strong>피부 소양감 재진 및 약용 샴푸 처방</strong><div style="color:var(--muted);font-size:11px;">와바동물의료센터 · 4.3kg</div></td>
+            <td>구름이 · 아토피 12주 기록</td>
+            <td>김와바 <span class="role-badge role-vet">수의사</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-pill">원본 수첩</button><button class="btn-pill" style="color:var(--danger);">기록 삭제</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

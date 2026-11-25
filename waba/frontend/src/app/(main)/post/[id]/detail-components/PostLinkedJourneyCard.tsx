@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useRouter } from 'next/navigation';
 import { PostDetail as PostDetailType } from '@/interface';
-import PostProductPinList from '../PostProductPinList';
+// import PostProductPinList from '../PostProductPinList';
 import UserAvatar from '../../../common/UserAvatar';
 
 interface PostLinkedJourneyCardProps {
@@ -25,16 +25,18 @@ export default function PostLinkedJourneyCard({ postDetail }: PostLinkedJourneyC
 
     const hasPets = Boolean(postDetail?.post_pets && postDetail.post_pets.length > 0);
     const hasCareVerification = Boolean(postDetail?.care_verification);
-    const nonPetPins = postDetail?.product_pins?.filter((p) => p.pin_type !== 'PET') || [];
-    const hasProductPins = nonPetPins.length > 0;
+    const linkedJourneys = postDetail?.linked_journeys || [];
+    const hasLinkedJourneys = linkedJourneys.length > 0;
+    // const nonPetPins = postDetail?.product_pins?.filter((p) => p.pin_type !== 'PET') || [];
+    // const hasProductPins = nonPetPins.length > 0;
 
-    if (!hasPets && !hasCareVerification && !hasProductPins) {
+    if (!hasPets && !hasCareVerification && !hasLinkedJourneys) {
         return null;
     }
 
     return (
         <Stack gap={6} minW={0}>
-            {(hasPets || hasCareVerification) && (
+            {(hasPets || hasCareVerification || hasLinkedJourneys) && (
                 <>
                     <Separator borderColor="var(--waba-line)" />
                     <Flex
@@ -52,7 +54,7 @@ export default function PostLinkedJourneyCard({ postDetail }: PostLinkedJourneyC
                         <Stack gap={2.5} minW={0} flex="1">
                             <HStack gap={2} flexWrap="wrap">
                                 <Text fontSize="11px" fontWeight="800" color="var(--waba-purple-text)">
-                                    ✨ 연결된 케어 저니 · 반려동물 수첩
+                                    {hasLinkedJourneys ? '✨ 연결된 건강 수첩' : '🐾 연결된 반려동물'}
                                 </Text>
                                 {hasCareVerification && (
                                     <Box
@@ -97,35 +99,43 @@ export default function PostLinkedJourneyCard({ postDetail }: PostLinkedJourneyC
                             )}
                         </Stack>
 
-                        <Box
-                            as="button"
-                            bg="var(--waba-card)"
-                            border="1px solid"
-                            borderColor="var(--waba-purple-border)"
-                            color="var(--waba-purple-text)"
-                            fontSize="12px"
-                            fontWeight="700"
-                            px="14px"
-                            py="8px"
-                            borderRadius="999px"
-                            cursor="pointer"
-                            flexShrink={0}
-                            _hover={{ bg: '#6338A9', color: '#FFFFFF' }}
-                            transition="all 0.15s"
-                            onClick={() => router.push('/board/CARE_LOUNGE')}
-                        >
-                            케어 저니 보기 →
-                        </Box>
+                        {hasLinkedJourneys && (
+                            <HStack gap={2} flexWrap="wrap" flexShrink={0}>
+                                {linkedJourneys.map((journey) => (
+                                    <Box
+                                        key={String(journey.id)}
+                                        as="button"
+                                        bg="var(--waba-card)"
+                                        border="1px solid"
+                                        borderColor="var(--waba-purple-border)"
+                                        color="var(--waba-purple-text)"
+                                        fontSize="12px"
+                                        fontWeight="700"
+                                        px="14px"
+                                        py="8px"
+                                        borderRadius="999px"
+                                        cursor="pointer"
+                                        maxW="220px"
+                                        truncate
+                                        _hover={{ bg: '#6338A9', color: '#FFFFFF' }}
+                                        transition="all 0.15s"
+                                        onClick={() => router.push(`/notebook/${journey.note_code || journey.id}`)}
+                                    >
+                                        {journey.title} 보기 →
+                                    </Box>
+                                ))}
+                            </HStack>
+                        )}
                     </Flex>
                 </>
             )}
 
-            {hasProductPins && (
+            {/* {hasProductPins && (
                 <>
                     <Separator borderColor="var(--waba-line)" />
                     <PostProductPinList pins={postDetail!.product_pins} />
                 </>
-            )}
+            )} */}
         </Stack>
     );
 }

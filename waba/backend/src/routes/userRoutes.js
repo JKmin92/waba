@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/join', userController.joinUser);
 router.post('/login', userController.loginUser);
 router.post('/refresh', userController.refreshToken);
+router.put('/password', verifyToken, userController.changePassword);
 router.get('/checkNickname', userController.checkNickname);
 router.get('/checkEmail', userController.checkEmail);
 router.get('/pets', verifyToken, userController.getUserPets);

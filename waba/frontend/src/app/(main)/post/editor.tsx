@@ -129,8 +129,10 @@ export default function Editor({
     // 6. Draft Management States (Point 3)
     const [currentPostId, setCurrentPostId] = useState<string | null>(postId || null);
     const [savedDraft, setSavedDraft] = useState<{ data: PostEditorData; savedAt: string } | null>(null);
-    const [showDraftBanner, setShowDraftBanner] = useState(false);
     const [draftModalOpen, setDraftModalOpen] = useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [savedDrafts, setSavedDrafts] = useState<Array<{ data: PostEditorData; savedAt: string }>>([]);
+    const [pendingDeleteDraft, setPendingDeleteDraft] = useState<{ data: PostEditorData; savedAt: string } | null>(null);
 
     // 7. Pin Dropping & Modal States
     const [activePinId, setActivePinId] = useState<string | null>(null);
@@ -166,9 +168,11 @@ export default function Editor({
     const [insertIndexTarget, setInsertIndexTarget] = useState<number | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const autoLoadedDraftKeyRef = useRef<string | null>(null);
 
     // Initial Load: User & Pets & Official Products & Draft Check
     useEffect(() => {
+        let isCancelled = false;
         const userInfo = getUserInfo();
         setCurrentUser(userInfo);
 
@@ -214,24 +218,63 @@ export default function Editor({
         const checkDrafts = async () => {
             if (mode !== 'create') return;
 
+            const rawDraftParam =
+                typeof window !== 'undefined'
+                    ? new URLSearchParams(window.location.search).get('draft')
+                    : null;
+            const draftParam =
+                rawDraftParam && rawDraftParam !== 'undefined' && rawDraftParam !== 'null'
+                    ? rawDraftParam
+                    : null;
+
+            const applyDraftImmediate = (d: any) => {
+                const loadKey = String(d.postId || d.id || draftParam || 'local');
+                if (autoLoadedDraftKeyRef.current === loadKey) return;
+                autoLoadedDraftKeyRef.current = loadKey;
+                if (d.postId || d.id) setCurrentPostId(String(d.postId || d.id));
+                if (d.board_id) setBoardId(d.board_id);
+                if (d.title !== undefined) setTitle(d.title || '');
+                if (d.blocks && d.blocks.length > 0) setBlocks(d.blocks);
+                if (d.selectedPets) setSelectedPets(d.selectedPets);
+                if (d.tags) setTags(d.tags);
+                toaster.create({
+                    title: '임시 저장된 글을 성공적으로 불러왔습니다.',
+                    type: 'success',
+                });
+            };
+
             // 1. Try server draft if user is logged in
             if (isAuthenticated()) {
                 try {
-                    const res = await axiosInstance.get('/post/draft');
-                    if (res.data?.success && res.data.draft) {
-                        const d = res.data.draft;
-                        setSavedDraft({
+                    const res = await axiosInstance.get(
+                        '/post/draft',
+                        draftParam ? { params: { draftId: draftParam } } : undefined
+                    );
+                    if (isCancelled) return;
+                    if (res.data?.success && (res.data.draft || Array.isArray(res.data.drafts))) {
+                        const mapDraft = (item: any) => ({
                             data: {
-                                postId: d.postId,
-                                board_id: d.board_id,
-                                title: d.title,
-                                blocks: d.blocks,
-                                selectedPets: d.selectedPets,
-                                tags: d.tags,
+                                postId: item.postId || item.id,
+                                board_id: item.board_id,
+                                title: item.title,
+                                blocks: item.blocks,
+                                selectedPets: item.selectedPets,
+                                tags: item.tags,
                             },
-                            savedAt: d.updatedAt || d.createdAt,
+                            savedAt: item.updatedAt || item.updated_at || item.createdAt || item.created_at,
                         });
-                        setShowDraftBanner(true);
+                        const draftsList = Array.isArray(res.data.drafts) && res.data.drafts.length > 0
+                            ? res.data.drafts.map(mapDraft)
+                            : res.data.draft
+                                ? [mapDraft(res.data.draft)]
+                                : [];
+                        const primaryDraft = res.data.draft ? mapDraft(res.data.draft) : draftsList[0] || null;
+                        setSavedDrafts(draftsList);
+                        setSavedDraft(primaryDraft);
+                        if (draftParam && primaryDraft) {
+                            applyDraftImmediate(primaryDraft.data);
+                        } else if (primaryDraft) {
+                        }
                         return;
                     }
                 } catch (e) {
@@ -250,8 +293,12 @@ export default function Editor({
                             (parsed.data.title ||
                                 parsed.data.blocks?.some((b: any) => b.type === 'image' || b.content))
                         ) {
+                            setSavedDrafts([parsed]);
                             setSavedDraft(parsed);
-                            setShowDraftBanner(true);
+                            if (draftParam) {
+                                applyDraftImmediate(parsed.data);
+                            } else {
+                            }
                         }
                     } catch (_) {}
                 }
@@ -281,7 +328,10 @@ export default function Editor({
             checkDrafts();
         };
         window.addEventListener('auth-change', handleAuthChange);
-        return () => window.removeEventListener('auth-change', handleAuthChange);
+        return () => {
+            isCancelled = true;
+            window.removeEventListener('auth-change', handleAuthChange);
+        };
     }, [mode]);
 
     // Sync default autoJournalPetId when selectedPets or userPetsList changes
@@ -349,30 +399,30 @@ export default function Editor({
     // Point 3: Draft Loading & Saving Handlers
     // =========================================================================
 
-    const handleLoadDraft = () => {
-        if (!savedDraft?.data) return;
-        const d = savedDraft.data;
+    const handleLoadDraft = (target?: { data: PostEditorData; savedAt: string } | null) => {
+        const targetDraft = target || savedDraft;
+        if (!targetDraft?.data) return;
+        const d = targetDraft.data;
         if (d.postId) setCurrentPostId(d.postId);
         if (d.board_id) setBoardId(d.board_id);
-        if (d.title !== undefined) setTitle(d.title);
+        if (d.title !== undefined) setTitle(d.title || '');
         if (d.blocks && d.blocks.length > 0) setBlocks(d.blocks);
         if (d.selectedPets) setSelectedPets(d.selectedPets);
         if (d.tags) setTags(d.tags);
-
-        setShowDraftBanner(false);
         setDraftModalOpen(false);
 
         toaster.create({
             title: '임시 저장된 글을 성공적으로 불러왔습니다.',
-            description: savedDraft.savedAt
-                ? `${new Date(savedDraft.savedAt).toLocaleString('ko-KR')} 저장본`
+            description: targetDraft.savedAt
+                ? `${new Date(targetDraft.savedAt).toLocaleString('ko-KR')} 저장본`
                 : '',
             type: 'success',
         });
     };
 
-    const handleDiscardDraft = async () => {
-        const draftPostId = savedDraft?.data?.postId || currentPostId;
+    const handleDiscardDraft = async (target?: { data: PostEditorData; savedAt: string } | null) => {
+        const targetDraft = target || pendingDeleteDraft || savedDraft;
+        const draftPostId = targetDraft?.data?.postId || currentPostId;
         if (draftPostId && isAuthenticated()) {
             try {
                 await axiosInstance.delete(`/post/draft/${draftPostId}`);
@@ -380,13 +430,20 @@ export default function Editor({
                 console.error('Delete server draft error:', e);
             }
         }
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem(DRAFT_STORAGE_KEY);
+        const remaining = savedDrafts.filter(
+            (item) => String(item.data?.postId || '') !== String(draftPostId || '')
+        );
+        setSavedDrafts(remaining);
+        setSavedDraft(remaining[0] || null);
+        if (currentPostId && String(currentPostId) === String(draftPostId)) {
+            setCurrentPostId(null);
         }
-        setSavedDraft(null);
-        setCurrentPostId(null);
-        setShowDraftBanner(false);
-        setDraftModalOpen(false);
+        if (remaining.length === 0) {
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem(DRAFT_STORAGE_KEY);
+            }
+            setDraftModalOpen(false);
+        }
         toaster.create({ title: '임시 저장 글이 삭제되었습니다.', type: 'info' });
     };
 
@@ -416,16 +473,25 @@ export default function Editor({
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftObj));
         }
         setSavedDraft(draftObj);
-        setShowDraftBanner(false);
         setDraftModalOpen(false);
 
+        let finalDraftObj = draftObj;
         if (onSaveDraft) {
             const newDraftId = await onSaveDraft(payload, currentPostId || undefined);
             if (newDraftId) {
                 setCurrentPostId(newDraftId);
-                setSavedDraft((prev) => (prev ? { ...prev, data: { ...prev.data, postId: newDraftId } } : null));
+                finalDraftObj = { ...draftObj, data: { ...draftObj.data, postId: newDraftId } };
+                setSavedDraft(finalDraftObj);
             }
         }
+        setSavedDrafts((prev) => {
+            const id = finalDraftObj.data.postId;
+            if (!id) return [finalDraftObj, ...prev];
+            const exists = prev.some((item) => String(item.data.postId || '') === String(id));
+            return exists
+                ? prev.map((item) => (String(item.data.postId || '') === String(id) ? finalDraftObj : item))
+                : [finalDraftObj, ...prev];
+        });
 
         toaster.create({
             title: '현재 작성 중인 글이 임시 저장되었습니다.',
@@ -1033,9 +1099,9 @@ export default function Editor({
                         {mode !== 'edit' && (
                             <Button
                                 variant="outline"
-                                borderColor={savedDraft ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
-                                bg={savedDraft ? 'var(--waba-purple-soft)' : 'var(--waba-card)'}
-                                color={savedDraft ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                                borderColor={savedDrafts.length > 0 || Boolean(savedDraft) ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
+                                bg={savedDrafts.length > 0 || Boolean(savedDraft) ? 'var(--waba-purple-soft)' : 'var(--waba-card)'}
+                                color={savedDrafts.length > 0 || Boolean(savedDraft) ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
                                 rounded="full"
                                 size="sm"
                                 px={{ base: 3, md: 4 }}
@@ -1044,7 +1110,7 @@ export default function Editor({
                                 onClick={() => setDraftModalOpen(true)}
                             >
                                 <Bookmark size={14} />
-                                임시저장 {savedDraft ? '(1)' : ''}
+                                임시저장 {savedDrafts.length > 0 ? `(${savedDrafts.length})` : savedDraft ? '(1)' : ''}
                             </Button>
                         )}
                         <Button
@@ -1099,74 +1165,6 @@ export default function Editor({
                         p={{ base: 5, md: 8 }}
                     >
                         {/* Saved Draft Top Callout Banner */}
-                        {showDraftBanner && savedDraft && (
-                            <Box
-                                p={4}
-                                bg="var(--waba-purple-soft)"
-                                border="1px solid"
-                                borderColor="var(--waba-purple-border)"
-                                rounded="18px"
-                                mb={6}
-                                display="flex"
-                                flexDirection={{ base: 'column', sm: 'row' }}
-                                alignItems={{ base: 'flex-start', sm: 'center' }}
-                                justifyContent="space-between"
-                                gap={3}
-                            >
-                                <HStack gap={2.5}>
-                                    <Box
-                                        w="32px"
-                                        h="32px"
-                                        rounded="full"
-                                        bg="#6338A9"
-                                        color="white"
-                                        display="flex"
-                                        alignItems="center"
-                                        justifyContent="center"
-                                        flexShrink={0}
-                                    >
-                                        <Bookmark size={16} />
-                                    </Box>
-                                    <Box>
-                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
-                                            이전에 작성 중이던 임시 저장 글이 있습니다.
-                                        </Text>
-                                        <Text fontSize="11px" color="var(--waba-ink-3)">
-                                            {savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString('ko-KR') : ''} 저장됨
-                                            {savedDraft.data?.title ? ` • "${savedDraft.data.title}"` : ''}
-                                        </Text>
-                                    </Box>
-                                </HStack>
-
-                                <HStack gap={2} alignSelf={{ base: 'flex-end', sm: 'center' }}>
-                                    <Button
-                                        size="xs"
-                                        bg="#6338A9"
-                                        color="white"
-                                        _hover={{ bg: '#522B8F' }}
-                                        rounded="full"
-                                        px={4}
-                                        fontSize="12px"
-                                        fontWeight="700"
-                                        onClick={handleLoadDraft}
-                                    >
-                                        불러오기
-                                    </Button>
-                                    <Button
-                                        size="xs"
-                                        variant="outline"
-                                        borderColor="var(--waba-purple-border)"
-                                        color="var(--waba-ink-2)"
-                                        rounded="full"
-                                        px={3}
-                                        fontSize="12px"
-                                        onClick={handleDiscardDraft}
-                                    >
-                                        삭제
-                                    </Button>
-                                </HStack>
-                            </Box>
-                        )}
 
                         {/* Category Selector Chips (제목 바로 위) */}
                         <Box
@@ -1512,68 +1510,104 @@ export default function Editor({
                 <Portal>
                     <Dialog.Backdrop backdropFilter="blur(10px)" bg="blackAlpha.500" />
                     <Dialog.Positioner>
-                        <Dialog.Content rounded="28px" p={6} bg="white">
+                        <Dialog.Content rounded="28px" p={6} bg="var(--waba-card)">
                             <Dialog.Header p={0} mb={4}>
-                                <Flex justify="space-between" align="center">
-                                    <HStack gap={2}>
-                                        <Bookmark size={18} color="#6338A9" />
-                                        <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
-                                            임시 저장 보관함
-                                        </Dialog.Title>
-                                    </HStack>
-                                    <CloseButton size="sm" rounded="full" onClick={() => setDraftModalOpen(false)} />
+                                <Flex justify="space-between" align="center" w="100%">
+                                    <Box>
+                                        <HStack gap={2}>
+                                            <Bookmark size={18} color="#6338A9" />
+                                            <Dialog.Title fontSize="18px" fontWeight="800" color="var(--waba-ink)">
+                                                임시 저장 보관함
+                                            </Dialog.Title>
+                                        </HStack>
+                                        <Text fontSize="11.5px" color="var(--waba-ink-3)" mt={1}>
+                                            다시 저장 시 보관 기간이 30일 연장됩니다.
+                                        </Text>
+                                    </Box>
+                                    <CloseButton size="sm" rounded="full" color="var(--waba-ink)" _hover={{ bg: 'var(--waba-surface)' }} onClick={() => setDraftModalOpen(false)} />
                                 </Flex>
                             </Dialog.Header>
 
                             <Dialog.Body p={0}>
                                 <VStack gap={4} align="stretch">
-                                    {savedDraft ? (
-                                        <Box p={4} bg="purple.50/50" rounded="20px" border="1px solid" borderColor="purple.200">
-                                            <Flex justify="space-between" align="center" mb={1.5}>
-                                                <Text fontSize="11px" fontWeight="700" color="waba.purple">
-                                                    보관된 임시 저장본
-                                                </Text>
-                                                <Text fontSize="11px" color="waba.muted">
-                                                    {savedDraft.savedAt ? new Date(savedDraft.savedAt).toLocaleString('ko-KR') : ''}
-                                                </Text>
-                                            </Flex>
-                                            <Heading fontSize="15px" fontWeight="700" color="waba.charcoal" mb={2}>
-                                                {savedDraft.data?.title || '제목 없음'}
-                                            </Heading>
-                                            <Text fontSize="12px" color="waba.muted" lineClamp={2} mb={4}>
-                                                {(savedDraft.data?.blocks?.find((b): b is EditorTextBlock => b.type === 'text' && Boolean(b.content))?.content) || '작성된 본문 내용 요약...'}
-                                            </Text>
+                                    {(savedDrafts.length > 0 ? savedDrafts : savedDraft ? [savedDraft] : []).length > 0 ? (
+                                        <VStack gap={3} align="stretch" maxH="340px" overflowY="auto">
+                                            {(savedDrafts.length > 0 ? savedDrafts : savedDraft ? [savedDraft] : []).map((item, idx) => (
+                                                <Box
+                                                    key={String(item.data?.postId || idx)}
+                                                    p={4}
+                                                    bg="var(--waba-purple-soft)"
+                                                    rounded="20px"
+                                                    border="1px solid"
+                                                    borderColor="var(--waba-purple-border)"
+                                                >
+                                                    <Flex justify="space-between" align="center" mb={1.5} flexWrap="wrap" gap={1}>
+                                                        <Text fontSize="11px" fontWeight="700" color="var(--waba-purple-text)">
+                                                            보관된 임시 저장본
+                                                        </Text>
+                                                        <HStack gap={2} flexWrap="wrap">
+                                                            <Text fontSize="11px" color="var(--waba-ink-3)">
+                                                                {item.savedAt ? new Date(item.savedAt).toLocaleString('ko-KR') : ''}
+                                                            </Text>
+                                                            {(() => {
+                                                                const base = item.savedAt ? new Date(item.savedAt) : new Date();
+                                                                const exp = new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000);
+                                                                const dDay = Math.max(0, Math.ceil((exp.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+                                                                const yyyy = exp.getFullYear();
+                                                                const mm = String(exp.getMonth() + 1).padStart(2, '0');
+                                                                const dd = String(exp.getDate()).padStart(2, '0');
+                                                                return (
+                                                                    <Text fontSize="10.5px" fontWeight="700" color={dDay <= 5 ? '#EF4444' : 'var(--waba-ink-3)'}>
+                                                                        {yyyy}.{mm}.{dd} 자동 삭제 예정 (D-{dDay})
+                                                                    </Text>
+                                                                );
+                                                            })()}
+                                                        </HStack>
+                                                    </Flex>
+                                                    <Heading fontSize="15px" fontWeight="700" color="var(--waba-ink)" mb={2}>
+                                                        {item.data?.title || '제목 없음'}
+                                                    </Heading>
+                                                    <Text fontSize="12px" color="var(--waba-ink-3)" lineClamp={2} mb={4}>
+                                                        {(item.data?.blocks?.find((b): b is EditorTextBlock => b.type === 'text' && Boolean(b.content))?.content) || '작성된 본문 내용 요약...'}
+                                                    </Text>
 
-                                            <HStack justify="flex-end" gap={2}>
-                                                <Button
-                                                    size="xs"
-                                                    variant="outline"
-                                                    borderColor="gray.300"
-                                                    color="gray.600"
-                                                    _hover={{ color: 'red.500', borderColor: 'red.300' }}
-                                                    rounded="full"
-                                                    px={3}
-                                                    onClick={handleDiscardDraft}
-                                                >
-                                                    삭제
-                                                </Button>
-                                                <Button
-                                                    size="xs"
-                                                    bg="waba.purple"
-                                                    color="white"
-                                                    _hover={{ bg: 'waba.purpleHover' }}
-                                                    rounded="full"
-                                                    px={4}
-                                                    fontWeight="700"
-                                                    onClick={handleLoadDraft}
-                                                >
-                                                    이 글 불러오기
-                                                </Button>
-                                            </HStack>
-                                        </Box>
+                                                    <HStack justify="flex-end" gap={2}>
+                                                        <Button
+                                                            size="xs"
+                                                            variant="outline"
+                                                            borderColor="var(--waba-line)"
+                                                            bg="var(--waba-card)"
+                                                            color="var(--waba-ink-2)"
+                                                            _hover={{ color: 'red.500', borderColor: 'red.300', bg: 'rgba(239, 68, 68, 0.08)' }}
+                                                            rounded="full"
+                                                            px={3}
+                                                            onClick={() => {
+                                                                setPendingDeleteDraft(item);
+                                                                setDeleteConfirmOpen(true);
+                                                            }}
+                                                        >
+                                                            삭제
+                                                        </Button>
+                                                        <Button
+                                                            size="xs"
+                                                            bg="#6338A9"
+                                                            color="#FFFFFF"
+                                                            _hover={{ bg: '#522B8F' }}
+                                                            _active={{ bg: '#45237A' }}
+                                                            rounded="full"
+                                                            px={4}
+                                                            fontWeight="700"
+                                                            onClick={() => handleLoadDraft(item)}
+                                                        >
+                                                            이 글 불러오기
+                                                        </Button>
+                                                    </HStack>
+                                                </Box>
+                                            ))}
+                                        </VStack>
                                     ) : (
-                                        <Box p={6} bg="waba.subtle" rounded="20px" textAlign="center">
-                                            <Text fontSize="13px" color="waba.muted">
+                                        <Box p={6} bg="var(--waba-surface)" rounded="20px" textAlign="center">
+                                            <Text fontSize="13px" color="var(--waba-ink-3)">
                                                 현재 보관된 이전 임시 저장 글이 없습니다.
                                             </Text>
                                         </Box>
@@ -1583,9 +1617,10 @@ export default function Editor({
                                         <Button
                                             w="100%"
                                             size="md"
-                                            bg="waba.charcoal"
-                                            color="white"
-                                            _hover={{ bg: 'waba.charcoalHover' }}
+                                            bg="#6338A9"
+                                            color="#FFFFFF"
+                                            _hover={{ bg: '#522B8F' }}
+                                            _active={{ bg: '#45237A' }}
                                             rounded="full"
                                             fontWeight="700"
                                             onClick={handleSaveCurrentDraft}
@@ -1609,6 +1644,56 @@ export default function Editor({
                 title={title}
                 blocks={blocks}
             />
+
+            {/* 임시저장 삭제 확인 팝업 */}
+            <Dialog.Root open={deleteConfirmOpen} onOpenChange={(e) => setDeleteConfirmOpen(e.open)} placement="center">
+                <Portal>
+                    <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
+                    <Dialog.Positioner>
+                        <Dialog.Content rounded="24px" p={6} bg="var(--waba-card)" border="1px solid" borderColor="var(--waba-line)" maxW="360px">
+                            <Dialog.Header p={0} mb={2}>
+                                <Dialog.Title fontSize="16px" fontWeight="800" color="var(--waba-ink)">
+                                    정말 삭제하시겠습니까?
+                                </Dialog.Title>
+                            </Dialog.Header>
+                            <Dialog.Body p={0} mb={5}>
+                                <Text fontSize="13px" color="var(--waba-ink-2)">
+                                    삭제한 임시 저장 글은 복구할 수 없습니다.
+                                </Text>
+                            </Dialog.Body>
+                            <HStack justify="flex-end" gap={2}>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    borderColor="var(--waba-line)"
+                                    color="var(--waba-ink)"
+                                    rounded="full"
+                                    px={4}
+                                    onClick={() => setDeleteConfirmOpen(false)}
+                                >
+                                    취소
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    bg="#E53E3E"
+                                    color="#FFFFFF"
+                                    _hover={{ bg: '#C53030' }}
+                                    rounded="full"
+                                    px={4}
+                                    fontWeight="700"
+                                    onClick={() => {
+                                        setDeleteConfirmOpen(false);
+                                        handleDiscardDraft(pendingDeleteDraft);
+                                        setPendingDeleteDraft(null);
+                                    }}
+                                >
+                                    삭제
+                                </Button>
+                            </HStack>
+                        </Dialog.Content>
+                    </Dialog.Positioner>
+                </Portal>
+            </Dialog.Root>
         </Box>
     );
 }

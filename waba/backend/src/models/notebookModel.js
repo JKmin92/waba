@@ -5,6 +5,7 @@ const VALID_STATUSES = ['ACTIVE', 'CURED', 'COMPLETED'];
 
 const formatJourneyRow = (row) => ({
     id: row.id,
+    note_code: row.note_code || null,
     pet_id: row.pet_id,
     user_id: row.user_id,
     title: row.title,
@@ -25,6 +26,28 @@ const formatJourneyRow = (row) => ({
     created_at: row.created_at,
     updated_at: row.updated_at
 });
+
+const resolveJourneyId = async (idOrCode) => {
+    const raw = String(idOrCode || '').trim();
+    if (!raw) {
+        const error = new Error('NOTEBOOK_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+    if (/^\d+$/.test(raw)) {
+        return Number(raw);
+    }
+    const [rows] = await db.query(
+        `SELECT id FROM pet_journeys WHERE note_code = ? OR share_slug = ? LIMIT 1`,
+        [raw, raw]
+    );
+    if (!rows[0]) {
+        const error = new Error('NOTEBOOK_NOT_FOUND');
+        error.status = 404;
+        throw error;
+    }
+    return rows[0].id;
+};
 
 export const getNotebooks = async ({
     userId = null,
@@ -92,14 +115,29 @@ export const getNotebooks = async ({
             DATE_FORMAT(pj.start_date, '%Y-%m-%d') AS start_date,
             DATE_FORMAT(pj.end_date, '%Y-%m-%d') AS end_date,
             pj.is_ongoing, pj.status, pj.category, pj.goal_summary, pj.completed_at,
-            pj.share_slug, pj.share_scope, pj.created_at, pj.updated_at,
+            pj.share_slug, pj.share_scope, pj.note_code, pj.created_at, pj.updated_at,
             p.name AS pet_name, p.species AS pet_species, p.custom_species AS pet_custom_species,
             p.breed AS pet_breed, p.current_avatar_url AS pet_avatar_url,
             u.nickname AS owner_nickname, u.profile_image_url AS owner_profile_image_url,
-            (SELECT COUNT(*) FROM pet_histories ph WHERE ph.journey_id = pj.id) AS record_count,
+            (SELECT COUNT(*) FROM pet_histories ph WHERE ph.journey_id = pj.id AND (ph.is_private = 0${userId ? ' OR pj.user_id = ?' : ''})) AS record_count,
             (SELECT COUNT(*) FROM pet_journey_scraps pjs WHERE pjs.journey_id = pj.id) AS scrap_count,
             (SELECT COUNT(*) FROM pet_journey_comments pjc WHERE pjc.journey_id = pj.id AND pjc.is_deleted = 0) AS comment_count,
-            ${userId ? 'EXISTS (SELECT 1 FROM pet_journey_scraps pjs_me WHERE pjs_me.journey_id = pj.id AND pjs_me.user_id = ?)' : '0'} AS is_scrapped
+            ${userId ? 'EXISTS (SELECT 1 FROM pet_journey_scraps pjs_me WHERE pjs_me.journey_id = pj.id AND pjs_me.user_id = ?)' : '0'} AS is_scrapped,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'id', pt.id,
+                        'name', pt.name,
+                        'species', pt.species,
+                        'custom_species', pt.custom_species,
+                        'breed', pt.breed,
+                        'current_avatar_url', pt.current_avatar_url
+                    )
+                )
+                FROM pet_journey_pets pjp
+                JOIN pets pt ON pjp.pet_id = pt.id
+                WHERE pjp.journey_id = pj.id AND pt.is_deleted = 0
+            ), JSON_ARRAY()) AS pets
         FROM pet_journeys pj
         JOIN pets p ON pj.pet_id = p.id
         JOIN users u ON pj.user_id = u.id
@@ -107,7 +145,7 @@ export const getNotebooks = async ({
         ORDER BY ${orderSql}
         LIMIT ? OFFSET ?
     `;
-    const listParams = userId ? [userId, ...params, safeLimit, offset] : [...params, safeLimit, offset];
+    const listParams = userId ? [userId, userId, ...params, safeLimit, offset] : [...params, safeLimit, offset];
     const [rows] = await db.query(listSql, listParams);
 
     const notebooks = rows.map((r) => ({
@@ -120,6 +158,7 @@ export const getNotebooks = async ({
             breed: r.pet_breed,
             current_avatar_url: r.pet_avatar_url
         },
+        pets: Array.isArray(r.pets) ? r.pets : [],
         owner: {
             id: r.user_id,
             nickname: r.owner_nickname,
@@ -132,31 +171,47 @@ export const getNotebooks = async ({
 
 export const getNotebookDetail = async (idOrSlug, userId = null) => {
     const isNumericId = /^\d+$/.test(String(idOrSlug || ''));
-    const condition = isNumericId ? 'pj.id = ?' : 'pj.share_slug = ?';
+    const condition = isNumericId ? 'pj.id = ?' : '(pj.note_code = ? OR pj.share_slug = ?)';
     const lookupVal = isNumericId ? Number(idOrSlug) : String(idOrSlug);
+    const lookupParams = isNumericId ? [lookupVal] : [lookupVal, lookupVal];
 
     const [rows] = await db.query(
         `SELECT
-            pj.id, pj.pet_id, pj.user_id, pj.title, pj.description,
+            pj.id, pj.note_code, pj.pet_id, pj.user_id, pj.title, pj.description,
             DATE_FORMAT(pj.start_date, '%Y-%m-%d') AS start_date,
             DATE_FORMAT(pj.end_date, '%Y-%m-%d') AS end_date,
             pj.is_ongoing, pj.status, pj.category, pj.goal_summary, pj.completed_at,
-            pj.share_slug, pj.share_scope, pj.created_at, pj.updated_at,
+            pj.share_slug, pj.share_scope, pj.note_code, pj.created_at, pj.updated_at,
             p.name AS pet_name, p.species AS pet_species, p.custom_species AS pet_custom_species,
             p.breed AS pet_breed, p.gender AS pet_gender, p.current_avatar_url AS pet_avatar_url,
             p.latest_weight_kg AS pet_latest_weight_kg,
             u.nickname AS owner_nickname, u.profile_image_url AS owner_profile_image_url,
             u.mentor_badge AS owner_mentor_badge, u.vet_license_info AS owner_vet_license_info,
-            (SELECT COUNT(*) FROM pet_histories ph WHERE ph.journey_id = pj.id) AS record_count,
+            (SELECT COUNT(*) FROM pet_histories ph WHERE ph.journey_id = pj.id AND (ph.is_private = 0${userId ? ' OR pj.user_id = ?' : ''})) AS record_count,
             (SELECT COUNT(*) FROM pet_journey_scraps pjs WHERE pjs.journey_id = pj.id) AS scrap_count,
             (SELECT COUNT(*) FROM pet_journey_comments pjc WHERE pjc.journey_id = pj.id AND pjc.is_deleted = 0) AS comment_count,
-            ${userId ? 'EXISTS (SELECT 1 FROM pet_journey_scraps pjs_me WHERE pjs_me.journey_id = pj.id AND pjs_me.user_id = ?)' : '0'} AS is_scrapped
+            ${userId ? 'EXISTS (SELECT 1 FROM pet_journey_scraps pjs_me WHERE pjs_me.journey_id = pj.id AND pjs_me.user_id = ?)' : '0'} AS is_scrapped,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'id', pt.id,
+                        'name', pt.name,
+                        'species', pt.species,
+                        'custom_species', pt.custom_species,
+                        'breed', pt.breed,
+                        'current_avatar_url', pt.current_avatar_url
+                    )
+                )
+                FROM pet_journey_pets pjp
+                JOIN pets pt ON pjp.pet_id = pt.id
+                WHERE pjp.journey_id = pj.id AND pt.is_deleted = 0
+            ), JSON_ARRAY()) AS pets
          FROM pet_journeys pj
          JOIN pets p ON pj.pet_id = p.id
          JOIN users u ON pj.user_id = u.id
          WHERE ${condition} AND p.is_deleted = 0
          LIMIT 1`,
-        userId ? [userId, lookupVal] : [lookupVal]
+        userId ? [userId, userId, ...lookupParams] : lookupParams
     );
 
     if (!rows[0]) {
@@ -198,7 +253,7 @@ export const getNotebookDetail = async (idOrSlug, userId = null) => {
                 WHERE php.history_id = ph.id AND pst.status = 'PUBLISHED'
             ), JSON_ARRAY()) AS posts
          FROM pet_histories ph
-         WHERE ph.journey_id = ?
+         WHERE ph.journey_id = ?${row.user_id !== userId ? ' AND ph.is_private = 0' : ''}
          ORDER BY ph.event_date DESC, ph.id DESC`,
         [row.id]
     );
@@ -247,6 +302,7 @@ export const getNotebookDetail = async (idOrSlug, userId = null) => {
             current_avatar_url: row.pet_avatar_url,
             latest_weight_kg: row.pet_latest_weight_kg !== null ? Number(row.pet_latest_weight_kg) : null
         },
+        pets: Array.isArray(row.pets) ? row.pets : [],
         owner: {
             id: row.user_id,
             nickname: row.owner_nickname,
@@ -272,7 +328,8 @@ const getJourneyMeta = async (journeyId) => {
     return rows[0];
 };
 
-export const toggleNotebookScrap = async (journeyId, userId) => {
+export const toggleNotebookScrap = async (idOrCode, userId) => {
+    const journeyId = await resolveJourneyId(idOrCode);
     const journey = await getJourneyMeta(journeyId);
     if (journey.share_scope === 'PRIVATE' && journey.user_id !== userId) {
         const error = new Error('FORBIDDEN');
@@ -305,7 +362,8 @@ export const toggleNotebookScrap = async (journeyId, userId) => {
     };
 };
 
-export const updateNotebookStatus = async (journeyId, userId, { status, goal_summary } = {}) => {
+export const updateNotebookStatus = async (idOrCode, userId, { status, goal_summary } = {}) => {
+    const journeyId = await resolveJourneyId(idOrCode);
     const journey = await getJourneyMeta(journeyId);
     if (journey.user_id !== userId) {
         const error = new Error('FORBIDDEN');
@@ -343,7 +401,8 @@ export const updateNotebookStatus = async (journeyId, userId, { status, goal_sum
     };
 };
 
-export const createNotebookComment = async (journeyId, userId, content) => {
+export const createNotebookComment = async (idOrCode, userId, content) => {
+    const journeyId = await resolveJourneyId(idOrCode);
     const journey = await getJourneyMeta(journeyId);
     if (journey.share_scope === 'PRIVATE' && journey.user_id !== userId) {
         const error = new Error('FORBIDDEN');
@@ -388,7 +447,8 @@ export const createNotebookComment = async (journeyId, userId, content) => {
     };
 };
 
-export const deleteNotebookComment = async (journeyId, commentId, userId) => {
+export const deleteNotebookComment = async (idOrCode, commentId, userId) => {
+    const journeyId = await resolveJourneyId(idOrCode);
     const journey = await getJourneyMeta(journeyId);
     const [rows] = await db.query(
         `SELECT id, user_id FROM pet_journey_comments WHERE id = ? AND journey_id = ? AND is_deleted = 0 LIMIT 1`,
@@ -414,7 +474,8 @@ export const deleteNotebookComment = async (journeyId, commentId, userId) => {
     return { comment_id: Number(commentId) };
 };
 
-export const createNotebookHistory = async (journeyId, userId, data) => {
+export const createNotebookHistory = async (idOrCode, userId, data) => {
+    const journeyId = await resolveJourneyId(idOrCode);
     const journey = await getJourneyMeta(journeyId);
     if (journey.user_id !== userId) {
         const error = new Error('FORBIDDEN');

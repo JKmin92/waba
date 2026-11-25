@@ -141,8 +141,8 @@ export default function EditorBlockList({
                                 rounded="24px"
                                 overflow="hidden"
                                 border="1px solid"
-                                borderColor="waba.border"
-                                bg="waba.subtle"
+                                borderColor="var(--waba-line)"
+                                bg="var(--waba-surface)"
                                 cursor="crosshair"
                                 role="group"
                                 onClick={(e) => onImageClickToPin(e, block.id)}
@@ -163,7 +163,7 @@ export default function EditorBlockList({
                                     left={4}
                                     bg="rgba(255, 255, 255, 0.92)"
                                     backdropFilter="blur(8px)"
-                                    color="waba.charcoal"
+                                    color="var(--waba-ink)"
                                     fontSize="11px"
                                     fontWeight="700"
                                     px={3}
@@ -240,7 +240,7 @@ export default function EditorBlockList({
                                                     p={3.5}
                                                     rounded="18px"
                                                     border="1px solid"
-                                                    borderColor="waba.border"
+                                                    borderColor="var(--waba-line)"
                                                     boxShadow="0 12px 32px rgba(0,0,0,0.22)"
                                                     minW="210px"
                                                     maxW="260px"
@@ -265,11 +265,11 @@ export default function EditorBlockList({
                                                             >
                                                                 {pinIdx + 1}
                                                             </Box>
-                                                            <Text fontSize="11px" fontWeight="700" color="waba.purple">
+                                                            <Text fontSize="11px" fontWeight="700" color="var(--waba-purple-text)">
                                                                 {isPet ? '반려동물 태그' : pin.brand_name || (pin.is_official ? '와바미 공식' : '외부 제휴')}
                                                             </Text>
                                                             {pin.is_official && (
-                                                                <Box bg="waba.purple" color="white" fontSize="9px" fontWeight="800" px={1.5} py={0.2} rounded="full">
+                                                                <Box bg="#6338A9" color="white" fontSize="9px" fontWeight="800" px={1.5} py={0.2} rounded="full">
                                                                     5% 적립
                                                                 </Box>
                                                             )}
@@ -278,7 +278,7 @@ export default function EditorBlockList({
                                                             size="2xs"
                                                             rounded="full"
                                                             color="gray.400"
-                                                            _hover={{ color: 'red.500', bg: 'red.50' }}
+                                                            _hover={{ color: 'red.500', bg: 'rgba(239, 68, 68, 0.12)' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 onSetActivePinId(null);
@@ -287,13 +287,13 @@ export default function EditorBlockList({
                                                     </Flex>
 
                                                     {/* Product / Pet Name */}
-                                                    <Text fontSize="13px" fontWeight="700" color="waba.charcoal" lineClamp={2} mb={1}>
+                                                    <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)" lineClamp={2} mb={1}>
                                                         {pin.product_name}
                                                     </Text>
 
                                                     {/* Price if available */}
                                                     {pin.price !== undefined && pin.price > 0 && (
-                                                        <Text fontSize="12px" fontWeight="700" color="waba.purple" mb={2}>
+                                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-purple-text)" mb={2}>
                                                             {Number(pin.price).toLocaleString()}원
                                                         </Text>
                                                     )}
@@ -305,7 +305,7 @@ export default function EditorBlockList({
                                                         mt={1.5}
                                                         variant="subtle"
                                                         color="red.600"
-                                                        bg="red.50"
+                                                        bg="rgba(239, 68, 68, 0.12)"
                                                         _hover={{ bg: 'red.100' }}
                                                         rounded="full"
                                                         fontSize="11px"
@@ -379,7 +379,7 @@ export default function EditorBlockList({
                             {block.pins.length > 0 && (
                                 <Box mt={2.5} px={1}>
                                     <Flex align="center" gap={1.5} flexWrap="wrap">
-                                        <Text fontSize="11px" fontWeight="700" color="waba.muted" mr={1}>
+                                        <Text fontSize="11px" fontWeight="700" color="var(--waba-ink-3)" mr={1}>
                                             사진 속 태그 ({block.pins.length}):
                                         </Text>
                                         {block.pins.map((pin, pIdx) => {
@@ -391,7 +391,7 @@ export default function EditorBlockList({
                                                     key={pin.pin_id}
                                                     bg={isSelected ? 'purple.50' : 'white'}
                                                     border="1px solid"
-                                                    borderColor={isSelected ? 'purple.300' : 'waba.border'}
+                                                    borderColor={isSelected ? 'purple.300' : 'var(--waba-line)'}
                                                     px={2.5}
                                                     py={1}
                                                     rounded="full"
@@ -419,7 +419,7 @@ export default function EditorBlockList({
                                                     >
                                                         {pIdx + 1}
                                                     </Box>
-                                                    <Text color="waba.charcoal" maxW="160px" truncate>
+                                                    <Text color="var(--waba-ink)" maxW="160px" truncate>
                                                         {pin.product_name}
                                                     </Text>
                                                     <CloseButton
@@ -447,13 +447,13 @@ export default function EditorBlockList({
                                     onChange={(e) => onUpdateImageCaption(block.id, e.target.value)}
                                     placeholder="• 사진에 대한 캡션을 입력하세요..."
                                     fontSize="13px"
-                                    color="waba.muted"
+                                    color="var(--waba-ink-3)"
                                     border="none"
                                     outline="none"
                                     px={0}
                                     _focus={{ outline: 'none' }}
                                 />
-                                <Text fontSize="12px" color="waba.faint" whiteSpace="nowrap">
+                                <Text fontSize="12px" color="var(--waba-ink-3)" whiteSpace="nowrap">
                                     핀 {block.pins.length}개 연동됨
                                 </Text>
                             </Flex>

@@ -1,14 +1,15 @@
 'use client'
 
 import { Box, Button, Dialog, FormatNumber, Heading, HStack, IconButton, Menu, Portal, Stack, Text, Textarea, VStack } from "@chakra-ui/react";
-import { useState } from "react";
-import { Heart, MoreHorizontal, Pencil, Pin, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { MoreHorizontal, Pencil, Pin, Trash2 } from "lucide-react";
 import { Comment as CommentType, User } from "@/interface";
 import { formatRelativeTime } from "@/utils/simpleUtils";
 import { isAuthenticated } from "@/utils/authUtils";
 import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 import UserAvatar from "../../common/UserAvatar";
+import LikeBurstButton from "../../common/LikeBurstButton";
 
 export interface CommentProps {
     postId: string;
@@ -44,6 +45,70 @@ export default function Comment({
     const isPostViewerAuthor = Boolean(currentUser?.id && postAuthorId && currentUser.id === postAuthorId);
     const pinnedCount = comments.filter((c) => Boolean(c.is_pinned)).length;
 
+    const [likingCommentIds, setLikingCommentIds] = useState<Record<string, boolean>>({});
+    const commentsRef = useRef<CommentType[]>(comments);
+
+    useEffect(() => {
+        commentsRef.current = comments;
+    }, [comments]);
+
+    const handleToggleCommentLike = async (commentId: string) => {
+        if (!isAuthenticated()) {
+            onRequireLogin();
+            return;
+        }
+        if (likingCommentIds[commentId]) return;
+
+        const currentList = commentsRef.current;
+        const target = currentList.find((c) => String(c.id) === String(commentId));
+        if (!target) return;
+
+        const prevLiked = Boolean(target.is_liked);
+        const prevCount = target.like_count || 0;
+        const nextLiked = !prevLiked;
+        const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+        const optimisticList = currentList.map((c) =>
+            String(c.id) === String(commentId)
+                ? { ...c, is_liked: nextLiked, like_count: nextCount }
+                : c
+        );
+        commentsRef.current = optimisticList;
+        onCommentsUpdate?.(optimisticList, commentCount ?? optimisticList.length);
+        setLikingCommentIds((prev) => ({ ...prev, [commentId]: true }));
+
+        try {
+            const res = await axiosInstance.post(`/post/comment/${commentId}/like`);
+            const serverLiked = res.data?.is_liked ?? nextLiked;
+            const serverCount = res.data?.like_count ?? nextCount;
+            const reconciledList = commentsRef.current.map((c) =>
+                String(c.id) === String(commentId)
+                    ? { ...c, is_liked: Boolean(serverLiked), like_count: serverCount }
+                    : c
+            );
+            commentsRef.current = reconciledList;
+            onCommentsUpdate?.(reconciledList, commentCount ?? reconciledList.length);
+        } catch (error: any) {
+            const rollbackList = commentsRef.current.map((c) =>
+                String(c.id) === String(commentId)
+                    ? { ...c, is_liked: prevLiked, like_count: prevCount }
+                    : c
+            );
+            commentsRef.current = rollbackList;
+            onCommentsUpdate?.(rollbackList, commentCount ?? rollbackList.length);
+            toaster.create({
+                title: error?.response?.data?.message || '댓글 좋아요 처리에 실패했습니다.',
+                type: 'error',
+            });
+        } finally {
+            setLikingCommentIds((prev) => {
+                const next = { ...prev };
+                delete next[commentId];
+                return next;
+            });
+        }
+    };
+
     const handleTogglePinComment = async (commentId: string) => {
         if (!isPostViewerAuthor || pinningCommentId) return;
         setPinningCommentId(commentId);
@@ -55,10 +120,10 @@ export default function Comment({
                 const updatedComments = comments.map((c) =>
                     c.id === commentId
                         ? {
-                              ...c,
-                              is_pinned: !Boolean(c.is_pinned),
-                              pinned_at: !Boolean(c.is_pinned) ? new Date().toISOString() : null,
-                          }
+                            ...c,
+                            is_pinned: !Boolean(c.is_pinned),
+                            pinned_at: !Boolean(c.is_pinned) ? new Date().toISOString() : null,
+                        }
                         : c
                 );
                 onCommentsUpdate?.(updatedComments, commentCount ?? updatedComments.length);
@@ -202,17 +267,17 @@ export default function Comment({
                 <Portal>
                     <Dialog.Backdrop />
                     <Dialog.Positioner>
-                        <Dialog.Content borderRadius="24px" p={6} bg="white">
+                        <Dialog.Content borderRadius="24px" p={6} bg="var(--waba-card)">
                             <Dialog.Header p={0} mb={2}>
-                                <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
+                                <Dialog.Title fontSize="18px" fontWeight="800" color="var(--waba-ink)">
                                     댓글을 삭제할까요?
                                 </Dialog.Title>
                             </Dialog.Header>
                             <Dialog.Body p={0} mb={6}>
-                                <Text fontSize="13px" color="gray.600">삭제한 댓글은 복구할 수 없습니다.</Text>
+                                <Text fontSize="13px" color="var(--waba-ink-2)">삭제한 댓글은 복구할 수 없습니다.</Text>
                             </Dialog.Body>
                             <Dialog.Footer p={0} gap={2}>
-                                <Button variant="outline" rounded="full" flex={1} onClick={() => setDeleteTargetId(null)} disabled={isDeletingComment}>
+                                <Button variant="outline" rounded="full" flex={1} color="var(--waba-ink)" borderColor="var(--waba-line)" onClick={() => setDeleteTargetId(null)} disabled={isDeletingComment}>
                                     취소
                                 </Button>
                                 <Button
@@ -258,7 +323,7 @@ export default function Comment({
                         size="xs"
                         variant="ghost"
                         fontWeight={commentSort === 'oldest' ? "800" : "500"}
-                        color={commentSort === 'oldest' ? "waba.charcoal" : "waba.muted"}
+                        color={commentSort === 'oldest' ? "var(--waba-ink)" : "var(--waba-ink-3)"}
                         onClick={() => setCommentSort('oldest')}
                     >
                         등록순
@@ -268,7 +333,7 @@ export default function Comment({
                         size="xs"
                         variant="ghost"
                         fontWeight={commentSort === 'latest' ? "800" : "500"}
-                        color={commentSort === 'latest' ? "waba.charcoal" : "waba.muted"}
+                        color={commentSort === 'latest' ? "var(--waba-ink)" : "var(--waba-ink-3)"}
                         onClick={() => setCommentSort('latest')}
                     >
                         최신순
@@ -278,7 +343,7 @@ export default function Comment({
                         size="xs"
                         variant="ghost"
                         fontWeight={commentSort === 'popular' ? "800" : "500"}
-                        color={commentSort === 'popular' ? "waba.charcoal" : "waba.muted"}
+                        color={commentSort === 'popular' ? "var(--waba-ink)" : "var(--waba-ink-3)"}
                         onClick={() => setCommentSort('popular')}
                     >
                         추천순
@@ -303,7 +368,7 @@ export default function Comment({
                         alt={currentUser?.nickname || '프로필'}
                         size="md"
                         border="1px solid"
-                        borderColor="waba.border"
+                        borderColor="var(--waba-line)"
                     />
                     <VStack flex={1} align="stretch" gap={3}>
                         <Textarea
@@ -331,7 +396,7 @@ export default function Comment({
                                 as="label"
                                 cursor="pointer"
                                 fontSize="12px"
-                                color="waba.muted"
+                                color="var(--waba-ink-3)"
                                 userSelect="none"
                                 gap={1.5}
                             >
@@ -345,7 +410,7 @@ export default function Comment({
                             </HStack>
 
                             <HStack gap={3}>
-                                <Text fontSize="11px" color="waba.faint">
+                                <Text fontSize="11px" color="var(--waba-ink-3)">
                                     {commentContent.length} / 500
                                 </Text>
                                 <Button
@@ -353,11 +418,11 @@ export default function Comment({
                                     px={5}
                                     h="34px"
                                     borderRadius="full"
-                                    bg="waba.charcoal"
+                                    bg="#6338A9"
                                     color="white"
                                     fontSize="13px"
                                     fontWeight="700"
-                                    _hover={{ bg: 'waba.purple' }}
+                                    _hover={{ bg: '#532d91' }}
                                     disabled={!commentContent.trim() || isSubmittingComment}
                                     loading={isSubmittingComment}
                                     onClick={handleCreateComment}
@@ -377,14 +442,14 @@ export default function Comment({
                         textAlign="center"
                         py={12}
                         borderRadius="24px"
-                        bg="waba.subtle"
+                        bg="var(--waba-surface)"
                         border="1px dashed"
-                        borderColor="blackAlpha.200"
+                        borderColor="var(--waba-line)"
                     >
-                        <Text fontSize="14px" fontWeight="700" color="waba.charcoal" mb={1}>
+                        <Text fontSize="14px" fontWeight="700" color="var(--waba-ink)" mb={1}>
                             아직 등록된 댓글이 없습니다.
                         </Text>
-                        <Text fontSize="12px" color="waba.faint">
+                        <Text fontSize="12px" color="var(--waba-ink-3)">
                             이 공간에 대해 가장 먼저 따뜻한 한마디를 남겨보세요!
                         </Text>
                     </Box>
@@ -501,8 +566,8 @@ export default function Comment({
                                                         variant="ghost"
                                                         size="2xs"
                                                         rounded="full"
-                                                        color="waba.faint"
-                                                        _hover={{ color: 'waba.charcoal' }}
+                                                        color="var(--waba-ink-3)"
+                                                        _hover={{ color: 'var(--waba-ink)' }}
                                                     >
                                                         <MoreHorizontal size={16} />
                                                     </IconButton>
@@ -515,8 +580,8 @@ export default function Comment({
                                                             p={1.5}
                                                             boxShadow="0 12px 32px -4px rgba(26, 28, 30, 0.12)"
                                                             border="1px solid"
-                                                            borderColor="waba.border"
-                                                            bg="white"
+                                                            borderColor="var(--waba-line)"
+                                                            bg="var(--waba-card)"
                                                         >
                                                             <Menu.Item
                                                                 value="edit"
@@ -524,6 +589,9 @@ export default function Comment({
                                                                 borderRadius="10px"
                                                                 py={2}
                                                                 px={3}
+                                                                color="var(--waba-ink)"
+                                                                _hover={{ bg: 'var(--waba-surface)' }}
+                                                                _highlighted={{ bg: 'var(--waba-surface)' }}
                                                                 onClick={() => startEditComment(item.id, item.content)}
                                                             >
                                                                 <Pencil size={14} />
@@ -536,7 +604,7 @@ export default function Comment({
                                                                 py={2}
                                                                 px={3}
                                                                 color="red.500"
-                                                                _hover={{ bg: 'red.50' }}
+                                                                _hover={{ bg: 'rgba(239, 68, 68, 0.12)' }} _highlighted={{ bg: 'rgba(239, 68, 68, 0.12)' }}
                                                                 onClick={() => setDeleteTargetId(item.id)}
                                                             >
                                                                 <Trash2 size={14} />
@@ -547,10 +615,15 @@ export default function Comment({
                                                 </Portal>
                                             </Menu.Root>
                                         )}
-                                        <HStack gap={1} color="waba.muted" fontSize="xs">
-                                            <Heart size={13} />
-                                            <Text><FormatNumber value={item.like_count || 0} /></Text>
-                                        </HStack>
+                                        <LikeBurstButton
+                                            variant="ghost"
+                                            size="sm"
+                                            isLiked={Boolean(item.is_liked)}
+                                            likeCount={item.like_count || 0}
+                                            onToggle={() => handleToggleCommentLike(item.id)}
+                                            disabled={Boolean(likingCommentIds[item.id])}
+                                            ariaLabel={item.is_liked ? '댓글 좋아요 취소' : '댓글 좋아요'}
+                                        />
                                     </HStack>
                                 </HStack>
                                 {editingCommentId === item.id ? (
@@ -562,20 +635,23 @@ export default function Comment({
                                             minH="80px"
                                             fontSize="14px"
                                             lineHeight="1.6"
+                                            bg="var(--waba-surface)"
+                                            color="var(--waba-ink)"
+                                            borderColor="var(--waba-line)"
                                             autoFocus
                                         />
                                         <HStack justify="space-between">
-                                            <Text fontSize="11px" color="waba.faint">{editContent.length} / 500</Text>
+                                            <Text fontSize="11px" color="var(--waba-ink-3)">{editContent.length} / 500</Text>
                                             <HStack gap={2}>
-                                                <Button size="xs" variant="outline" rounded="full" onClick={cancelEditComment} disabled={isSavingEdit}>
+                                                <Button size="xs" variant="outline" rounded="full" color="var(--waba-ink)" borderColor="var(--waba-line)" _hover={{ bg: 'var(--waba-surface)' }} onClick={cancelEditComment} disabled={isSavingEdit}>
                                                     취소
                                                 </Button>
                                                 <Button
                                                     size="xs"
                                                     rounded="full"
-                                                    bg="waba.charcoal"
+                                                    bg="#6338A9"
                                                     color="white"
-                                                    _hover={{ bg: 'waba.purple' }}
+                                                    _hover={{ bg: '#532d91' }}
                                                     onClick={() => handleUpdateComment(item.id)}
                                                     disabled={!editContent.trim()}
                                                     loading={isSavingEdit}

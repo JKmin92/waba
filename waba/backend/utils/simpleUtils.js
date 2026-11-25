@@ -56,3 +56,15 @@ export const generatePetId = () => {
     const min = String(now.getMinutes()).padStart(2, '0');
     return `${random4}${yy}${mm}${dd}${hh}${min}`.slice(0, 20);
 };
+
+export const generateNoteCode = () => {
+    const random3 = Math.floor(100 + Math.random() * 900);
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `no${yy}${mm}${dd}${hh}${min}${ss}${random3}`;
+};

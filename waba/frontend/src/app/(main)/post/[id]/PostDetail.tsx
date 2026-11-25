@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Button, Dialog, Portal, Separator, Stack, Text } from "@chakra-ui/react"
+import { Box, Button, CloseButton, Dialog, Flex, HStack, Portal, Separator, Stack, Text, Textarea, VStack } from "@chakra-ui/react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/api";
@@ -26,6 +26,10 @@ export default function PostDetail({ postId }: { postId: string }) {
     const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
     const [loginModalOpen, setLoginModalOpen] = useState(false);
     const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportReason, setReportReason] = useState('스팸/홍보성 게시물');
+    const [reportDetail, setReportDetail] = useState('');
+    const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const router = useRouter();
@@ -256,6 +260,15 @@ export default function PostDetail({ postId }: { postId: string }) {
                         onToggleLike={toggleLike}
                         onToggleBookmark={toggleBookmark}
                         onOpenShare={() => setShareModalOpen(true)}
+                        onOpenReport={
+                            Boolean(currentUser) && !isAuthor
+                                ? () => {
+                                      setReportReason('스팸/홍보성 게시물');
+                                      setReportDetail('');
+                                      setReportModalOpen(true);
+                                  }
+                                : undefined
+                        }
                         onOpenDelete={() => setDeleteModalOpen(true)}
                     />
 
@@ -288,6 +301,145 @@ export default function PostDetail({ postId }: { postId: string }) {
                     </Stack>
                 </Stack>
             </Box>
+
+            {/* 게시글 신고 모달 */}
+            <Dialog.Root open={reportModalOpen} onOpenChange={(e) => setReportModalOpen(e.open)} placement="center">
+                <Portal>
+                    <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
+                    <Dialog.Positioner p={{ base: 3, md: 4 }}>
+                        <Dialog.Content
+                            maxW="440px"
+                            w="full"
+                            borderRadius="24px"
+                            bg="var(--waba-card)"
+                            border="1px solid"
+                            borderColor="var(--waba-line)"
+                            p={6}
+                        >
+                            <Dialog.Header p={0} mb={4}>
+                                <Flex w="100%" justify="space-between" align="center">
+                                    <Dialog.Title fontSize="17px" fontWeight="800" color="var(--waba-ink)">
+                                        게시글 신고하기
+                                    </Dialog.Title>
+                                    <CloseButton size="sm" rounded="full" color="var(--waba-ink)" onClick={() => setReportModalOpen(false)} />
+                                </Flex>
+                            </Dialog.Header>
+                            <Dialog.Body p={0}>
+                                <VStack align="stretch" gap={4}>
+                                    <Box>
+                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={2}>
+                                            신고 사유 선택
+                                        </Text>
+                                        <HStack gap={1.5} flexWrap="wrap">
+                                            {[
+                                                '스팸/홍보성 게시물',
+                                                '욕설/비방/혐오 표현',
+                                                '부적절/잔인한 이미지',
+                                                '허위 의료/케어 정보',
+                                                '저작권/개인정보 침해',
+                                                '기타',
+                                            ].map((r) => {
+                                                const active = reportReason === r;
+                                                return (
+                                                    <Button
+                                                        key={r}
+                                                        size="xs"
+                                                        h="28px"
+                                                        px={3}
+                                                        borderRadius="999px"
+                                                        bg={active ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                                        color={active ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                                                        border="1px solid"
+                                                        borderColor={active ? '#6338A9' : 'var(--waba-line)'}
+                                                        fontSize="11.5px"
+                                                        fontWeight={active ? '700' : '600'}
+                                                        onClick={() => setReportReason(r)}
+                                                    >
+                                                        {r}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </HStack>
+                                    </Box>
+
+                                    <Box>
+                                        <Flex justify="space-between" align="center" mb={1.5}>
+                                            <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)">
+                                                상세 내용 (필수)
+                                            </Text>
+                                            <Text fontSize="11px" color="var(--waba-ink-3)">
+                                                {reportDetail.length} / 2000
+                                            </Text>
+                                        </Flex>
+                                        <Textarea
+                                            value={reportDetail}
+                                            onChange={(e) => setReportDetail(e.target.value)}
+                                            placeholder="신고 사유에 대한 상세 상황을 구체적으로 입력해 주세요. (필수)"
+                                            maxLength={2000}
+                                            rows={3}
+                                            bg="var(--waba-surface)"
+                                            border="1px solid"
+                                            borderColor="var(--waba-line)"
+                                            color="var(--waba-ink)"
+                                            fontSize="13px"
+                                        />
+                                    </Box>
+
+                                    <HStack justify="flex-end" gap={2} pt={1}>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            borderColor="var(--waba-line)"
+                                            color="var(--waba-ink)"
+                                            rounded="full"
+                                            px={4}
+                                            onClick={() => setReportModalOpen(false)}
+                                        >
+                                            취소
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            bg="#6338A9"
+                                            color="#FFFFFF"
+                                            _hover={{ bg: '#522B8F' }}
+                                            _disabled={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                            rounded="full"
+                                            px={5}
+                                            fontWeight="700"
+                                            disabled={!reportDetail.trim() || isSubmittingReport}
+                                            loading={isSubmittingReport}
+                                            onClick={async () => {
+                                                if (!reportDetail.trim()) {
+                                                    toaster.create({ title: '신고 상세 내용을 입력해주세요.', type: 'warning' });
+                                                    return;
+                                                }
+                                                setIsSubmittingReport(true);
+                                                try {
+                                                    await axiosInstance.post(`/post/${postId}/report`, {
+                                                        reason: reportReason,
+                                                        detail: reportDetail.trim(),
+                                                    });
+                                                    toaster.create({ title: '신고가 정상적으로 접수되었습니다.', type: 'success' });
+                                                    setReportModalOpen(false);
+                                                } catch (err: any) {
+                                                    toaster.create({
+                                                        title: err?.response?.data?.message || '신고 접수에 실패했습니다.',
+                                                        type: 'error',
+                                                    });
+                                                } finally {
+                                                    setIsSubmittingReport(false);
+                                                }
+                                            }}
+                                        >
+                                            신고 접수
+                                        </Button>
+                                    </HStack>
+                                </VStack>
+                            </Dialog.Body>
+                        </Dialog.Content>
+                    </Dialog.Positioner>
+                </Portal>
+            </Dialog.Root>
         </Box>
     )
 }

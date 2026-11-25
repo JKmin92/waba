@@ -2,16 +2,17 @@
 
 import { toaster } from "@/components/ui/toaster"
 import axiosInstance from "@/utils/api"
-import { Box, Button, Dialog, Field, Flex, Heading, HStack, IconButton, Image, Input, Span, Text, VStack } from "@chakra-ui/react"
-import { ArrowRight, Eye, EyeOff } from "lucide-react"
+import { Box, Button, Dialog, Field, Flex, Heading, HStack, Image, Input, Span, Text, VStack } from "@chakra-ui/react"
+import { ArrowRight } from "lucide-react"
 import { useState } from "react"
+import PasswordStrengthInput from "../../common/PasswordStrengthInput"
+import { evaluatePasswordStrength } from "@/utils/passwordPolicy"
 
 export default function JoinClient({ setModalType, setOpen }: { setModalType: (modalType: 'login' | 'join') => void, setOpen: (open: boolean) => void }) {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [passwordConfirm, setPasswordConfirm] = useState("")
     const [nickname, setNickname] = useState("")
-    const [showPw, setShowPw] = useState(false);
     const [checkedNickname, setCheckedNickname] = useState(false);
 
     // 약관 동의 상태
@@ -32,6 +33,11 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                 toaster.create({ title: '필수 이용약관에 동의해주세요.', type: 'error' });
                 return;
             }
+            const pwEval = evaluatePasswordStrength(password, email);
+            if (!pwEval.isValid) {
+                toaster.create({ title: pwEval.errorMessage || '비밀번호 정책을 확인해주세요.', type: 'error' });
+                return;
+            }
             if (password !== passwordConfirm) {
                 toaster.create({ title: '비밀번호가 일치하지 않습니다.', type: 'error' });
                 return;
@@ -44,14 +50,14 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
 
             const userData = { email, password, nickname, agreeMarketing };
             const res = await axiosInstance.post("/user/join", userData);
-            if (res.data.email) {
+            if (res.data?.user?.email || res.data?.email) {
                 toaster.create({ title: '가입완료!', description: '저희 와바에 가입해주셔서 감사합니다.', type: 'success' });
                 setOpen(false);
             }
 
         } catch (e: any) {
-            if (e.response?.status === 409) {
-                const errorMessage = e.response.data?.message || '이미 가입된 정보가 존재합니다.';
+            if (e.response?.status === 400 || e.response?.status === 409) {
+                const errorMessage = e.response.data?.message || '오류가 발생했습니다.';
                 toaster.create({ title: errorMessage, type: 'error' });
                 return;
             }
@@ -227,31 +233,14 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                     {/* 비밀번호 */}
                     <Field.Root>
                         <Field.Label fontSize="12px" fontWeight="700" color="waba.charcoal">비밀번호</Field.Label>
-                        <Box position="relative" w="full">
-                            <Input
-                                type={showPw ? "text" : "password"}
-                                placeholder="영문, 숫자, 특수문자 조합 8자 이상"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                pr={12}
-                                required
-                                {...inputStyle}
-                            />
-                            <IconButton
-                                aria-label="비밀번호 보기"
-                                variant="ghost"
-                                size="sm"
-                                position="absolute"
-                                right={3}
-                                top="50%"
-                                transform="translateY(-50%)"
-                                color="waba.muted"
-                                _hover={{ color: "waba.charcoal" }}
-                                onClick={() => setShowPw((v) => !v)}
-                            >
-                                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </IconButton>
-                        </Box>
+                        <PasswordStrengthInput
+                            value={password}
+                            onChange={setPassword}
+                            email={email}
+                            inputVariant="join"
+                            required
+                            autoComplete="new-password"
+                        />
                     </Field.Root>
 
                     {/* 비밀번호 확인 */}
@@ -265,6 +254,17 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                             required
                             {...inputStyle}
                         />
+                        {passwordConfirm.length > 0 && (
+                            <Text
+                                fontSize="11.5px"
+                                fontWeight="600"
+                                color={password === passwordConfirm ? '#16A34A' : 'red.500'}
+                                mt={1}
+                                pl={1}
+                            >
+                                {password === passwordConfirm ? '✓ 비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}
+                            </Text>
+                        )}
                     </Field.Root>
 
                     {/* 닉네임 & 중복확인 버튼 */}

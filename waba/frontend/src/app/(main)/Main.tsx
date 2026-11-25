@@ -6,7 +6,7 @@ import { PostDetail } from '@/interface/community.interface';
 import { toaster } from '@/components/ui/toaster';
 import axiosInstance from '@/utils/api';
 import { isAuthenticated } from '@/utils/authUtils';
-import MainTopBar, { MainCategoryTab } from './main-components/MainTopBar';
+import MainTopBar from './main-components/MainTopBar';
 import SpotlightHero from './main-components/SpotlightHero';
 import HotQnASection from './main-components/HotQnASection';
 import LifeSnapFeedSection from './main-components/LifeSnapFeedSection';
@@ -19,14 +19,39 @@ interface PetSummary {
     latest_weight_kg?: number | string | null;
 }
 
+const VALID_CURATION_SPECIES = ['DOG', 'CAT', 'RABBIT', 'HAMSTER', 'GUINEAPIG', 'CHINCHILA'];
+
+function getPostTargetSpecies(item: PostDetail): string[] {
+    const raw = item.post.curation_target_species;
+    if (raw !== null && raw !== undefined) {
+        let arr: unknown[] = [];
+        if (Array.isArray(raw)) {
+            arr = raw;
+        } else if (typeof raw === 'string') {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) arr = parsed;
+            } catch {
+                arr = raw.split(',').map((s) => s.trim()).filter(Boolean);
+            }
+        }
+        return arr.map((s) => String(s).toUpperCase());
+    }
+    const petSpecies = (item.post_pets || [])
+        .map((p) => String(p.species || '').toUpperCase())
+        .filter((s) => VALID_CURATION_SPECIES.includes(s));
+    return Array.from(new Set(petSpecies));
+}
+
 export default function Main() {
     const [postList, setPostList] = useState<PostDetail[]>([]);
-    const [activeCategory, setActiveCategory] = useState<MainCategoryTab>('ALL');
-    const [sortOrder, setSortOrder] = useState<'popular' | 'latest'>('popular');
     const [searchQuery, setSearchQuery] = useState('');
 
+    const [authReady, setAuthReady] = useState(false);
     const [isLogin, setIsLogin] = useState(false);
-    const [primaryPet, setPrimaryPet] = useState<PetSummary | null>(null);
+    const [userPets, setUserPets] = useState<PetSummary[]>([]);
+    const primaryPet = userPets[0] || null;
+    const [spotlightPost, setSpotlightPost] = useState<PostDetail | undefined>(undefined);
 
     useEffect(() => {
         const fetchMainPosts = async () => {
@@ -44,15 +69,18 @@ export default function Main() {
             const authed = isAuthenticated();
             setIsLogin(authed);
             if (!authed) {
-                setPrimaryPet(null);
+                setUserPets([]);
+                setAuthReady(true);
                 return;
             }
             try {
                 const res = await axiosInstance.get('/user/pets');
                 const pets: PetSummary[] = Array.isArray(res.data) ? res.data : res.data?.pets || [];
-                setPrimaryPet(pets[0] || null);
+                setUserPets(pets);
             } catch {
-                setPrimaryPet(null);
+                setUserPets([]);
+            } finally {
+                setAuthReady(true);
             }
         };
 
@@ -62,15 +90,48 @@ export default function Main() {
         return () => window.removeEventListener('auth-change', syncAuthAndPet);
     }, []);
 
-    const spotlightPost = useMemo(() => {
-        return (
-            postList.find(
-                (item) => item.post.curation_grade === 'MAIN_LOOKBOOK' && item.post.board_id === 'LOOKBOOK'
-            ) ||
-            postList.find((item) => item.post.board_id === 'CARE_LOUNGE') ||
-            postList[0]
-        );
-    }, [postList]);
+    useEffect(() => {
+        if (!authReady || postList.length === 0) {
+            setSpotlightPost(undefined);
+            return;
+        }
+
+        const mainLookbookPool = postList.filter((item) => item.post.curation_grade === 'MAIN_LOOKBOOK');
+        if (mainLookbookPool.length === 0) {
+            setSpotlightPost(
+                postList.find((item) => item.post.board_id === 'CARE_LOUNGE') || postList[0]
+            );
+            return;
+        }
+
+        const userSpecies = userPets
+            .map((p) => String(p.species || '').toUpperCase())
+            .filter((s) => VALID_CURATION_SPECIES.includes(s));
+
+        let pool = mainLookbookPool;
+        if (isLogin && userSpecies.length > 0) {
+            const matched = mainLookbookPool.filter((item) => {
+                const targets = getPostTargetSpecies(item);
+                return targets.some((t) => userSpecies.includes(t));
+            });
+            if (matched.length > 0) {
+                pool = matched;
+            } else {
+                const common = mainLookbookPool.filter((item) => getPostTargetSpecies(item).includes('ALL'));
+                pool = common.length > 0 ? common : mainLookbookPool;
+            }
+        }
+
+        const lastId = typeof window !== 'undefined' ? sessionStorage.getItem('waba_last_spotlight_post_id') : null;
+        const filtered = pool.length >= 2 && lastId ? pool.filter((item) => String(item.post.id) !== lastId) : pool;
+        const candidates = filtered.length > 0 ? filtered : pool;
+        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+
+        if (chosen && typeof window !== 'undefined') {
+            sessionStorage.setItem('waba_last_spotlight_post_id', String(chosen.post.id));
+        }
+        setSpotlightPost(chosen);
+    }, [postList, authReady, isLogin, userPets]);
 
     const qnaPosts = useMemo(() => {
         const qna = postList.filter((item) => item.post.board_id === 'QNA');
@@ -82,14 +143,6 @@ export default function Main() {
     const filteredFeedPosts = useMemo(() => {
         let list = [...postList];
 
-        if (activeCategory === 'SNAP') {
-            list = list.filter((item) => item.post.board_id === 'SNAP' || item.post.board_id === 'LOOKBOOK');
-        } else if (activeCategory === 'QNA') {
-            list = list.filter((item) => item.post.board_id === 'QNA');
-        } else if (activeCategory === 'CARE_LOUNGE') {
-            list = list.filter((item) => item.post.board_id === 'CARE_LOUNGE');
-        }
-
         const q = searchQuery.trim().toLowerCase();
         if (q) {
             list = list.filter(
@@ -100,23 +153,15 @@ export default function Main() {
             );
         }
 
-        if (sortOrder === 'popular') {
-            list.sort(
-                (a, b) =>
-                    (b.post.like_count ?? 0) +
-                    (b.post.comment_count ?? 0) -
-                    ((a.post.like_count ?? 0) + (a.post.comment_count ?? 0))
-            );
-        } else {
-            list.sort((a, b) => {
-                const timeA = a.post.created_at ? new Date(a.post.created_at).getTime() : Number(a.post.id) || 0;
-                const timeB = b.post.created_at ? new Date(b.post.created_at).getTime() : Number(b.post.id) || 0;
-                return timeB - timeA;
-            });
-        }
+        list.sort(
+            (a, b) =>
+                (b.post.like_count ?? 0) +
+                (b.post.comment_count ?? 0) -
+                ((a.post.like_count ?? 0) + (a.post.comment_count ?? 0))
+        );
 
         return list;
-    }, [postList, activeCategory, searchQuery, sortOrder]);
+    }, [postList, searchQuery]);
 
     return (
         <Box
@@ -130,15 +175,11 @@ export default function Main() {
         >
             <VStack align="stretch" gap={{ base: '18px', md: '22px' }} minW={0}>
                 <MainTopBar
-                    activeCategory={activeCategory}
-                    onCategoryChange={setActiveCategory}
-                    sortOrder={sortOrder}
-                    onToggleSort={() => setSortOrder((prev) => (prev === 'popular' ? 'latest' : 'popular'))}
                     searchQuery={searchQuery}
                     onSearchQueryChange={setSearchQuery}
                 />
 
-                {activeCategory === 'ALL' && !searchQuery.trim() && (
+                {!searchQuery.trim() && (
                     <>
                         <SpotlightHero
                             spotlightPost={spotlightPost}

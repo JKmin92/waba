@@ -401,7 +401,7 @@ export default function SearchModal({ open, onOpenChange }: SearchModalProps) {
                                             </Text>
                                             <HStack
                                                 gap={1}
-                                                bg="red.50"
+                                                bg="rgba(239, 68, 68, 0.12)"
                                                 color="red.500"
                                                 px={1.5}
                                                 py={0.5}

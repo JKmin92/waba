@@ -47,7 +47,16 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
     const pathname = usePathname();
 
     const [isLogin, setIsLogin] = useState(false);
+    const [pets, setPets] = useState<PetSummary[]>([]);
     const [primaryPet, setPrimaryPet] = useState<PetSummary | null>(null);
+    const [autoJournalEnabled, setAutoJournalEnabled] = useState(false);
+    const [latestHistory, setLatestHistory] = useState<{
+        title?: string;
+        pet_id?: number | string;
+        pet?: PetSummary;
+        pets?: PetSummary[];
+    } | null>(null);
+    const [latestHistoryTitle, setLatestHistoryTitle] = useState<string | null>(null);
     const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,21 +71,50 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
             const authed = isAuthenticated();
             setIsLogin(authed);
             if (!authed) {
+                setPets([]);
                 setPrimaryPet(null);
+                setAutoJournalEnabled(false);
+                setLatestHistory(null);
+                setLatestHistoryTitle(null);
                 return;
             }
-            try {
-                const res = await axiosInstance.get('/user/pets');
-                const pets: PetSummary[] = Array.isArray(res.data) ? res.data : res.data?.pets || [];
-                setPrimaryPet(pets[0] || null);
-            } catch {
+            const [petsRes, settingRes, histRes] = await Promise.allSettled([
+                axiosInstance.get('/user/pets'),
+                axiosInstance.get('/user/settings/auto-journal'),
+                axiosInstance.get('/user/histories', { params: { limit: 1 } }),
+            ]);
+            let loadedPets: PetSummary[] = [];
+            if (petsRes.status === 'fulfilled') {
+                loadedPets = Array.isArray(petsRes.value.data) ? petsRes.value.data : petsRes.value.data?.pets || [];
+                setPets(loadedPets);
+                setPrimaryPet(loadedPets[0] || null);
+            } else {
+                setPets([]);
                 setPrimaryPet(null);
+            }
+            if (settingRes.status === 'fulfilled') {
+                const val = settingRes.value.data?.auto_journal_enabled ?? settingRes.value.data?.enabled;
+                setAutoJournalEnabled(Boolean(val));
+            } else {
+                setAutoJournalEnabled(false);
+            }
+            if (histRes.status === 'fulfilled') {
+                const firstHist = histRes.value.data?.histories?.[0] || null;
+                setLatestHistory(firstHist);
+                setLatestHistoryTitle(firstHist?.title || null);
+            } else {
+                setLatestHistory(null);
+                setLatestHistoryTitle(null);
             }
         };
 
         syncAuthAndPet();
         window.addEventListener('auth-change', syncAuthAndPet);
-        return () => window.removeEventListener('auth-change', syncAuthAndPet);
+        window.addEventListener('history-change', syncAuthAndPet);
+        return () => {
+            window.removeEventListener('auth-change', syncAuthAndPet);
+            window.removeEventListener('history-change', syncAuthAndPet);
+        };
     }, []);
 
     const toggleTheme = () => {
@@ -147,7 +185,7 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
             flexDirection="column"
             gap="10px"
         >
-            {isLogin && primaryPet ? (
+            {isLogin && pets.length === 1 && primaryPet ? (
                 <>
                     <HStack
                         gap="10px"
@@ -173,9 +211,11 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
                                     </Text>
                                 ) : null}
                             </HStack>
-                            <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600" truncate>
-                                ✓ AI 건강 수첩 연동 중
-                            </Text>
+                            {autoJournalEnabled && (
+                                <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600" truncate>
+                                    ✓ AI 건강 수첩 연동 중
+                                </Text>
+                            )}
                         </Box>
                     </HStack>
                     <Box
@@ -189,10 +229,106 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
                         borderColor="var(--waba-line)"
                         cursor="pointer"
                         onClick={() => handleNavClick('/member/mypage')}
+                        truncate
                     >
-                        최근: <strong style={{ color: 'var(--waba-ink)' }}>{primaryPet.breed || primaryPet.species || '프로필 관리'}</strong>
+                        {latestHistoryTitle ? (
+                            <>최근: <strong style={{ color: 'var(--waba-ink)' }}>{latestHistoryTitle}</strong></>
+                        ) : (
+                            '아직 수첩 기록이 없어요'
+                        )}
                     </Box>
                 </>
+            ) : isLogin && pets.length >= 2 ? (
+                (() => {
+                    const matchedByHistory = latestHistory
+                        ? latestHistory.pets && latestHistory.pets.length > 0
+                            ? latestHistory.pets
+                            : latestHistory.pet
+                                ? [latestHistory.pet]
+                                : latestHistory.pet_id
+                                    ? pets.filter((p) => String(p.id) === String(latestHistory.pet_id))
+                                    : pets
+                        : pets;
+                    const displayPets = matchedByHistory.length > 0 ? matchedByHistory : pets;
+                    const namesText = displayPets.map((p) => p.name).join(latestHistory ? ', ' : ' · ');
+
+                    return (
+                        <>
+                            <HStack
+                                gap="10px"
+                                mb="10px"
+                                cursor="pointer"
+                                onClick={() => handleNavClick('/member/mypage')}
+                            >
+                                {displayPets.length === 1 ? (
+                                    <UserAvatar
+                                        src={displayPets[0].current_avatar_url}
+                                        alt={displayPets[0].name}
+                                        size="sm"
+                                        fallbackType="pet"
+                                        border="2px solid"
+                                        borderColor="var(--waba-card)"
+                                    />
+                                ) : (
+                                    <HStack gap={0} flexShrink={0}>
+                                        {displayPets.slice(0, 3).map((p, idx) => (
+                                            <Box
+                                                key={String(p.id)}
+                                                position="relative"
+                                                zIndex={idx}
+                                                ml={idx > 0 ? '-8px' : 0}
+                                                w="26px"
+                                                h="26px"
+                                                borderRadius="full"
+                                                border="2px solid var(--waba-surface)"
+                                                overflow="hidden"
+                                                flexShrink={0}
+                                            >
+                                                <UserAvatar
+                                                    src={p.current_avatar_url}
+                                                    alt={p.name}
+                                                    size="xs"
+                                                    fallbackType="pet"
+                                                    w="full"
+                                                    h="full"
+                                                />
+                                            </Box>
+                                        ))}
+                                    </HStack>
+                                )}
+                                <Box minW={0} flex="1">
+                                    <Text fontSize="13px" fontWeight="800" color="var(--waba-ink)" truncate>
+                                        {namesText}
+                                    </Text>
+                                    {autoJournalEnabled && (
+                                        <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600" truncate>
+                                            ✓ AI 건강 수첩 연동 중
+                                        </Text>
+                                    )}
+                                </Box>
+                            </HStack>
+                            <Box
+                                bg="var(--waba-card)"
+                                borderRadius="10px"
+                                px="10px"
+                                py="7px"
+                                fontSize="11px"
+                                color="var(--waba-ink-2)"
+                                border="1px solid"
+                                borderColor="var(--waba-line)"
+                                cursor="pointer"
+                                onClick={() => handleNavClick('/member/mypage')}
+                                truncate
+                            >
+                                {latestHistory?.title ? (
+                                    <>최근: <strong style={{ color: 'var(--waba-ink)' }}>{latestHistory.title}</strong></>
+                                ) : (
+                                    '아직 수첩 기록이 없어요'
+                                )}
+                            </Box>
+                        </>
+                    );
+                })()
             ) : isLogin ? (
                 <Box cursor="pointer" onClick={() => handleNavClick('/member/mypage')}>
                     <Text fontSize="12px" fontWeight="700" color="var(--waba-ink)" mb={1}>
@@ -478,7 +614,7 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
                                     <Box w="6px" h="6px" borderRadius="full" bg="#6338A9" />
                                 </HStack>
                                 <Dialog.CloseTrigger asChild>
-                                    <CloseButton size="sm" borderRadius="full" />
+                                    <CloseButton size="sm" borderRadius="full" color="var(--waba-ink)" _hover={{ bg: 'var(--waba-line)' }} />
                                 </Dialog.CloseTrigger>
                             </Flex>
 

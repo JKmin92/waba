@@ -46,8 +46,8 @@ export default function PostMasonryList({ postList }: { postList: PostDetail[] }
                                 rounded="md"
                                 overflow="hidden"
                                 border="1px solid"
-                                borderColor="border"
-                                bg={hasImage ? 'white' : 'orange.50'}
+                                borderColor="var(--waba-line)"
+                                bg={hasImage ? 'var(--waba-card)' : 'var(--waba-purple-soft)'}
                                 transition="transform 0.2s"
                                 _hover={{ transform: 'translateY(-4px)' }}
                                 cursor="pointer"
@@ -65,13 +65,13 @@ export default function PostMasonryList({ postList }: { postList: PostDetail[] }
                                         <Badge alignSelf="start" rounded="full" px="2.5" py="0.5" colorPalette="orange">{item.board?.name}</Badge>
                                     )}
 
-                                    <Heading lineClamp={2} textOverflow="ellipsis" fontSize={{ base: 'sm', md: 'lg' }} color="charcoal">{item.post.title}</Heading>
+                                    <Heading lineClamp={2} textOverflow="ellipsis" fontSize={{ base: 'sm', md: 'lg' }} color="var(--waba-ink)">{item.post.title}</Heading>
                                     {!hasImage && (
-                                        <Text fontSize="13px" color="waba.muted" lineClamp={3}>
+                                        <Text fontSize="13px" color="var(--waba-ink-2)" lineClamp={3}>
                                             {item.post.content?.find(c => c.type === 'text')?.content}
                                         </Text>
                                     )}
-                                    <HStack justify="space-between" pt="2" fontSize={{ base: '11px', md: '12px' }} color="waba.faint" gap={1.5} minW={0}>
+                                    <HStack justify="space-between" pt="2" fontSize={{ base: '11px', md: '12px' }} color="var(--waba-ink-3)" gap={1.5} minW={0}>
                                         <HStack minW={0} flex="1" gap={1.5}>
                                             <UserAvatar
                                                 src={item.user?.profile_image_url}

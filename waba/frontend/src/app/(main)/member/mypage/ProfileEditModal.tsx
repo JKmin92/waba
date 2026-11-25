@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import {
     Avatar,
@@ -17,13 +17,15 @@ import {
     Textarea,
     VStack,
 } from "@chakra-ui/react";
-import { Camera, Check, Sparkles, Upload, X } from "lucide-react";
+import { Camera, Check, Eye, EyeOff, Sparkles, Upload, X } from "lucide-react";
 import { LuSparkles, LuUser, LuUserRound } from "react-icons/lu";
 import { useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/api";
 import { toaster } from "@/components/ui/toaster";
 import { UserProfileData } from "./ProfileSection";
 import UserAvatar from "../../common/UserAvatar";
+import PasswordStrengthInput from "../../common/PasswordStrengthInput";
+import { evaluatePasswordStrength } from "@/utils/passwordPolicy";
 import { getRefreshToken, setAuthSession } from "@/utils/authUtils";
 
 interface ProfileEditModalProps {
@@ -57,8 +59,22 @@ export default function ProfileEditModal({
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // 비밀번호 변경 상태
+    const [showPasswordSection, setShowPasswordSection] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+    const [showCurrentPw, setShowCurrentPw] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
     // 모달 오픈 시 기존 프로필 값으로 초기화
     useEffect(() => {
+        setShowPasswordSection(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setNewPasswordConfirm('');
+        setShowCurrentPw(false);
+        setIsChangingPassword(false);
         if (open && currentProfile) {
             setNickname(currentProfile.nickname || '');
             setBio(currentProfile.bio || '');
@@ -70,6 +86,42 @@ export default function ProfileEditModal({
             setNicknameMessage('');
         }
     }, [open, currentProfile]);
+
+    const handleChangePassword = async () => {
+        if (!currentPassword) {
+            toaster.create({ title: '현재 비밀번호를 입력해주세요.', type: 'warning' });
+            return;
+        }
+        const pwEval = evaluatePasswordStrength(newPassword, currentProfile?.email);
+        if (!pwEval.isValid) {
+            toaster.create({ title: pwEval.errorMessage || '새 비밀번호 정책을 확인해주세요.', type: 'error' });
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            toaster.create({ title: '새 비밀번호가 일치하지 않습니다.', type: 'error' });
+            return;
+        }
+        setIsChangingPassword(true);
+        try {
+            await axiosInstance.put('/user/password', {
+                currentPassword,
+                newPassword,
+            });
+            toaster.create({ title: '비밀번호가 성공적으로 변경되었습니다.', type: 'success' });
+            setShowPasswordSection(false);
+            setCurrentPassword('');
+            setNewPassword('');
+            setNewPasswordConfirm('');
+            setShowCurrentPw(false);
+        } catch (err: any) {
+            toaster.create({
+                title: err?.response?.data?.message || '비밀번호 변경에 실패했습니다.',
+                type: 'error',
+            });
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
 
     // 파일 선택 핸들러 (최소 가로 150px 사전 검증)
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,6 +292,8 @@ export default function ProfileEditModal({
                     <Dialog.Content
                         maxW="520px"
                         w="full"
+                        maxH="90vh"
+                        overflowY="auto"
                         borderRadius="28px"
                         p={{ base: 6, md: 7 }}
                         boxShadow="0 24px 48px -12px rgba(26, 28, 30, 0.2)"
@@ -247,7 +301,7 @@ export default function ProfileEditModal({
                     >
                         {/* 닫기 버튼 */}
                         <Dialog.CloseTrigger asChild position="absolute" top={5} right={5}>
-                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" />
+                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" color="var(--waba-ink)" _hover={{ bg: 'var(--waba-line)' }} />
                         </Dialog.CloseTrigger>
 
                         {/* 모달 헤더 */}
@@ -339,7 +393,7 @@ export default function ProfileEditModal({
                                                 h="30px"
                                                 fontSize="12px"
                                                 color="var(--waba-ink-3)"
-                                                _hover={{ color: 'red.500', bg: 'red.50' }}
+                                                _hover={{ color: 'red.500', bg: 'rgba(239, 68, 68, 0.12)' }}
                                                 onClick={handleResetToDefaultImage}
                                             >
                                                 기본 이미지로 변경
@@ -388,7 +442,7 @@ export default function ProfileEditModal({
                                             onClick={handleCheckNickname}
                                             loading={isCheckingNickname}
                                             disabled={nicknameStatus === 'same' || !nickname.trim()}
-                                            bg={nicknameStatus === 'available' ? 'green.600' : 'var(--waba-ink)'}
+                                            bg={nicknameStatus === 'available' ? 'green.600' : '#6338A9'}
                                             color="white"
                                             rounded="16px"
                                             h="44px"
@@ -453,55 +507,150 @@ export default function ProfileEditModal({
                                     />
                                 </VStack>
 
-
                                 {/* ============================================= */}
-                                {/* 4. 다종 합사 가구 설정 토글 카드               */}
+                                {/* 4. 비밀번호 변경 섹션                         */}
                                 {/* ============================================= */}
                                 <Box
-                                    as="button"
-                                    onClick={() => setIsMultiSpecies(!isMultiSpecies)}
-                                    p={3.5}
+                                    p={4}
                                     borderRadius="18px"
-                                    bg={isMultiSpecies ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                    bg="var(--waba-surface)"
                                     border="1px solid"
-                                    borderColor={isMultiSpecies ? 'var(--waba-purple-border)' : 'var(--waba-line)'}
-                                    textAlign="left"
-                                    w="full"
-                                    transition="all 0.2s"
-                                    _hover={{ borderColor: '#6338A9' }}
+                                    borderColor="var(--waba-line)"
                                 >
-                                    <HStack justify="space-between" align="center">
-                                        <VStack align="start" gap={0.5}>
-                                            <HStack gap={1.5}>
-                                                <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
-                                                    ✨ 캣토(다종) 합사 가구 설정
-                                                </Text>
-                                                {isMultiSpecies && (
-                                                    <Badge bg="#6338A9" color="white" rounded="full" px={1.5} fontSize="10px">
-                                                        활성화
-                                                    </Badge>
-                                                )}
-                                            </HStack>
-                                            <Text fontSize="11px" color="var(--waba-ink-3)">
-                                                고양이와 토끼 등 2종 이상의 반려동물과 동거 중일 경우 맞춤 배지와 리워드 가중치가 적용됩니다
+                                    {currentProfile?.has_local_password === false ? (
+                                        <Box>
+                                            <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
+                                                비밀번호 변경
                                             </Text>
-                                        </VStack>
-
-                                        <Box
-                                            w="20px"
-                                            h="20px"
-                                            borderRadius="full"
-                                            border="2px solid"
-                                            borderColor={isMultiSpecies ? '#6338A9' : 'var(--waba-line)'}
-                                            bg={isMultiSpecies ? '#6338A9' : 'transparent'}
-                                            display="flex"
-                                            alignItems="center"
-                                            justifyContent="center"
-                                            flexShrink={0}
-                                        >
-                                            {isMultiSpecies && <Check size={12} color="white" strokeWidth={3} />}
+                                            <Text fontSize="12px" color="var(--waba-ink-3)" mt={1}>
+                                                소셜 간편 로그인 계정으로 별도의 비밀번호를 사용하지 않습니다.
+                                            </Text>
                                         </Box>
-                                    </HStack>
+                                    ) : (
+                                        <VStack align="stretch" gap={3}>
+                                            <Flex justify="space-between" align="center">
+                                                <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
+                                                    비밀번호 변경
+                                                </Text>
+                                                <Button
+                                                    type="button"
+                                                    size="xs"
+                                                    variant="outline"
+                                                    borderColor="var(--waba-line)"
+                                                    color="var(--waba-ink)"
+                                                    borderRadius="999px"
+                                                    px={3}
+                                                    onClick={() => setShowPasswordSection((v) => !v)}
+                                                >
+                                                    {showPasswordSection ? '접기' : '변경하기'}
+                                                </Button>
+                                            </Flex>
+
+                                            {showPasswordSection && (
+                                                <VStack align="stretch" gap={3} pt={2} borderTop="1px solid" borderColor="var(--waba-line)">
+                                                    <Box>
+                                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={1}>
+                                                            현재 비밀번호
+                                                        </Text>
+                                                        <Box position="relative">
+                                                            <Input
+                                                                type={showCurrentPw ? 'text' : 'password'}
+                                                                value={currentPassword}
+                                                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                                                placeholder="현재 비밀번호 입력"
+                                                                h="44px"
+                                                                borderRadius="16px"
+                                                                bg="var(--waba-card)"
+                                                                borderColor="var(--waba-line)"
+                                                                color="var(--waba-ink)"
+                                                                pr={11}
+                                                                fontSize="14px"
+                                                                autoComplete="current-password"
+                                                            />
+                                                            <IconButton
+                                                                type="button"
+                                                                aria-label={showCurrentPw ? '비밀번호 숨기기' : '비밀번호 보기'}
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                position="absolute"
+                                                                right={2}
+                                                                top="50%"
+                                                                transform="translateY(-50%)"
+                                                                color="var(--waba-ink-3)"
+                                                                onClick={() => setShowCurrentPw((v) => !v)}
+                                                            >
+                                                                {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                            </IconButton>
+                                                        </Box>
+                                                    </Box>
+
+                                                    <Box>
+                                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={1}>
+                                                            새 비밀번호
+                                                        </Text>
+                                                        <PasswordStrengthInput
+                                                            value={newPassword}
+                                                            onChange={setNewPassword}
+                                                            email={currentProfile?.email || ''}
+                                                            inputVariant="profile"
+                                                            autoComplete="new-password"
+                                                        />
+                                                    </Box>
+
+                                                    <Box>
+                                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-2)" mb={1}>
+                                                            새 비밀번호 확인
+                                                        </Text>
+                                                        <Input
+                                                            type="password"
+                                                            value={newPasswordConfirm}
+                                                            onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                                                            placeholder="새 비밀번호를 한 번 더 입력해주세요"
+                                                            h="44px"
+                                                            borderRadius="16px"
+                                                            bg="var(--waba-card)"
+                                                            borderColor="var(--waba-line)"
+                                                            color="var(--waba-ink)"
+                                                            fontSize="14px"
+                                                            autoComplete="new-password"
+                                                        />
+                                                        {newPasswordConfirm.length > 0 && (
+                                                            <Text
+                                                                fontSize="11.5px"
+                                                                fontWeight="600"
+                                                                color={newPassword === newPasswordConfirm ? '#10B981' : '#EF4444'}
+                                                                mt={1}
+                                                                pl={1}
+                                                            >
+                                                                {newPassword === newPasswordConfirm
+                                                                    ? '✓ 새 비밀번호가 일치합니다.'
+                                                                    : '새 비밀번호가 일치하지 않습니다.'}
+                                                            </Text>
+                                                        )}
+                                                    </Box>
+
+                                                    <Flex justify="flex-end" pt={1}>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            h="36px"
+                                                            px={5}
+                                                            borderRadius="999px"
+                                                            bg="#6338A9"
+                                                            color="#FFFFFF"
+                                                            _hover={{ bg: '#522B8F' }}
+                                                            fontSize="12.5px"
+                                                            fontWeight="700"
+                                                            loading={isChangingPassword}
+                                                            onClick={handleChangePassword}
+                                                        >
+                                                            비밀번호 변경 적용
+                                                        </Button>
+                                                    </Flex>
+                                                </VStack>
+                                            )}
+                                        </VStack>
+                                    )}
                                 </Box>
 
                             </VStack>
@@ -532,7 +681,7 @@ export default function ProfileEditModal({
                                 type="button"
                                 onClick={handleSubmit}
                                 loading={isSubmitting}
-                                bg="var(--waba-ink)"
+                                bg="#6338A9"
                                 color="white"
                                 rounded="full"
                                 px={7}

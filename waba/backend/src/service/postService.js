@@ -245,7 +245,7 @@ const tryAutoJournalForPost = async (userId, {
 export const createPost = async (userId, data) => {
     const result = await postModel.createPost(userId, data);
 
-    if (data.status === 'PUBLISHED' && data.enableAutoJournalHook) {
+    if (data.status === 'PUBLISHED' && data.enableAutoJournalHook && data.isPostUpdate !== true) {
         const autoJournalResult = await tryAutoJournalForPost(userId, {
             postId: data.postId || result?.postId,
             title: data.title,
@@ -265,8 +265,12 @@ export const createPost = async (userId, data) => {
     return result;
 };
 
-export const getUserDraft = async (userId) => {
-    return await postModel.getUserDraft(userId);
+export const getUserDraft = async (userId, draftId = null) => {
+    return await postModel.getUserDraft(userId, draftId);
+};
+
+export const getUserDrafts = async (userId) => {
+    return await postModel.getUserDrafts(userId);
 };
 
 export const deleteDraft = async (userId, postId) => {
@@ -287,4 +291,20 @@ export const getUserBookmarks = async (userId) => {
 
 export const getUserLikes = async (userId) => {
     return await postModel.getUserLikes(userId);
+};
+
+export const getUserReportedDeletedPosts = async (userId) => {
+    return await postModel.getUserReportedDeletedPosts(userId);
+};
+
+export const submitPostAppeal = async (userId, postId, reason) => {
+    return await postModel.submitPostAppeal(userId, postId, reason);
+};
+
+export const createPostReport = async (reporterUserId, postId, data) => {
+    return await postModel.createPostReport(reporterUserId, postId, data);
+};
+
+export const toggleCommentLike = async (commentId, userId) => {
+    return await postModel.toggleCommentLike(commentId, userId);
 };

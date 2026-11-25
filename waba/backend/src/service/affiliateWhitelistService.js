@@ -1,28 +1,221 @@
 import db from '../../config/db.js';
 
-/**
- * 활성화된 외부 제휴 쇼핑몰 허용 도메인 목록 조회
- */
-export const getActiveAllowedDomains = async () => {
-    const [rows] = await db.query(
-        `SELECT domain FROM allowed_affiliate_domains WHERE is_active = 1`
-    );
-    return rows.map((r) => String(r.domain || '').trim().toLowerCase()).filter(Boolean);
+export const normalizeAffiliateDomain = (rawInput) => {
+    const trimmed = String(rawInput || '').trim().toLowerCase();
+    if (!trimmed || trimmed.includes('*') || /\s/.test(trimmed)) return null;
+
+    let host = trimmed;
+    if (trimmed.includes('://')) {
+        try {
+            host = new URL(trimmed).hostname.toLowerCase();
+        } catch {
+            return null;
+        }
+    } else {
+        host = trimmed.replace(/^\/+/, '').split(/[/?#:]/)[0];
+    }
+
+    if (!host || host.length > 255 || host.startsWith('.') || host.endsWith('.') || host.includes('..')) {
+        return null;
+    }
+
+    const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+    return domainRegex.test(host) ? host : null;
+};
+
+export const parseAllowedSubdomains = (raw) => {
+    if (!raw) return [];
+    const arr = Array.isArray(raw) ? raw : String(raw).split(',');
+    return [...new Set(arr.map((s) => String(s || '').trim().toLowerCase()).filter(Boolean))];
+};
+
+export const normalizeSubdomainList = (rawList, rootDomain) => {
+    const tokens = Array.isArray(rawList) ? rawList : String(rawList || '').split(',');
+    const root = String(rootDomain || '').trim().toLowerCase();
+    const labelRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
+    const result = [];
+
+    for (const rawToken of tokens) {
+        let token = String(rawToken || '').trim().toLowerCase();
+        if (!token) continue;
+
+        if (token.includes('://')) {
+            try {
+                token = new URL(token).hostname.toLowerCase();
+            } catch {
+                const err = new Error('유효하지 않은 서브도메인 형식입니다.');
+                err.status = 400;
+                throw err;
+            }
+        } else {
+            token = token.replace(/^\/+/, '').split(/[/?#:]/)[0];
+        }
+
+        if (token === root) continue;
+        if (root && token.endsWith(`.${root}`)) {
+            token = token.slice(0, token.length - root.length - 1);
+        }
+
+        if (!token || token.includes('*') || !labelRegex.test(token)) {
+            const err = new Error('유효하지 않은 서브도메인 형식입니다.');
+            err.status = 400;
+            throw err;
+        }
+
+        if (!result.includes(token)) {
+            result.push(token);
+        }
+    }
+
+    return result;
 };
 
 /**
- * 호스트명이 허용 도메인과 정확히 일치하거나 서브도메인인지 검증
- * (예: coupang.com.evil.com, evil.com/coupang.com 등 우회 패턴 차단)
+ * 활성화된 외부 제휴 쇼핑몰 허용 도메인 규칙 목록 조회
  */
-export const isHostnameAllowed = (hostname, allowedDomains = []) => {
-    const host = String(hostname || '').trim().toLowerCase();
-    if (!host) return false;
+export const getActiveAllowedDomains = async () => {
+    const [rows] = await db.query(
+        `SELECT id, domain, mall_name, subdomain_policy, allowed_subdomains
+         FROM allowed_affiliate_domains
+         WHERE is_active = 1`
+    );
+    return rows
+        .map((r) => ({
+            id: r.id,
+            domain: String(r.domain || '').trim().toLowerCase(),
+            mall_name: r.mall_name || null,
+            subdomain_policy: ['ALL', 'SPECIFIC', 'NONE'].includes(String(r.subdomain_policy || '').toUpperCase())
+                ? String(r.subdomain_policy).toUpperCase()
+                : 'ALL',
+            allowed_subdomains: parseAllowedSubdomains(r.allowed_subdomains)
+        }))
+        .filter((r) => Boolean(r.domain));
+};
 
-    return allowedDomains.some((rawDomain) => {
-        const domain = String(rawDomain || '').trim().toLowerCase();
-        if (!domain) return false;
-        return host === domain || host.endsWith(`.${domain}`);
-    });
+export const evaluateHostnameAgainstRules = (hostname, allowedRules = []) => {
+    const host = String(hostname || '').trim().toLowerCase();
+    if (!host) {
+        return { allowed: false, reason: '유효하지 않은 호스트명입니다.' };
+    }
+
+    const rules = (allowedRules || [])
+        .map((entry) => {
+            if (typeof entry === 'string') {
+                const d = entry.trim().toLowerCase();
+                return d ? { domain: d, mall_name: d, subdomain_policy: 'ALL', allowed_subdomains: [] } : null;
+            }
+            if (entry && typeof entry === 'object' && entry.domain) {
+                return {
+                    ...entry,
+                    domain: String(entry.domain).trim().toLowerCase(),
+                    subdomain_policy: ['ALL', 'SPECIFIC', 'NONE'].includes(String(entry.subdomain_policy || '').toUpperCase())
+                        ? String(entry.subdomain_policy).toUpperCase()
+                        : 'ALL',
+                    allowed_subdomains: Array.isArray(entry.allowed_subdomains)
+                        ? entry.allowed_subdomains.map((s) => String(s || '').trim().toLowerCase()).filter(Boolean)
+                        : parseAllowedSubdomains(entry.allowed_subdomains)
+                };
+            }
+            return null;
+        })
+        .filter(Boolean);
+
+    let blockedRule = null;
+    let rejectedSubdomain = null;
+
+    for (const rule of rules) {
+        if (host === rule.domain) {
+            return { allowed: true, matchedRule: rule, matchType: 'EXACT' };
+        }
+        if (host.endsWith(`.${rule.domain}`)) {
+            const sub = host.slice(0, host.length - rule.domain.length - 1);
+            if (rule.subdomain_policy === 'ALL') {
+                return { allowed: true, matchedRule: rule, matchType: 'SUBDOMAIN_ALL', matchedSubdomain: sub };
+            }
+            if (rule.subdomain_policy === 'SPECIFIC' && rule.allowed_subdomains.includes(sub)) {
+                return { allowed: true, matchedRule: rule, matchType: 'SUBDOMAIN_SPECIFIC', matchedSubdomain: sub };
+            }
+            if (!blockedRule) {
+                blockedRule = rule;
+                rejectedSubdomain = sub;
+            }
+        }
+    }
+
+    if (blockedRule) {
+        const label = blockedRule.mall_name ? `${blockedRule.domain} (${blockedRule.mall_name})` : blockedRule.domain;
+        const reason = blockedRule.subdomain_policy === 'NONE'
+            ? `${label}은(는) 서브도메인을 허용하지 않습니다.`
+            : `${label}의 허용되지 않은 서브도메인(${rejectedSubdomain})입니다.`;
+        return { allowed: false, blockedRule, rejectedSubdomain, reason };
+    }
+
+    return { allowed: false, reason: '화이트리스트에 등록되지 않은 도메인입니다.' };
+};
+
+/**
+ * 호스트명이 허용 도메인 규칙을 통과하는지 검증
+ */
+export const isHostnameAllowed = (hostname, allowedRules = []) => {
+    return evaluateHostnameAgainstRules(hostname, allowedRules).allowed;
+};
+
+export const evaluateAffiliateUrl = (rawUrl, allowedRules = []) => {
+    let parsed;
+    try {
+        parsed = new URL(String(rawUrl || '').trim());
+    } catch {
+        return { allowed: false, reason: '유효한 URL 형식이 아닙니다.' };
+    }
+
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { allowed: false, hostname: parsed.hostname, reason: 'http 또는 https 프로토콜만 허용됩니다.' };
+    }
+
+    if (parsed.username || parsed.password) {
+        return { allowed: false, hostname: parsed.hostname, reason: '인증 정보가 포함된 URL은 허용되지 않습니다.' };
+    }
+
+    const hostEval = evaluateHostnameAgainstRules(parsed.hostname, allowedRules);
+    if (!hostEval.allowed) {
+        return { ...hostEval, hostname: parsed.hostname };
+    }
+
+    for (const [, rawValue] of parsed.searchParams.entries()) {
+        const candidates = [rawValue];
+        try {
+            const decoded = decodeURIComponent(rawValue);
+            if (decoded !== rawValue) {
+                candidates.push(decoded);
+            }
+        } catch {
+            // ignore
+        }
+
+        for (const candidate of candidates) {
+            const trimmed = String(candidate || '').trim();
+            if (/^(https?:\/\/|\/\/)/i.test(trimmed)) {
+                let nestedUrl;
+                try {
+                    nestedUrl = new URL(trimmed, parsed.origin);
+                } catch {
+                    return { allowed: false, hostname: parsed.hostname, reason: '쿼리 파라미터 내 유효하지 않은 URL이 포함되어 있습니다.' };
+                }
+                if (nestedUrl.protocol !== 'http:' && nestedUrl.protocol !== 'https:') {
+                    return { allowed: false, hostname: parsed.hostname, reason: '쿼리 파라미터 내 허용되지 않은 프로토콜이 포함되어 있습니다.' };
+                }
+                if (nestedUrl.username || nestedUrl.password) {
+                    return { allowed: false, hostname: parsed.hostname, reason: '쿼리 파라미터 내 인증 정보가 포함된 URL이 있습니다.' };
+                }
+                const nestedEval = evaluateHostnameAgainstRules(nestedUrl.hostname, allowedRules);
+                if (!nestedEval.allowed) {
+                    return { ...nestedEval, hostname: nestedUrl.hostname };
+                }
+            }
+        }
+    }
+
+    return { ...hostEval, hostname: parsed.hostname };
 };
 
 /**
@@ -34,19 +227,64 @@ export const isValidAffiliateUrl = (rawUrl, allowedDomains = []) => {
     if (rawUrl === null || rawUrl === undefined || String(rawUrl).trim() === '') {
         return true;
     }
+    return evaluateAffiliateUrl(rawUrl, allowedDomains).allowed;
+};
 
-    let parsed;
+/**
+ * 리다이렉트(3xx Location) 최종 도메인 재검증
+ * - 최대 5홉까지 수동 추적하며 비허용 외부 도메인으로의 리다이렉트만 차단
+ * - 봇 차단(403/429/503 등)이나 네트워크 타임아웃 시에는 정상 링크 오탐 방지를 위해 통과
+ */
+export const verifyUrlRedirectWhitelist = async (rawUrl, allowedDomains = [], maxHops = 5) => {
+    if (rawUrl === null || rawUrl === undefined || String(rawUrl).trim() === '') {
+        return true;
+    }
+
+    if (!isValidAffiliateUrl(rawUrl, allowedDomains)) {
+        return false;
+    }
+
+    let currentUrl = String(rawUrl).trim();
     try {
-        parsed = new URL(String(rawUrl).trim());
+        for (let hop = 0; hop < maxHops; hop++) {
+            const res = await fetch(currentUrl, {
+                method: 'GET',
+                redirect: 'manual',
+                signal: AbortSignal.timeout(3000),
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; WabaBot/1.0)'
+                }
+            });
+
+            if (res.status >= 300 && res.status < 400) {
+                const location = res.headers.get('location');
+                if (!location) {
+                    break;
+                }
+
+                let nextUrl;
+                try {
+                    nextUrl = new URL(location, currentUrl);
+                } catch {
+                    return false;
+                }
+
+                if (!isValidAffiliateUrl(nextUrl.href, allowedDomains)) {
+                    return false;
+                }
+
+                currentUrl = nextUrl.href;
+                continue;
+            }
+
+            break;
+        }
     } catch {
-        return false;
+        // 네트워크 오류/타임아웃 시 비허용 리다이렉트가 확인되지 않았으므로 통과 (봇 차단/일시 장애 오탐 방지)
+        return true;
     }
 
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        return false;
-    }
-
-    return isHostnameAllowed(parsed.hostname, allowedDomains);
+    return true;
 };
 
 /**
@@ -79,6 +317,10 @@ export const validatePostPinUrls = async (contentBlocks = []) => {
     const allowedDomains = await getActiveAllowedDomains();
     for (const url of urlsToCheck) {
         if (!isValidAffiliateUrl(url, allowedDomains)) {
+            return { valid: false, invalidUrl: url };
+        }
+        const redirectOk = await verifyUrlRedirectWhitelist(url, allowedDomains);
+        if (!redirectOk) {
             return { valid: false, invalidUrl: url };
         }
     }

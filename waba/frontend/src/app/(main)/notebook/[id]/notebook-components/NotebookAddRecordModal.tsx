@@ -137,7 +137,7 @@ export default function NotebookAddRecordModal({
                                 <Dialog.Title fontSize="18px" fontWeight="800">
                                     {editingRecord ? '수첩 기록 수정' : '+ 수첩 기록 직접 추가'}
                                 </Dialog.Title>
-                                <CloseButton size="sm" rounded="full" onClick={() => onOpenChange(false)} />
+                                <CloseButton size="sm" rounded="full" color="var(--waba-ink)" _hover={{ bg: 'var(--waba-line)' }} onClick={() => onOpenChange(false)} />
                             </Flex>
                             <Text fontSize="12px" color="var(--waba-ink-3)" mt={1}>
                                 커뮤니티 글 작성 없이 수첩 타임라인에 단독 메모를 남깁니다.

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 게시글 · 댓글 · 큐레이션 (게시글 관리)</title>
+  <style>
+    :root {
+      --bg: #FAFBFD;
+      --card: #FFFFFF;
+      --border: #EAEAEF;
+      --text: #111115;
+      --muted: #6E6E7A;
+      --primary: #6338A9;
+      --primary-soft: #F6EBFB;
+      --danger: #D9383A;
+      --danger-soft: #FDECEC;
+      --warn: #B45309;
+      --warn-soft: #FEF3C7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { width: 1440px; min-height: 980px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #4A4A55; }
+    .nav-item.active { background: #111115; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .seg-tabs { display: inline-flex; background: #EFEFF4; padding: 4px; border-radius: 999px; gap: 4px; }
+    .seg-tab { padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--muted); }
+    .seg-tab.active { background: #111115; color: #fff; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .table-panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .select-box { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 12px; font-weight: 600; background: #fff; color: var(--text); }
+    .search-input { flex: 1; min-width: 220px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; background: #FAFBFD; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F3F3F7; vertical-align: middle; }
+
+    .post-cell { display: flex; align-items: center; gap: 12px; }
+    .thumb { width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg, #EDE7F6, #D8C7F0); position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .thumb-blur { background: linear-gradient(135deg, #E2DCEB, #C9BEDB); }
+    .sensitive-tag { position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(17,17,21,0.72); color: #fff; font-size: 9px; font-weight: 700; text-align: center; padding: 2px 4px; border-radius: 6px; }
+
+    .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .b-board { background: #F2F2F7; color: #3A3A44; }
+    .b-hide { background: var(--warn-soft); color: var(--warn); }
+    .b-del { background: var(--danger-soft); color: var(--danger); }
+    .b-report { background: var(--danger-soft); color: var(--danger); }
+
+    .role-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid var(--border); background: #fff; color: var(--text); }
+    .role-vet { border-color: #C7B3E8; background: var(--primary-soft); color: var(--primary); }
+    .role-editor { border-color: #BBD6F7; background: #EEF6FF; color: #1D4ED8; }
+    .role-admin { border-color: #111115; background: #111115; color: #fff; }
+
+    .user-cell { display: flex; align-items: center; gap: 8px; }
+    .av { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .curation-select { padding: 6px 10px; border-radius: 999px; border: 1px solid #D9CCF2; background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 700; }
+    .curation-select.normal { border-color: var(--border); background: #FAFBFD; color: var(--muted); }
+    .btn-act { padding: 6px 11px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 11px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드</div>
+      <div class="nav-item">회원 · 반려동물</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item active">게시글 · 댓글 · 큐레이션</div>
+      <div class="nav-item">신고 · 제재</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item">감사 로그</div>
+      <div class="nav-item">시스템 설정</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>게시글 · 댓글 · 큐레이션</h1>
+        <p>커뮤니티 게시글/댓글 모더레이션과 메인 룩북 큐레이션 등급을 관리합니다.</p>
+      </div>
+      <div class="header-actions">
+        <div class="seg-tabs">
+          <div class="seg-tab active">게시글 관리</div>
+          <div class="seg-tab">댓글 관리</div>
+          <div class="seg-tab">큐레이션 보드</div>
+        </div>
+        <button class="btn-icon" title="새로고침">↻</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">전체 게시글</div>
+        <div class="kpi-val">28,410</div>
+        <div class="kpi-sub">임시저장 제외 · 전주 대비 +412건</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">메인 룩북 · 큐레이션</div>
+        <div class="kpi-val" style="color:var(--primary);">128</div>
+        <div class="kpi-sub">MAIN_LOOKBOOK 128 · 룩북 후보 46건</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">숨김 · 삭제 유예</div>
+        <div class="kpi-val">64</div>
+        <div class="kpi-sub">숨김 41 · 30일 보관 23</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">민감 이미지 · 신고 글</div>
+        <div class="kpi-val" style="color:var(--danger);">19</div>
+        <div class="kpi-sub">민감 블러 11 · 신고 접수 8</div>
+      </div>
+    </div>
+
+    <section class="table-panel">
+      <div class="toolbar">
+        <select class="select-box"><option>게시판: 전체</option></select>
+        <select class="select-box"><option>상태: 전체</option></select>
+        <select class="select-box"><option>큐레이션: 전체</option></select>
+        <select class="select-box"><option>정렬: 최신순</option></select>
+        <input class="search-input" type="text" placeholder="게시글 제목, 본문, 작성자 닉네임 검색..." />
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>게시글</th>
+            <th>작성자</th>
+            <th>큐레이션 등급</th>
+            <th>액션</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="post-cell">
+                <div class="thumb">🐾</div>
+                <div>
+                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                    <span class="badge b-board">공식 룩북</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;margin-bottom:3px;">가을 한강 산책 OOTD &amp; 하네스 추천</div>
+                  <div style="color:var(--muted);font-size:11px;">조회 1,840 · ♥ 245 · 북마크 62 · 💬 18 · 2026.11.25</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="user-cell"><div class="av">최</div><span style="font-weight:600;">최에디터</span><span class="role-badge role-editor">에디터</span></div>
+            </td>
+            <td><select class="curation-select"><option>메인 룩북</option></select></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-act">상세 관리</button><button class="btn-act">숨김</button></div></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="post-cell">
+                <div class="thumb thumb-blur">🩺<span class="sensitive-tag">민감 블러</span></div>
+                <div>
+                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                    <span class="badge b-board">질문/고민</span>
+                    <span class="badge b-report">신고 2건</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;margin-bottom:3px;">강아지 발바닥 습진 사진 첨부합니다 (치료 경과)</div>
+                  <div style="color:var(--muted);font-size:11px;">조회 620 · ♥ 34 · 북마크 19 · 💬 11 · 2026.11.25</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="user-cell"><div class="av">김</div><span style="font-weight:600;">김와바</span><span class="role-badge role-vet">수의사</span></div>
+            </td>
+            <td><select class="curation-select normal"><option>일반 피드</option></select></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-act">상세 관리</button><button class="btn-act">숨김</button></div></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="post-cell">
+                <div class="thumb">🐱</div>
+                <div>
+                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                    <span class="badge b-board">일상 스냅</span>
+                    <span class="badge b-hide">숨김</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;margin-bottom:3px;">고양이 캣타워 조립 후기</div>
+                  <div style="color:var(--muted);font-size:11px;">조회 94 · ♥ 8 · 북마크 1 · 💬 2 · 2026.11.24</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="user-cell"><div class="av">이</div><span style="font-weight:600;">이집사</span><span class="role-badge">일반 유저</span></div>
+            </td>
+            <td><select class="curation-select"><option>룩북 후보</option></select></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-act">상세 관리</button><button class="btn-act">복구</button></div></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="post-cell">
+                <div class="thumb">📢</div>
+                <div>
+                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                    <span class="badge b-board">케어 라운지</span>
+                    <span class="badge b-del">삭제됨 (D-23)</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;margin-bottom:3px;">11월 겨울철 보습 케어 공지</div>
+                  <div style="color:var(--muted);font-size:11px;">조회 410 · ♥ 52 · 북마크 14 · 💬 6 · 2026.11.18</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="user-cell"><div class="av">관</div><span style="font-weight:600;">와바운영</span><span class="role-badge role-admin">관리자</span></div>
+            </td>
+            <td><select class="curation-select normal"><option>일반 피드</option></select></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-act">상세 관리</button><button class="btn-act">복구</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

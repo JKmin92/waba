@@ -82,9 +82,8 @@ export default function LifeSnapFeedSection({ posts }: LifeSnapFeedSectionProps)
                             thumbImgObj?.is_sensitive ||
                             firstImgBlock?.is_sensitive
                         );
-                        const petLabel = item.post_pets?.[0]?.name
-                            ? `🐾 ${item.post_pets[0].name}`
-                            : item.board?.name || '스냅';
+                        const postPets = item.post_pets || [];
+                        const boardLabel = item.board?.name || '스냅';
 
                         return (
                             <Box
@@ -144,23 +143,73 @@ export default function LifeSnapFeedSection({ posts }: LifeSnapFeedSectionProps)
                                     <SensitiveImageOverlay isSensitive={isSensitive} compact />
 
                                     {/* Top-left Pill */}
-                                    <Box
-                                        position="absolute"
-                                        top={{ base: '8px', md: '12px' }}
-                                        left={{ base: '8px', md: '12px' }}
-                                        bg="var(--waba-glass-btn)"
-                                        backdropFilter="blur(8px)"
-                                        fontSize={{ base: '10px', md: '11px' }}
-                                        fontWeight="700"
-                                        px={{ base: '8px', md: '10px' }}
-                                        py="4px"
-                                        borderRadius="999px"
-                                        color="var(--waba-ink)"
-                                        maxW="70%"
-                                        truncate
-                                    >
-                                        {petLabel}
-                                    </Box>
+                                    {postPets.length > 0 ? (
+                                        <HStack
+                                            position="absolute"
+                                            top={{ base: '8px', md: '12px' }}
+                                            left={{ base: '8px', md: '12px' }}
+                                            gap={0}
+                                            title={postPets.map((p) => p.name).join(', ')}
+                                        >
+                                            {postPets.slice(0, 3).map((p, idx) => (
+                                                <Box
+                                                    key={String(p.pet_id)}
+                                                    position="relative"
+                                                    zIndex={idx}
+                                                    ml={idx > 0 ? '-8px' : 0}
+                                                    borderRadius="full"
+                                                    boxShadow="var(--waba-avatar-shadow)"
+                                                    title={p.name}
+                                                >
+                                                    <UserAvatar
+                                                        src={p.avatar_url}
+                                                        alt={p.name}
+                                                        w="28px"
+                                                        h="28px"
+                                                        iconSize={14}
+                                                        fallbackType="pet"
+                                                    />
+                                                </Box>
+                                            ))}
+                                            {postPets.length > 3 && (
+                                                <Flex
+                                                    position="relative"
+                                                    zIndex={3}
+                                                    ml="-8px"
+                                                    w="28px"
+                                                    h="28px"
+                                                    borderRadius="full"
+                                                    bg="var(--waba-card)"
+                                                    color="var(--waba-ink)"
+                                                    boxShadow="var(--waba-avatar-shadow)"
+                                                    fontSize="11px"
+                                                    fontWeight="800"
+                                                    align="center"
+                                                    justify="center"
+                                                >
+                                                    +{postPets.length - 3}
+                                                </Flex>
+                                            )}
+                                        </HStack>
+                                    ) : (
+                                        <Box
+                                            position="absolute"
+                                            top={{ base: '8px', md: '12px' }}
+                                            left={{ base: '8px', md: '12px' }}
+                                            bg="var(--waba-glass-btn)"
+                                            backdropFilter="blur(8px)"
+                                            fontSize={{ base: '10px', md: '11px' }}
+                                            fontWeight="700"
+                                            px={{ base: '8px', md: '10px' }}
+                                            py="4px"
+                                            borderRadius="999px"
+                                            color="var(--waba-ink)"
+                                            maxW="70%"
+                                            truncate
+                                        >
+                                            {boardLabel}
+                                        </Box>
+                                    )}
 
                                     {/* Top-right Bookmark */}
                                     <Box

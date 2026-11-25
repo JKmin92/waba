@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import axiosInstance from "@/utils/api";
 import { clearAuthSession, isAuthenticated } from "@/utils/authUtils";
+import { formatPetShortName } from "@/utils/simpleUtils";
 import { toaster } from "@/components/ui/toaster";
 import { Pet, PostDetail } from "@/interface";
 import { LuEllipsis, LuPencil, LuPlus, LuTrash2 } from "react-icons/lu";
@@ -14,6 +15,7 @@ import { UserProfileData } from "./ProfileSection";
 import ActivitySection from "./ActivitySection";
 import ProfileEditModal from "./ProfileEditModal";
 import PetRegisterModal from "./PetRegisterModal";
+import PetManageAllModal from "./PetManageAllModal";
 import NotebookGroupModal from "./NotebookGroupModal";
 import NotebookRecordModal from "./NotebookRecordModal";
 import {
@@ -39,7 +41,7 @@ export default function MypageClient() {
         return 'notebook';
     });
 
-    const [activitySubTab, setActivitySubTab] = useState<'post' | 'bookmark' | 'like' | 'draft'>(
+    const [activitySubTab, setActivitySubTab] = useState<'post' | 'bookmark' | 'like' | 'draft' | 'appeal'>(
         initialTabParam && ['post', 'bookmark', 'like', 'draft'].includes(initialTabParam)
             ? (initialTabParam as 'post' | 'bookmark' | 'like' | 'draft')
             : 'post'
@@ -48,8 +50,15 @@ export default function MypageClient() {
     const [profile, setProfile] = useState<UserProfileData | null>(null);
     const [pets, setPets] = useState<Pet[]>([]);
     const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
+    const [activityPetId, setActivityPetId] = useState<string | null>(null);
 
     const [histories, setHistories] = useState<MypageHistoryRecord[]>([]);
+    const [selectedHistoryPetIds, setSelectedHistoryPetIds] = useState<string[]>([]);
+    const [historyFilterMode, setHistoryFilterMode] = useState<'all' | 'group' | 'unclassified'>('all');
+    const [historyOffset, setHistoryOffset] = useState(0);
+    const [historyTotal, setHistoryTotal] = useState(0);
+    const [historyHasMore, setHistoryHasMore] = useState(false);
+    const [isLoadingMoreHistories, setIsLoadingMoreHistories] = useState(false);
     const [journeys, setJourneys] = useState<MypageJourneyRecord[]>([]);
     const [scrappedNotebooks, setScrappedNotebooks] = useState<NotebookItem[]>([]);
 
@@ -57,6 +66,7 @@ export default function MypageClient() {
     const [bookmarkList, setBookmarkList] = useState<PostDetail[]>([]);
     const [likeList, setLikeList] = useState<PostDetail[]>([]);
     const [draftList, setDraftList] = useState<any[]>([]);
+    const [reportedDeletedPosts, setReportedDeletedPosts] = useState<any[]>([]);
 
     const [autoJournalEnabled, setAutoJournalEnabled] = useState(true);
     const [isUpdatingAutoJournal, setIsUpdatingAutoJournal] = useState(false);
@@ -65,6 +75,7 @@ export default function MypageClient() {
     const [tabLoading, setTabLoading] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [petModalOpen, setPetModalOpen] = useState(false);
+    const [allPetsModalOpen, setAllPetsModalOpen] = useState(false);
     const [groupModalOpen, setGroupModalOpen] = useState(false);
     const [editingJourney, setEditingJourney] = useState<MypageJourneyRecord | null>(null);
     const [recordModalOpen, setRecordModalOpen] = useState(false);
@@ -93,6 +104,7 @@ export default function MypageClient() {
         fetchAutoJournalSetting();
         fetchScrappedNotebooks();
         fetchActivityTabData(activitySubTab);
+        fetchReportedDeletedPosts();
 
         const handleAuthChange = () => {
             if (isAuthenticated()) {
@@ -100,6 +112,7 @@ export default function MypageClient() {
                 fetchAutoJournalSetting();
                 fetchScrappedNotebooks();
                 fetchActivityTabData(activitySubTab);
+        fetchReportedDeletedPosts();
             } else {
                 setProfile(null);
                 openLoginModal();
@@ -113,6 +126,7 @@ export default function MypageClient() {
     useEffect(() => {
         if (isAuthenticated() && mainTab === 'activity') {
             fetchActivityTabData(activitySubTab);
+        fetchReportedDeletedPosts();
         }
     }, [activitySubTab, mainTab]);
 
@@ -147,7 +161,45 @@ export default function MypageClient() {
         }
     };
 
-    const fetchPetTimelineAndJourneys = async (petId?: string | number | null) => {
+    const fetchPetTimelineAndJourneys = async (
+        petId?: string | number | null,
+        options?: {
+            petIds?: string[];
+            filterMode?: 'all' | 'group' | 'unclassified';
+            offset?: number;
+            append?: boolean;
+        }
+    ) => {
+        const petIds = options?.petIds ?? selectedHistoryPetIds;
+        const filterMode = options?.filterMode ?? historyFilterMode;
+        const offset = options?.offset ?? 0;
+        const append = options?.append ?? false;
+
+        const histParams: Record<string, any> = { limit: 20, offset };
+        if (petIds.length > 0) histParams.pet_ids = petIds.join(',');
+        if (filterMode === 'unclassified') histParams.unclassified = 'true';
+
+        if (append) {
+            setIsLoadingMoreHistories(true);
+            try {
+                const histRes = await axiosInstance.get('/user/histories', { params: histParams });
+                const newHistories: MypageHistoryRecord[] = histRes.data?.histories || [];
+                setHistories((prev) => {
+                    const seen = new Set(prev.map((h) => String(h.id)));
+                    const uniqueNew = newHistories.filter((h) => !seen.has(String(h.id)));
+                    return [...prev, ...uniqueNew];
+                });
+                setHistoryOffset(offset + newHistories.length);
+                setHistoryTotal(histRes.data?.total ?? offset + newHistories.length);
+                setHistoryHasMore(Boolean(histRes.data?.hasMore));
+            } catch {
+                // 조용히 처리
+            } finally {
+                setIsLoadingMoreHistories(false);
+            }
+            return;
+        }
+
         try {
             const targetPetIds =
                 pets.length > 0
@@ -157,10 +209,14 @@ export default function MypageClient() {
                         : [];
 
             const [histRes, ...jourResList] = await Promise.all([
-                axiosInstance.get('/user/histories'),
+                axiosInstance.get('/user/histories', { params: histParams }),
                 ...targetPetIds.map((id) => axiosInstance.get(`/user/pets/${id}/journeys`)),
             ]);
-            setHistories(histRes.data?.histories || []);
+            const newHistories: MypageHistoryRecord[] = histRes.data?.histories || [];
+            setHistories(newHistories);
+            setHistoryOffset(newHistories.length);
+            setHistoryTotal(histRes.data?.total ?? newHistories.length);
+            setHistoryHasMore(Boolean(histRes.data?.hasMore));
 
             const mergedJourneys: MypageJourneyRecord[] = [];
             const seenJourneyIds = new Set<string>();
@@ -178,6 +234,67 @@ export default function MypageClient() {
         } catch {
             // 조용히 처리
         }
+    };
+
+    const handleSelectAllHistoryPets = () => {
+        setSelectedHistoryPetIds([]);
+        fetchPetTimelineAndJourneys(activePet?.id, {
+            petIds: [],
+            filterMode: historyFilterMode,
+            offset: 0,
+            append: false,
+        });
+    };
+
+    const handleToggleHistoryPetId = (petId: string) => {
+        const exists = selectedHistoryPetIds.includes(petId);
+        let nextIds = exists
+            ? selectedHistoryPetIds.filter((id) => id !== petId)
+            : [...selectedHistoryPetIds, petId];
+        if (pets.length > 0 && nextIds.length >= pets.length) {
+            nextIds = [];
+        }
+        setSelectedHistoryPetIds(nextIds);
+        fetchPetTimelineAndJourneys(activePet?.id, {
+            petIds: nextIds,
+            filterMode: historyFilterMode,
+            offset: 0,
+            append: false,
+        });
+    };
+
+    const handleApplyHistoryPetIds = (petIds: string[]) => {
+        let nextIds = petIds;
+        if (pets.length > 0 && nextIds.length >= pets.length) {
+            nextIds = [];
+        }
+        setSelectedHistoryPetIds(nextIds);
+        fetchPetTimelineAndJourneys(activePet?.id, {
+            petIds: nextIds,
+            filterMode: historyFilterMode,
+            offset: 0,
+            append: false,
+        });
+    };
+
+    const handleChangeHistoryFilterMode = (nextMode: 'all' | 'group' | 'unclassified') => {
+        setHistoryFilterMode(nextMode);
+        fetchPetTimelineAndJourneys(activePet?.id, {
+            petIds: selectedHistoryPetIds,
+            filterMode: nextMode,
+            offset: 0,
+            append: false,
+        });
+    };
+
+    const handleLoadMoreHistories = () => {
+        if (!historyHasMore || isLoadingMoreHistories) return;
+        fetchPetTimelineAndJourneys(activePet?.id, {
+            petIds: selectedHistoryPetIds,
+            filterMode: historyFilterMode,
+            offset: historyOffset,
+            append: true,
+        });
     };
 
     const fetchScrappedNotebooks = async () => {
@@ -214,6 +331,7 @@ export default function MypageClient() {
         try {
             await axiosInstance.patch('/user/settings/auto-journal', { enabled: checked });
             setAutoJournalEnabled(checked);
+            window.dispatchEvent(new CustomEvent('auth-change'));
             toaster.create({
                 title: checked ? 'AI 건강 수첩 자동 기록이 켜졌습니다.' : 'AI 건강 수첩 자동 기록이 꺼졌습니다.',
                 type: 'success',
@@ -236,7 +354,38 @@ export default function MypageClient() {
         }
     };
 
-    const fetchActivityTabData = async (tab: 'post' | 'bookmark' | 'like' | 'draft') => {
+    const fetchReportedDeletedPosts = async () => {
+        if (!isAuthenticated()) return;
+        try {
+            const res = await axiosInstance.get('/post/user/reported-deleted');
+            if (res.data?.success && Array.isArray(res.data.posts)) {
+                setReportedDeletedPosts(res.data.posts);
+            }
+        } catch {
+            // 조용히 처리
+        }
+    };
+
+    const handleSubmitAppeal = async (postId: string, reason: string) => {
+        try {
+            const res = await axiosInstance.post(`/post/${postId}/appeal`, { reason });
+            const extended = Boolean(res.data?.extendedByAppeal);
+            toaster.create({
+                title: extended
+                    ? '이의 제기가 접수되었으며 심사 기간 확보를 위해 삭제 예정일이 10일 연장되었습니다.'
+                    : '이의 제기가 접수되었습니다.',
+                type: 'success',
+            });
+            await fetchReportedDeletedPosts();
+        } catch (err: any) {
+            toaster.create({
+                title: err?.response?.data?.message || '이의 제기 접수에 실패했습니다.',
+                type: 'error',
+            });
+        }
+    };
+
+    const fetchActivityTabData = async (tab: 'post' | 'bookmark' | 'like' | 'draft' | 'appeal') => {
         setTabLoading(true);
         try {
             if (tab === 'post') {
@@ -250,7 +399,9 @@ export default function MypageClient() {
                 setLikeList(res.data || []);
             } else if (tab === 'draft') {
                 const res = await axiosInstance.get('/post/draft');
-                if (res.data?.success && res.data?.draft) {
+                if (res.data?.success && Array.isArray(res.data?.drafts)) {
+                    setDraftList(res.data.drafts);
+                } else if (res.data?.success && res.data?.draft) {
                     setDraftList([res.data.draft]);
                 } else {
                     setDraftList([]);
@@ -268,7 +419,7 @@ export default function MypageClient() {
         try {
             await axiosInstance.delete(`/post/draft/${draftId}`);
             toaster.create({ title: '임시저장 글이 삭제되었습니다.', type: 'info' });
-            setDraftList([]);
+            setDraftList((prev) => prev.filter((d) => String(d.id || d.postId) !== String(draftId)));
             fetchUserProfile();
         } catch {
             toaster.create({ title: '임시저장 삭제 중 오류가 발생했습니다.', type: 'error' });
@@ -294,6 +445,7 @@ export default function MypageClient() {
             setHistories((prev) => prev.filter((h) => String(h.id) !== String(historyId)));
             toaster.create({ title: '기록이 삭제되었습니다.', type: 'info' });
             fetchPetTimelineAndJourneys(activePet?.id);
+            window.dispatchEvent(new CustomEvent('history-change'));
         } catch (error: any) {
             toaster.create({
                 title: error?.response?.data?.message || '기록 삭제에 실패했습니다.',
@@ -413,54 +565,50 @@ export default function MypageClient() {
                     </HStack>
 
                     {/* Right: Pet Switcher + Add Pet */}
-                    <HStack
-                        gap="10px"
-                        overflowX="auto"
-                        pb={{ base: 1, lg: 0 }}
-                        flexWrap={{ base: 'nowrap', lg: 'wrap' }}
-                        justify={{ base: 'flex-start', lg: 'flex-end' }}
-                        css={{ '&::-webkit-scrollbar': { display: 'none' } }}
-                    >
-                        {pets.map((pet) => {
-                            const isSelected = activePet?.id === pet.id;
-                            return (
+                    <HStack align="flex-start" gap="10px" minW={0}>
+                        <HStack
+                            gap="10px"
+                            overflowX="auto"
+                            pb={{ base: 1, lg: 0 }}
+                            flexWrap="nowrap"
+                            justifyContent="flex-start"
+                            css={{
+                                '&::-webkit-scrollbar': { display: 'none' },
+                                '@media (min-width: 62em)': {
+                                    maxWidth: '580px',
+                                    overflowX: 'visible',
+                                    flexWrap: 'wrap',
+                                    justifyContent: 'flex-end',
+                                },
+                            }}
+                        >
+                            {pets.slice(0, 8).map((pet) => (
                                 <HStack
                                     key={pet.id}
-                                    onClick={() => setSelectedPetId(String(pet.id))}
-                                    bg={isSelected ? 'var(--waba-purple-soft)' : 'var(--waba-card)'}
-                                    border={isSelected ? '1.5px solid' : '1px solid'}
-                                    borderColor={isSelected ? '#6338A9' : 'var(--waba-line)'}
-                                    borderRadius="16px"
-                                    px="14px"
-                                    py="9px"
-                                    gap="10px"
-                                    cursor="pointer"
+                                    w="136px"
+                                    bg="var(--waba-card)"
+                                    border="1px solid"
+                                    borderColor="var(--waba-line)"
+                                    borderRadius="14px"
+                                    px="10px"
+                                    py="6px"
+                                    gap="8px"
                                     flexShrink={0}
                                     textAlign="left"
-                                    transition="all 0.15s"
                                 >
                                     <UserAvatar
                                         src={pet.current_avatar_url}
                                         alt={pet.name}
-                                        w="36px"
-                                        h="36px"
-                                        iconSize={16}
+                                        w="28px"
+                                        h="28px"
+                                        iconSize={14}
                                         fallbackType="pet"
+                                        border="1.5px solid"
+                                        borderColor="#F6EBFB"
                                     />
-                                    <Box>
-                                        <Text fontSize="13px" fontWeight={isSelected ? '800' : '700'} color="var(--waba-ink)">
-                                            {pet.name}
-                                        </Text>
-                                        <Text
-                                            fontSize="11px"
-                                            color={isSelected ? 'var(--waba-purple-text)' : 'var(--waba-ink-3)'}
-                                        >
-                                            {[
-                                                pet.breed || pet.species,
-                                                pet.latest_weight_kg ? `${Number(pet.latest_weight_kg).toFixed(1)}kg` : null,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
+                                    <Box minW={0} flex={1}>
+                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)" title={pet.name} truncate>
+                                            {formatPetShortName(pet.name)}
                                         </Text>
                                     </Box>
                                     <Menu.Root positioning={{ placement: 'bottom-end' }}>
@@ -524,30 +672,54 @@ export default function MypageClient() {
                                         </Portal>
                                     </Menu.Root>
                                 </HStack>
-                            );
-                        })}
+                            ))}
 
-                        <Button
-                            size="xs"
-                            h="40px"
-                            px="14px"
-                            borderRadius="14px"
-                            variant="outline"
-                            borderColor="var(--waba-line)"
-                            bg="var(--waba-card)"
-                            color="var(--waba-ink-2)"
-                            fontSize="12px"
-                            fontWeight="700"
-                            onClick={() => {
-                                setEditingPet(null);
-                                setPetModalOpen(true);
-                            }}
-                            flexShrink={0}
-                            gap={1}
-                        >
-                            <LuPlus size={14} />
-                            반려동물 등록
-                        </Button>
+                        </HStack>
+                        <VStack gap="6px" flexShrink={0} align="center">
+                            <Button
+                                size="xs"
+                                h="40px"
+                                w={pets.length > 0 ? '40px' : undefined}
+                                px={pets.length > 0 ? 0 : '14px'}
+                                borderRadius="14px"
+                                variant="outline"
+                                borderColor="var(--waba-line)"
+                                bg="var(--waba-card)"
+                                color="var(--waba-ink-2)"
+                                fontSize="12px"
+                                fontWeight="700"
+                                aria-label="반려동물 등록"
+                                title="반려동물 등록"
+                                onClick={() => {
+                                    setEditingPet(null);
+                                    setPetModalOpen(true);
+                                }}
+                                flexShrink={0}
+                                gap={1}
+                            >
+                                <LuPlus size={pets.length > 0 ? 16 : 14} />
+                                {pets.length === 0 && '반려동물 등록'}
+                            </Button>
+                            <Button
+                                data-has-more={pets.length >= 9 ? 'true' : 'false'}
+                                size="2xs"
+                                h="24px"
+                                px="8px"
+                                borderRadius="10px"
+                                variant="ghost"
+                                color="var(--waba-purple-text)"
+                                fontSize="11px"
+                                fontWeight="700"
+                                onClick={() => setAllPetsModalOpen(true)}
+                                css={{
+                                    '&[data-has-more="false"]': {
+                                        display: 'none',
+                                    },
+                                }}
+                            >
+                                더보기
+                            </Button>
+                        </VStack>
                     </HStack>
                 </Flex>
 
@@ -609,6 +781,16 @@ export default function MypageClient() {
                         histories={histories}
                         journeys={journeys}
                         autoJournalEnabled={autoJournalEnabled}
+                        selectedHistoryPetIds={selectedHistoryPetIds}
+                        onSelectAllHistoryPets={handleSelectAllHistoryPets}
+                        onToggleHistoryPetId={handleToggleHistoryPetId}
+                        onApplyHistoryPetIds={handleApplyHistoryPetIds}
+                        filterMode={historyFilterMode}
+                        onChangeFilterMode={handleChangeHistoryFilterMode}
+                        historyTotal={historyTotal}
+                        historyHasMore={historyHasMore}
+                        isLoadingMoreHistories={isLoadingMoreHistories}
+                        onLoadMoreHistories={handleLoadMoreHistories}
                         onOpenRecordModal={() => {
                             setEditingHistory(null);
                             setRecordModalOpen(true);
@@ -654,9 +836,11 @@ export default function MypageClient() {
                             bookmarkCount={profile?.bookmark_count ?? bookmarkList.length}
                             likeCount={profile?.like_count ?? likeList.length}
                             draftCount={profile?.draft_count ?? draftList.length}
+                            reportedDeletedPosts={reportedDeletedPosts}
+                            onSubmitAppeal={handleSubmitAppeal}
                             pets={pets}
-                            selectedPetId={selectedPetId}
-                            onSelectPetId={setSelectedPetId}
+                            selectedPetId={activityPetId}
+                            onSelectPetId={setActivityPetId}
                         />
                     </VStack>
                 )}
@@ -727,12 +911,28 @@ export default function MypageClient() {
                     if (!open) setEditingJourney(null);
                 }}
                 pet={activePet}
+                pets={pets}
                 editingJourney={editingJourney}
                 onSaved={() => {
                     if (activePet?.id) {
                         fetchPetTimelineAndJourneys(activePet.id);
                     }
                 }}
+            />
+
+            <PetManageAllModal
+                open={allPetsModalOpen}
+                onOpenChange={setAllPetsModalOpen}
+                pets={pets}
+                onAddPet={() => {
+                    setEditingPet(null);
+                    setPetModalOpen(true);
+                }}
+                onEditPet={(pet) => {
+                    setEditingPet(pet);
+                    setPetModalOpen(true);
+                }}
+                onDeletePet={handleDeletePet}
             />
         </Box>
     );

@@ -1,5 +1,6 @@
 import db from '../../config/db.js';
 import crypto from 'crypto';
+import { generateNoteCode } from '../../utils/simpleUtils.js';
 
 export const checkNickname = async (nickname) => {
     const sql = `SELECT COUNT(*) AS count FROM users WHERE nickname = ?`;
@@ -210,7 +211,11 @@ export const getUserProfile = async (userId) => {
             (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND status = 'PUBLISHED') AS post_count,
             (SELECT COUNT(*) FROM post_interactions WHERE user_id = u.id AND interaction_type = 'BOOKMARK') AS bookmark_count,
             (SELECT COUNT(*) FROM post_interactions WHERE user_id = u.id AND interaction_type = 'LIKE') AS like_count,
-            (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND status = 'DRAFT') AS draft_count
+            (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND status = 'DRAFT') AS draft_count,
+            EXISTS(
+                SELECT 1 FROM user_identities ui
+                WHERE ui.user_id = u.id AND ui.provider = 'LOCAL' AND ui.password_hash IS NOT NULL
+            ) AS has_local_password
         FROM users u
         WHERE u.id = ?
     `;
@@ -221,8 +226,17 @@ export const getUserProfile = async (userId) => {
     return {
         ...rows[0],
         auto_journal_enabled: Boolean(rows[0].auto_journal_enabled),
+        has_local_password: Boolean(rows[0].has_local_password),
         pets
     };
+};
+
+export const updateLocalPasswordHash = async (userId, passwordHash) => {
+    const [result] = await db.query(
+        `UPDATE user_identities SET password_hash = ? WHERE user_id = ? AND provider = 'LOCAL'`,
+        [passwordHash, userId]
+    );
+    return result.affectedRows;
 };
 
 export const getAutoJournalSetting = async (userId) => {
@@ -618,6 +632,7 @@ export const getPetJourneys = async (userId, petId) => {
     const sql = `
         SELECT 
             pj.id,
+            pj.note_code,
             pj.pet_id,
             pj.user_id,
             pj.title,
@@ -631,6 +646,20 @@ export const getPetJourneys = async (userId, petId) => {
             pj.completed_at,
             pj.share_slug,
             pj.share_scope,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'id', pt.id,
+                        'name', pt.name,
+                        'current_avatar_url', pt.current_avatar_url,
+                        'species', pt.species,
+                        'breed', pt.breed
+                    )
+                )
+                FROM pet_journey_pets pjp
+                JOIN pets pt ON pjp.pet_id = pt.id
+                WHERE pjp.journey_id = pj.id AND pt.is_deleted = 0
+            ), JSON_ARRAY()) AS pets,
             (
                 SELECT COUNT(*) 
                 FROM pet_histories ph 
@@ -644,21 +673,34 @@ export const getPetJourneys = async (userId, petId) => {
             pj.created_at,
             pj.updated_at
         FROM pet_journeys pj
-        WHERE pj.pet_id = ? AND pj.user_id = ?
+        WHERE pj.user_id = ?
+          AND (
+              pj.pet_id = ?
+              OR EXISTS (
+                  SELECT 1 FROM pet_journey_pets pjp
+                  WHERE pjp.journey_id = pj.id AND pjp.pet_id = ?
+              )
+          )
         ORDER BY pj.start_date DESC, pj.id DESC
     `;
-    const [rows] = await db.query(sql, [petId, userId]);
-    return rows.map(r => ({
-        ...r,
-        is_ongoing: Boolean(r.is_ongoing),
-        record_count: Number(r.record_count || 0)
-    }));
+    const [rows] = await db.query(sql, [userId, petId, petId]);
+    return rows.map(r => {
+        const pets = Array.isArray(r.pets) ? r.pets : [];
+        return {
+            ...r,
+            is_ongoing: Boolean(r.is_ongoing),
+            record_count: Number(r.record_count || 0),
+            pets,
+            pet_ids: pets.map(p => p.id)
+        };
+    });
 };
 
 export const getPetJourneyById = async (userId, petId, journeyId) => {
     const sql = `
         SELECT 
             pj.id,
+            pj.note_code,
             pj.pet_id,
             pj.user_id,
             pj.title,
@@ -672,6 +714,20 @@ export const getPetJourneyById = async (userId, petId, journeyId) => {
             pj.completed_at,
             pj.share_slug,
             pj.share_scope,
+            COALESCE((
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'id', pt.id,
+                        'name', pt.name,
+                        'current_avatar_url', pt.current_avatar_url,
+                        'species', pt.species,
+                        'breed', pt.breed
+                    )
+                )
+                FROM pet_journey_pets pjp
+                JOIN pets pt ON pjp.pet_id = pt.id
+                WHERE pjp.journey_id = pj.id AND pt.is_deleted = 0
+            ), JSON_ARRAY()) AS pets,
             (
                 SELECT COUNT(*) 
                 FROM pet_histories ph 
@@ -685,14 +741,24 @@ export const getPetJourneyById = async (userId, petId, journeyId) => {
             pj.created_at,
             pj.updated_at
         FROM pet_journeys pj
-        WHERE pj.id = ? AND pj.pet_id = ? AND pj.user_id = ?
+        WHERE pj.id = ? AND pj.user_id = ?
+          AND (
+              pj.pet_id = ?
+              OR EXISTS (
+                  SELECT 1 FROM pet_journey_pets pjp
+                  WHERE pjp.journey_id = pj.id AND pjp.pet_id = ?
+              )
+          )
     `;
-    const [rows] = await db.query(sql, [journeyId, petId, userId]);
+    const [rows] = await db.query(sql, [journeyId, userId, petId, petId]);
     if (!rows[0]) return null;
+    const pets = Array.isArray(rows[0].pets) ? rows[0].pets : [];
     return {
         ...rows[0],
         is_ongoing: Boolean(rows[0].is_ongoing),
-        record_count: Number(rows[0].record_count || 0)
+        record_count: Number(rows[0].record_count || 0),
+        pets,
+        pet_ids: pets.map(p => p.id)
     };
 };
 
@@ -732,13 +798,18 @@ export const createPetJourney = async (userId, petId, data) => {
         ? String(start_date).trim()
         : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
     const shareSlug = crypto.randomBytes(16).toString('hex');
+    const noteCode = generateNoteCode();
+    const rawPetIds = Array.isArray(data?.pet_ids) && data.pet_ids.length > 0 ? data.pet_ids : [petId];
+    const validatedPetIds = await normalizeOwnedPetIds(userId, rawPetIds);
+    const primaryPetId = validatedPetIds[0] || petId;
 
     const [res] = await db.query(
         `INSERT INTO pet_journeys (
-            pet_id, user_id, title, description, start_date, end_date, is_ongoing, status, category, goal_summary, completed_at, share_slug, share_scope, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${finalStatus === 'ACTIVE' ? 'NULL' : 'NOW()'}, ?, ?, NOW(), NOW())`,
+            note_code, pet_id, user_id, title, description, start_date, end_date, is_ongoing, status, category, goal_summary, completed_at, share_slug, share_scope, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${finalStatus === 'ACTIVE' ? 'NULL' : 'NOW()'}, ?, ?, NOW(), NOW())`,
         [
-            petId,
+            noteCode,
+            primaryPetId,
             userId,
             title,
             description || null,
@@ -753,7 +824,15 @@ export const createPetJourney = async (userId, petId, data) => {
         ]
     );
 
-    return await getPetJourneyById(userId, petId, res.insertId);
+    const journeyId = res.insertId;
+    for (const pid of validatedPetIds) {
+        await db.query(
+            `INSERT IGNORE INTO pet_journey_pets (journey_id, pet_id) VALUES (?, ?)`,
+            [journeyId, pid]
+        );
+    }
+
+    return await getPetJourneyById(userId, primaryPetId, journeyId);
 };
 
 export const updatePetJourney = async (userId, petId, journeyId, data) => {
@@ -791,13 +870,23 @@ export const updatePetJourney = async (userId, petId, journeyId, data) => {
     const finalCategory = category !== undefined ? (category ? String(category).trim().slice(0, 50) : null) : existing.category;
     const finalGoalSummary = goal_summary !== undefined ? (goal_summary ? String(goal_summary).trim().slice(0, 255) : null) : existing.goal_summary;
 
+    let finalPrimaryPetId = existing.pet_id;
+    let validatedPetIds = null;
+    if (Array.isArray(data?.pet_ids) && data.pet_ids.length > 0) {
+        validatedPetIds = await normalizeOwnedPetIds(userId, data.pet_ids);
+        if (validatedPetIds.length > 0) {
+            finalPrimaryPetId = validatedPetIds[0];
+        }
+    }
+
     await db.query(
         `UPDATE pet_journeys SET
-            title = ?, description = ?, start_date = ?, end_date = ?, is_ongoing = ?, status = ?, category = ?, goal_summary = ?,
-            completed_at = ${finalStatus === 'ACTIVE' ? 'NULL' : 'COALESCE(completed_at, NOW())'},
+            pet_id = ?, title = ?, description = ?, start_date = ?, end_date = ?, is_ongoing = ?, status = ?, category = ?, goal_summary = ?,
+            completed_at = ${finalStatus === 'ACTIVE' ? 'NULL' : (existing.status !== finalStatus ? 'NOW()' : 'COALESCE(completed_at, NOW())')},
             share_scope = ?, updated_at = NOW()
-         WHERE id = ? AND pet_id = ? AND user_id = ?`,
+         WHERE id = ? AND user_id = ?`,
         [
+            finalPrimaryPetId,
             title,
             description !== undefined ? (description || null) : existing.description,
             start_date,
@@ -808,12 +897,21 @@ export const updatePetJourney = async (userId, petId, journeyId, data) => {
             finalGoalSummary,
             finalScope,
             journeyId,
-            petId,
             userId
         ]
     );
 
-    return await getPetJourneyById(userId, petId, journeyId);
+    if (validatedPetIds && validatedPetIds.length > 0) {
+        await db.query(`DELETE FROM pet_journey_pets WHERE journey_id = ?`, [journeyId]);
+        for (const pid of validatedPetIds) {
+            await db.query(
+                `INSERT IGNORE INTO pet_journey_pets (journey_id, pet_id) VALUES (?, ?)`,
+                [journeyId, pid]
+            );
+        }
+    }
+
+    return await getPetJourneyById(userId, finalPrimaryPetId, journeyId);
 };
 
 export const deletePetJourney = async (userId, petId, journeyId) => {
@@ -826,7 +924,8 @@ export const deletePetJourney = async (userId, petId, journeyId) => {
 
     // Set pet_histories.journey_id = NULL
     await db.query(`UPDATE pet_histories SET journey_id = NULL WHERE journey_id = ?`, [journeyId]);
-    await db.query(`DELETE FROM pet_journeys WHERE id = ? AND pet_id = ? AND user_id = ?`, [journeyId, petId, userId]);
+    await db.query(`DELETE FROM pet_journey_pets WHERE journey_id = ?`, [journeyId]);
+    await db.query(`DELETE FROM pet_journeys WHERE id = ? AND user_id = ?`, [journeyId, userId]);
 
     return { deletedId: journeyId, petId };
 };
@@ -930,14 +1029,80 @@ const syncPetsLatestWeight = async (userId, petIds = []) => {
     }
 };
 
-export const getUserHistories = async (userId) => {
+export const getUserHistories = async (userId, options = {}) => {
+    const {
+        pet_id,
+        pet_ids,
+        unclassified,
+        limit,
+        offset
+    } = options || {};
+
+    const whereClauses = ['ph.user_id = ?'];
+    const whereParams = [userId];
+
+    const petIdSet = new Set();
+    const normalizedPetId = typeof pet_id === 'string' ? pet_id.trim() : (pet_id ? String(pet_id).trim() : '');
+    if (normalizedPetId && normalizedPetId !== 'all') {
+        petIdSet.add(normalizedPetId);
+    }
+
+    if (Array.isArray(pet_ids)) {
+        for (const id of pet_ids) {
+            const trimmed = String(id || '').trim();
+            if (trimmed && trimmed !== 'all') petIdSet.add(trimmed);
+        }
+    } else if (typeof pet_ids === 'string' && pet_ids.trim()) {
+        for (const id of pet_ids.split(',')) {
+            const trimmed = id.trim();
+            if (trimmed && trimmed !== 'all') petIdSet.add(trimmed);
+        }
+    }
+
+    const resolvedPetIds = [...petIdSet];
+    if (resolvedPetIds.length > 0) {
+        const placeholders = resolvedPetIds.map(() => '?').join(', ');
+        whereClauses.push(`(
+            ph.pet_id IN (${placeholders})
+            OR EXISTS (
+                SELECT 1 FROM pet_history_pets phpets
+                WHERE phpets.history_id = ph.id AND phpets.pet_id IN (${placeholders})
+            )
+        )`);
+        whereParams.push(...resolvedPetIds, ...resolvedPetIds);
+    }
+
+    if (unclassified === true || unclassified === 'true' || unclassified === '1') {
+        whereClauses.push('ph.journey_id IS NULL');
+    }
+
+    const whereSql = whereClauses.join(' AND ');
+
+    const [[countRow]] = await db.query(
+        `SELECT COUNT(DISTINCT ph.id) AS total FROM pet_histories ph WHERE ${whereSql}`,
+        whereParams
+    );
+    const total = Number(countRow?.total || 0);
+
+    const hasLimit = limit !== undefined && limit !== null && String(limit).trim() !== '';
+    const parsedLimit = hasLimit ? Math.min(100, Math.max(1, parseInt(limit, 10) || 20)) : null;
+    const parsedOffset = hasLimit ? Math.max(0, parseInt(offset, 10) || 0) : 0;
+
     const sql = `
         ${HISTORY_SELECT_SQL}
-        WHERE ph.user_id = ?
+        WHERE ${whereSql}
         ORDER BY ph.event_date DESC, ph.id DESC
+        ${hasLimit ? 'LIMIT ? OFFSET ?' : ''}
     `;
-    const [rows] = await db.query(sql, [userId]);
-    return rows.map(formatHistoryRow);
+    const queryParams = hasLimit ? [...whereParams, parsedLimit, parsedOffset] : whereParams;
+    const [rows] = await db.query(sql, queryParams);
+    const histories = rows.map(formatHistoryRow);
+
+    return {
+        histories,
+        total,
+        hasMore: parsedOffset + histories.length < total
+    };
 };
 
 export const getUserHistoryById = async (userId, historyId) => {
@@ -1377,7 +1542,7 @@ export const getPublicJourneyBySlug = async (slug) => {
                 WHERE php.history_id = ph.id
             ), JSON_ARRAY()) AS posts
         FROM pet_histories ph
-        WHERE ph.journey_id = ?
+        WHERE ph.journey_id = ? AND ph.is_private = 0
         ORDER BY ph.event_date ASC, ph.id ASC
     `;
     const [hRows] = await db.query(historySql, [journey.id]);

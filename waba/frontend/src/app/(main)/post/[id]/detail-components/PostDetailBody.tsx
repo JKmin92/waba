@@ -47,6 +47,7 @@ export default function PostDetailBody({
                             key={index + content.image_id}
                             imageSrc={image?.image_url || ''}
                             pins={pins}
+                            postPets={postDetail.post_pets || []}
                             activePinId={activePinId}
                             onSelectPin={onSelectPin}
                             isSensitive={Boolean(content.is_sensitive || image?.is_sensitive)}

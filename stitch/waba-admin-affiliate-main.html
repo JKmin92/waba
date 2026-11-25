@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 제휴 도메인 관리 (서브도메인 허용 정책)</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --amber: #D97706;
+      --amber-soft: #FEF3C7;
+      --danger: #DC2626;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1040px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #475569; }
+    .nav-item.active { background: #0F172A; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-primary { padding: 9px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .test-row { display: flex; gap: 10px; align-items: center; }
+    .input-pill { flex: 1; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px; background: #F8FAFC; }
+    .block-banner { padding: 10px 16px; border-radius: 14px; background: var(--danger-soft); color: var(--danger); font-size: 12px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .pass-chip { padding: 4px 10px; border-radius: 999px; background: var(--emerald-soft); color: var(--emerald); font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+    .filter-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .pill-group { display: flex; gap: 6px; }
+    .pill { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 600; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-active { background: var(--emerald-soft); color: var(--emerald); }
+    .b-inactive { background: var(--danger-soft); color: var(--danger); }
+    .b-mono { font-family: ui-monospace, monospace; background: #F1F5F9; color: #334155; font-size: 11px; padding: 3px 9px; border-radius: 999px; }
+    .b-purple { background: var(--primary-soft); color: var(--primary); }
+    .b-amber { background: var(--amber-soft); color: var(--amber); }
+    .b-neutral { background: #F1F5F9; color: #475569; }
+    .btn-detail { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드</div>
+      <div class="nav-item">회원 · 반려동물</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item">게시글 · 댓글 · 큐레이션</div>
+      <div class="nav-item">건강 수첩 · AI 분석</div>
+      <div class="nav-item">수의사 검증 · 질병</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item">게시판 관리</div>
+      <div class="nav-item active">제휴 도메인 관리</div>
+      <div class="nav-item">감사 로그</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>제휴 도메인 관리</h1>
+        <p>게시글 상품 핀에 등록 가능한 제휴 쇼핑몰 도메인 화이트리스트와 서브도메인 허용 정책을 관리합니다.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary">+ 도메인 추가</button>
+        <button class="btn-icon" title="새로고침">↻</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">전체 허용 도메인</div><div class="kpi-val">13</div><div class="kpi-sub">활성 12개 · 비활성 1개</div></div>
+      <div class="kpi-card"><div class="kpi-label">활성 화이트리스트</div><div class="kpi-val" style="color:var(--primary);">12</div><div class="kpi-sub">전체 허용 9 · 지정 2 · 루트만 1</div></div>
+      <div class="kpi-card"><div class="kpi-label">연결된 상품 핀</div><div class="kpi-val">16</div><div class="kpi-sub">화이트리스트 검증 통과 링크</div></div>
+      <div class="kpi-card"><div class="kpi-label">URL 보안 정책</div><div class="kpi-val" style="color:var(--emerald);">엄격 적용</div><div class="kpi-sub">http/https · XSS 스킴 차단</div></div>
+    </div>
+
+    <section class="panel">
+      <div>
+        <div style="font-size:14px;font-weight:800;">사전 URL 검증 테스트</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">상품 URL을 입력해 현재 활성 화이트리스트 및 서브도메인 정책 통과 여부를 즉시 확인합니다.</div>
+      </div>
+      <div class="test-row">
+        <input class="input-pill" type="text" value="https://shop.tntnfarm.com/goods/123" />
+        <button class="btn-primary">검증 테스트</button>
+      </div>
+      <div class="block-banner">
+        <span>✕ 차단됨 — tntnfarm.com (튼튼팜)의 허용되지 않은 서브도메인(shop)입니다 · 허용: 루트 + m.tntnfarm.com</span>
+        <span class="pass-chip">예시: m.tntnfarm.com 통과</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="filter-row">
+        <div class="pill-group"><span class="pill active">전체</span><span class="pill">활성</span><span class="pill">비활성</span></div>
+        <div style="display:flex;gap:8px;width:360px;">
+          <input class="input-pill" type="text" placeholder="쇼핑몰명 또는 도메인 검색..." />
+          <button class="btn-primary">검색</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>상태</th><th>쇼핑몰명</th><th>허용 도메인</th><th>서브도메인 정책</th><th>등록일 / 수정일</th><th>액션</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-active">활성</span></td>
+            <td><strong>쿠팡</strong></td>
+            <td><span class="b-mono">coupang.com</span></td>
+            <td><span class="badge b-purple">전체 허용 (*.domain)</span></td>
+            <td style="color:var(--muted);">등록 2026.11.13 · 수정 2026.11.13</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-active">활성</span></td>
+            <td><strong>튼튼팜</strong></td>
+            <td><span class="b-mono">tntnfarm.com</span></td>
+            <td><span class="badge b-amber">지정만 허용</span> <span class="b-mono" style="margin-left:4px;">m.tntnfarm.com</span></td>
+            <td style="color:var(--muted);">등록 2026.11.25 · 수정 2026.11.25</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-active">활성</span></td>
+            <td><strong>네이버 스마트스토어</strong></td>
+            <td><span class="b-mono">smartstore.naver.com</span></td>
+            <td><span class="badge b-neutral">서브도메인 불허 (루트만)</span></td>
+            <td style="color:var(--muted);">등록 2026.11.13 · 수정 2026.11.13</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-active">활성</span></td>
+            <td><strong>펫프렌즈</strong></td>
+            <td><span class="b-mono">pet-friends.co.kr</span></td>
+            <td><span class="badge b-purple">전체 허용 (*.domain)</span></td>
+            <td style="color:var(--muted);">등록 2026.11.13 · 수정 2026.11.13</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-inactive">비활성</span></td>
+            <td><strong>임시 테스트몰</strong></td>
+            <td><span class="b-mono">test-mall.co.kr</span></td>
+            <td><span class="badge b-neutral">서브도메인 불허 (루트만)</span></td>
+            <td style="color:var(--muted);">등록 2026.11.20 · 수정 2026.11.24</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

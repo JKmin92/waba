@@ -43,7 +43,7 @@ export default function NotebookCard({ item, onToggleScrap }: NotebookCardProps)
             gap="14px"
             h="100%"
             cursor="pointer"
-            onClick={() => router.push(`/notebook/${item.id}`)}
+            onClick={() => router.push(`/notebook/${item.note_code || item.id}`)}
             _hover={{ transform: 'translateY(-3px)', borderColor: 'var(--waba-purple-border)' }}
             transition="all 0.2s ease"
             minW={0}

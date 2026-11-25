@@ -106,10 +106,10 @@ export default function PinRegistrationModal({
             <Portal>
                 <Dialog.Backdrop backdropFilter="blur(10px)" bg="blackAlpha.500" />
                 <Dialog.Positioner>
-                    <Dialog.Content rounded="28px" p={6} bg="white">
+                    <Dialog.Content rounded="28px" p={6} bg="var(--waba-card)">
                         <Dialog.Header p={0} mb={4}>
-                            <Flex justify="space-between" align="center">
-                                <Dialog.Title fontSize="18px" fontWeight="800" color="waba.charcoal">
+                            <Flex justify="space-between" align="center" w="100%">
+                                <Dialog.Title fontSize="18px" fontWeight="800" color="var(--waba-ink)">
                                     📌 사진 위 상품 / 반려동물 핀 태깅
                                 </Dialog.Title>
                                 <CloseButton
@@ -118,7 +118,7 @@ export default function PinRegistrationModal({
                                     onClick={onClose}
                                 />
                             </Flex>
-                            <Text fontSize="12px" color="waba.muted" mt={1}>
+                            <Text fontSize="12px" color="var(--waba-ink-3)" mt={1}>
                                 선택한 위치 (가로: {pinCoords.x}%, 세로: {pinCoords.y}%)
                             </Text>
                         </Dialog.Header>
@@ -127,7 +127,7 @@ export default function PinRegistrationModal({
                             <VStack gap={4} align="stretch">
                                 {/* Tab Selector */}
                                 <Box>
-                                    <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
+                                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={2}>
                                         핀 유형 선택
                                     </Text>
                                     <HStack gap={2}>
@@ -137,8 +137,8 @@ export default function PinRegistrationModal({
                                             rounded="full"
                                             fontSize="12px"
                                             fontWeight="700"
-                                            bg={pinTypeTab === 'INTERNAL_PRODUCT' ? 'waba.purple' : 'waba.subtle'}
-                                            color={pinTypeTab === 'INTERNAL_PRODUCT' ? 'white' : 'waba.charcoal'}
+                                            bg={pinTypeTab === 'INTERNAL_PRODUCT' ? '#6338A9' : 'var(--waba-surface)'}
+                                            color={pinTypeTab === 'INTERNAL_PRODUCT' ? 'white' : 'var(--waba-ink)'}
                                             onClick={() => onPinTypeTabChange('INTERNAL_PRODUCT')}
                                         >
                                             ✨ 와바미 공식 (5% 적립)
@@ -149,8 +149,8 @@ export default function PinRegistrationModal({
                                             rounded="full"
                                             fontSize="12px"
                                             fontWeight="600"
-                                            bg={pinTypeTab === 'EXTERNAL_PRODUCT' ? 'waba.charcoal' : 'waba.subtle'}
-                                            color={pinTypeTab === 'EXTERNAL_PRODUCT' ? 'white' : 'waba.charcoal'}
+                                            bg={pinTypeTab === 'EXTERNAL_PRODUCT' ? '#6338A9' : 'var(--waba-surface)'}
+                                            color={pinTypeTab === 'EXTERNAL_PRODUCT' ? 'white' : 'var(--waba-ink)'}
                                             onClick={() => onPinTypeTabChange('EXTERNAL_PRODUCT')}
                                         >
                                             🔗 외부 쇼핑몰 제휴
@@ -161,8 +161,8 @@ export default function PinRegistrationModal({
                                             rounded="full"
                                             fontSize="12px"
                                             fontWeight="600"
-                                            bg={pinTypeTab === 'PET' ? 'purple.700' : 'waba.subtle'}
-                                            color={pinTypeTab === 'PET' ? 'white' : 'waba.charcoal'}
+                                            bg={pinTypeTab === 'PET' ? 'purple.700' : 'var(--waba-surface)'}
+                                            color={pinTypeTab === 'PET' ? 'white' : 'var(--waba-ink)'}
                                             onClick={() => onPinTypeTabChange('PET')}
                                         >
                                             🐾 반려동물 태그
@@ -173,7 +173,7 @@ export default function PinRegistrationModal({
                                 {/* TAB 1: 와바미 공식 상품 */}
                                 {pinTypeTab === 'INTERNAL_PRODUCT' && (
                                     <Box>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
+                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={2}>
                                             와바미 상품 검색 &amp; 선택
                                         </Text>
                                         <HStack gap={2} mb={3}>
@@ -186,13 +186,13 @@ export default function PinRegistrationModal({
                                                 placeholder="와바미 상품명 또는 키워드 검색 (예: 워터볼, 매트, 캣폴...)"
                                                 fontSize="13px"
                                                 rounded="full"
-                                                borderColor="waba.border"
+                                                borderColor="var(--waba-line)"
                                             />
                                             <IconButton
                                                 aria-label="상품 검색"
                                                 size="sm"
                                                 rounded="full"
-                                                bg="waba.purple"
+                                                bg="#6338A9"
                                                 color="white"
                                                 onClick={() => onFetchOfficialProducts(productSearchKeyword)}
                                                 loading={isSearchingProducts}
@@ -203,7 +203,7 @@ export default function PinRegistrationModal({
 
                                         <VStack gap={1.5} align="stretch" maxH="220px" overflowY="auto" pr={1}>
                                             {officialProducts.length === 0 ? (
-                                                <Text fontSize="12px" color="waba.faint" textAlign="center" py={4}>
+                                                <Text fontSize="12px" color="var(--waba-ink-3)" textAlign="center" py={4}>
                                                     검색된 와바미 상품이 없습니다.
                                                 </Text>
                                             ) : (
@@ -218,9 +218,9 @@ export default function PinRegistrationModal({
                                                             justifyContent="space-between"
                                                             alignItems="center"
                                                             p={2.5}
-                                                            bg={isSelected ? 'purple.50' : 'waba.subtle'}
+                                                            bg={isSelected ? 'purple.50' : 'var(--waba-surface)'}
                                                             border="1px solid"
-                                                            borderColor={isSelected ? 'waba.purple' : 'transparent'}
+                                                            borderColor={isSelected ? '#6338A9' : 'transparent'}
                                                             rounded="14px"
                                                             fontSize="12px"
                                                             textAlign="left"
@@ -238,16 +238,16 @@ export default function PinRegistrationModal({
                                                                     />
                                                                 )}
                                                                 <Box>
-                                                                    <Text fontWeight="700" color="waba.charcoal" truncate>
+                                                                    <Text fontWeight="700" color="var(--waba-ink)" truncate>
                                                                         {p.name}
                                                                     </Text>
-                                                                    <Text fontSize="11px" color="waba.muted" truncate>
+                                                                    <Text fontSize="11px" color="var(--waba-ink-3)" truncate>
                                                                         {p.summary || '와바미 라이프스타일 셀렉션'}
                                                                     </Text>
                                                                 </Box>
                                                             </HStack>
                                                             <HStack gap={2} flexShrink={0}>
-                                                                <Text fontWeight="800" color="waba.purple">
+                                                                <Text fontWeight="800" color="var(--waba-purple-text)">
                                                                     {Number(p.sale_price).toLocaleString()}원
                                                                 </Text>
                                                                 {isSelected && <CheckCircle size={16} color="#6338A9" />}
@@ -263,7 +263,7 @@ export default function PinRegistrationModal({
                                 {/* TAB 2: 외부 쇼핑몰 제휴 */}
                                 {pinTypeTab === 'EXTERNAL_PRODUCT' && (
                                     <Box>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
+                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={2}>
                                             외부 쇼핑몰 URL 입력 및 메타데이터 가져오기
                                         </Text>
                                         <HStack gap={2} mb={3}>
@@ -273,13 +273,13 @@ export default function PinRegistrationModal({
                                                 placeholder="예: https://smartstore.naver.com/... 또는 쿠팡 링크"
                                                 fontSize="13px"
                                                 rounded="full"
-                                                borderColor="waba.border"
+                                                borderColor="var(--waba-line)"
                                             />
                                             <Button
                                                 size="sm"
-                                                bg="waba.charcoal"
+                                                bg="#6338A9"
                                                 color="white"
-                                                _hover={{ bg: 'waba.charcoalHover' }}
+                                                _hover={{ bg: '#522B8F' }}
                                                 rounded="full"
                                                 px={4}
                                                 fontSize="12px"
@@ -303,14 +303,14 @@ export default function PinRegistrationModal({
                                         {parsedMetadata && !manualExternalFallback && (
                                             <Box p={3.5} bg="purple.50/50" rounded="16px" border="1px solid" borderColor="purple.200" mb={3}>
                                                 <Flex justify="space-between" align="center" mb={2}>
-                                                    <HStack gap={1.5} color="waba.purple" fontSize="12px" fontWeight="700">
+                                                    <HStack gap={1.5} color="var(--waba-purple-text)" fontSize="12px" fontWeight="700">
                                                         <CheckCircle2 size={15} />
                                                         <Text>메타데이터 자동 추출 완료</Text>
                                                     </HStack>
                                                     <Button
                                                         size="2xs"
                                                         variant="ghost"
-                                                        color="waba.muted"
+                                                        color="var(--waba-ink-3)"
                                                         onClick={() => onManualExternalFallbackChange(true)}
                                                     >
                                                         직접 수정
@@ -328,13 +328,13 @@ export default function PinRegistrationModal({
                                                         />
                                                     )}
                                                     <Box overflow="hidden">
-                                                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal" truncate>
+                                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)" truncate>
                                                             {parsedMetadata.product_name}
                                                         </Text>
-                                                        <HStack gap={2} fontSize="12px" color="waba.muted">
+                                                        <HStack gap={2} fontSize="12px" color="var(--waba-ink-3)">
                                                             <Text>{parsedMetadata.brand_name}</Text>
                                                             {parsedMetadata.price > 0 && (
-                                                                <Text fontWeight="700" color="waba.charcoal">
+                                                                <Text fontWeight="700" color="var(--waba-ink)">
                                                                     {parsedMetadata.price.toLocaleString()}원
                                                                 </Text>
                                                             )}
@@ -345,9 +345,9 @@ export default function PinRegistrationModal({
                                         )}
 
                                         {(!parsedMetadata || manualExternalFallback) && (
-                                            <VStack gap={3} align="stretch" p={3.5} bg="waba.subtle" rounded="16px">
+                                            <VStack gap={3} align="stretch" p={3.5} bg="var(--waba-surface)" rounded="16px">
                                                 <Box>
-                                                    <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1}>
+                                                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={1}>
                                                         상품명 (직접 입력)
                                                     </Text>
                                                     <Input
@@ -362,13 +362,13 @@ export default function PinRegistrationModal({
                                                         }
                                                         placeholder="예: 방수 스크래치프루프 라운드 소파"
                                                         fontSize="13px"
-                                                        bg="white"
+                                                        bg="var(--waba-card)"
                                                         rounded="12px"
                                                     />
                                                 </Box>
                                                 <HStack gap={2}>
                                                     <Box flex="1">
-                                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1}>
+                                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={1}>
                                                             브랜드 / 판매처
                                                         </Text>
                                                         <Input
@@ -383,12 +383,12 @@ export default function PinRegistrationModal({
                                                             }
                                                             placeholder="예: 쿠팡, 오늘의집"
                                                             fontSize="13px"
-                                                            bg="white"
+                                                            bg="var(--waba-card)"
                                                             rounded="12px"
                                                         />
                                                     </Box>
                                                     <Box flex="1">
-                                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1}>
+                                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={1}>
                                                             가격 (원)
                                                         </Text>
                                                         <Input
@@ -404,7 +404,7 @@ export default function PinRegistrationModal({
                                                             }
                                                             placeholder="0"
                                                             fontSize="13px"
-                                                            bg="white"
+                                                            bg="var(--waba-card)"
                                                             rounded="12px"
                                                         />
                                                     </Box>
@@ -417,12 +417,12 @@ export default function PinRegistrationModal({
                                 {/* TAB 3: 반려동물 태그 */}
                                 {pinTypeTab === 'PET' && (
                                     <Box>
-                                        <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={2}>
+                                        <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={2}>
                                             나의 등록된 반려동물 선택
                                         </Text>
                                         {userPetsList.length === 0 ? (
-                                            <Box p={4} bg="waba.subtle" rounded="16px" textAlign="center">
-                                                <Text fontSize="12px" color="waba.muted">
+                                            <Box p={4} bg="var(--waba-surface)" rounded="16px" textAlign="center">
+                                                <Text fontSize="12px" color="var(--waba-ink-3)">
                                                     등록된 반려동물이 없습니다. 마이페이지에서 먼저 아이를 등록해주세요.
                                                 </Text>
                                             </Box>
@@ -439,7 +439,7 @@ export default function PinRegistrationModal({
                                                             justifyContent="space-between"
                                                             alignItems="center"
                                                             p={3}
-                                                            bg={isSelected ? 'purple.50' : 'waba.subtle'}
+                                                            bg={isSelected ? 'purple.50' : 'var(--waba-surface)'}
                                                             border="1px solid"
                                                             borderColor={isSelected ? 'purple.400' : 'transparent'}
                                                             rounded="16px"
@@ -455,14 +455,14 @@ export default function PinRegistrationModal({
                                                                 />
                                                                 <Box>
                                                                     <HStack gap={1.5}>
-                                                                        <Text fontSize="13px" fontWeight="700" color="waba.charcoal">
+                                                                        <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
                                                                             {pet.name}
                                                                         </Text>
-                                                                        <Text fontSize="11px" color="waba.purple" fontWeight="600">
+                                                                        <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600">
                                                                             {pet.species}
                                                                         </Text>
                                                                     </HStack>
-                                                                    <Text fontSize="12px" color="waba.muted">
+                                                                    <Text fontSize="12px" color="var(--waba-ink-3)">
                                                                         {pet.breed}
                                                                         {pet.latest_weight_kg !== null && pet.latest_weight_kg !== undefined && Number(pet.latest_weight_kg) > 0
                                                                             ? ` · ${Number(pet.latest_weight_kg).toFixed(1)}kg`
@@ -481,7 +481,7 @@ export default function PinRegistrationModal({
 
                                 {/* Common Pin Memo */}
                                 <Box pt={2}>
-                                    <Text fontSize="12px" fontWeight="700" color="waba.muted" mb={1.5}>
+                                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink-3)" mb={1.5}>
                                         사용자 팁 / 코멘트 (선택)
                                     </Text>
                                     <Input
@@ -490,7 +490,7 @@ export default function PinRegistrationModal({
                                         placeholder="예: 4.8kg 아이도 흔들림 없이 편안하게 쉬어요"
                                         rounded="14px"
                                         fontSize="13px"
-                                        borderColor="waba.border"
+                                        borderColor="var(--waba-line)"
                                     />
                                 </Box>
                             </VStack>
@@ -502,15 +502,15 @@ export default function PinRegistrationModal({
                                     variant="outline"
                                     rounded="full"
                                     size="sm"
-                                    borderColor="waba.border"
+                                    borderColor="var(--waba-line)"
                                     onClick={onClose}
                                 >
                                     취소
                                 </Button>
                                 <Button
-                                    bg="waba.purple"
+                                    bg="#6338A9"
                                     color="white"
-                                    _hover={{ bg: 'waba.purpleHover' }}
+                                    _hover={{ bg: '#522B8F' }}
                                     rounded="full"
                                     size="sm"
                                     px={5}

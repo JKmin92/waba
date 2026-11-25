@@ -48,6 +48,8 @@ export interface Post {
   user_id: string;
   /** 큐레이션 노출 등급 ('NORMAL_FEED': 일반피드, 'LOOKBOOK_CANDIDATE': 승격대기, 'MAIN_LOOKBOOK': 메인룩북) */
   curation_grade: CurationGrade;
+  /** 큐레이션 노출 대상 동물 (null: 자동 감지, ['ALL']: 전체 공통, ['DOG', 'CAT', ...]: 수동 지정) */
+  curation_target_species?: string | string[] | null;
   /** 게시글 제목 (NOT NULL 필수) */
   title: string;
   /** 게시글 본문 내용 (블록 에디터 JSON 배열) */
@@ -152,6 +154,8 @@ export interface Comment {
   is_anonymous?: boolean | number;
   /** 댓글 공감(좋아요) 수 */
   like_count: number;
+  /** 현재 로그인 사용자의 댓글 좋아요 여부 */
+  is_liked?: boolean;
   /** 댓글 상태 ('ACTIVE' | 'DELETED' | 'BLINDED') */
   status: CommentStatus;
   /** 작성 일시 */
@@ -171,6 +175,9 @@ export interface Comment {
 export interface PostDetail {
   /** 1) 게시글 기본 정보 (posts 테이블: id, board_id, curation_grade, title, content 등) */
   post: Post;
+
+  /** 연결된 공개 건강 수첩 그룹 목록 */
+  linked_journeys?: Array<{ id: number | string; note_code?: string; title: string }>;
 
   /** 1-1) 소속 게시판 마스터 정보 (boards 테이블: id, name, allow_product_pins 등) */
   board: {

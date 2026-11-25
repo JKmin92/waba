@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 제휴 도메인 상세 관리 &amp; 추가 Dialog (서브도메인 정책)</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --danger: #DC2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1260px; background: var(--bg); color: var(--text); padding: 28px 32px; display: flex; flex-direction: column; gap: 28px; }
+    .sec-banner { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
+    .dialog { width: 780px; max-width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08); display: flex; flex-direction: column; gap: 16px; }
+    .d-head { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .b-mono { font-family: ui-monospace, monospace; background: #F1F5F9; color: #334155; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+    .b-active { background: var(--emerald-soft); color: var(--emerald); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .label { font-size: 12px; font-weight: 700; }
+    .input { padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; background: #F8FAFC; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .sub-box { padding: 14px; border-radius: 14px; background: #F8FAFC; border: 1px solid #D9CCF2; display: flex; flex-direction: column; gap: 10px; }
+    .tag-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700; }
+    .preview-box { padding: 10px 12px; border-radius: 10px; background: #FFFFFF; border: 1px solid var(--border); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+
+    .toggle-card { padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: #F8FAFC; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .switch { width: 36px; height: 20px; border-radius: 999px; background: var(--primary); position: relative; flex-shrink: 0; }
+    .switch::after { content: ""; position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+
+    .d-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+    .btn-ghost { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 700; }
+    .btn-danger-outline { padding: 9px 16px; border-radius: 999px; border: 1px solid #FECACA; background: #fff; color: var(--danger); font-size: 13px; font-weight: 700; }
+    .btn-primary { padding: 9px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <!-- 섹션 A -->
+  <div>
+    <span class="sec-banner">섹션 A · 도메인 상세 관리 Dialog (`튼튼팜` / `tntnfarm.com` 예시)</span>
+    <div class="dialog">
+      <div class="d-head">
+        <div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+            <h2 style="font-size:18px;font-weight:800;">튼튼팜</h2>
+            <span class="b-mono">tntnfarm.com</span>
+            <span class="b-active">활성</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);">등록일 2026.11.25 · 최종 수정 2026.11.25</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted);">✕</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="field"><span class="label">쇼핑몰명</span><input class="input" type="text" value="튼튼팜" /></div>
+        <div class="field"><span class="label">허용 도메인</span><input class="input" type="text" value="tntnfarm.com" /></div>
+      </div>
+
+      <div class="field">
+        <span class="label">서브도메인 허용 정책</span>
+        <div class="pill-row">
+          <span class="pill">모든 서브도메인 허용 (*.domain)</span>
+          <span class="pill active">지정 서브도메인만 허용</span>
+          <span class="pill">서브도메인 불허 (루트만)</span>
+        </div>
+      </div>
+
+      <div class="sub-box">
+        <div style="display:flex;gap:8px;">
+          <input class="input" style="flex:1;background:#fff;" type="text" placeholder="예: m 또는 m.tntnfarm.com 입력" />
+          <button class="btn-primary">추가</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="tag-chip">m.tntnfarm.com ×</span>
+        </div>
+        <div class="preview-box">
+          <div style="color:var(--emerald);font-weight:700;">✓ 허용: tntnfarm.com, m.tntnfarm.com</div>
+          <div style="color:var(--danger);font-weight:700;">✕ 차단: 그 외 모든 서브도메인 (예: www.tntnfarm.com, shop.tntnfarm.com)</div>
+        </div>
+      </div>
+
+      <div class="toggle-card">
+        <div><div style="font-size:12px;font-weight:700;">활성 상태 (활성 / 비활성)</div><div style="font-size:11px;color:var(--muted);">비활성화 시 신규 상품 핀 등록·수정에서 즉시 차단되며, 기존 게시글 핀은 유지됩니다.</div></div>
+        <div class="switch"></div>
+      </div>
+
+      <div class="d-foot">
+        <button class="btn-danger-outline">도메인 삭제</button>
+        <div style="display:flex;gap:8px;"><button class="btn-ghost">취소</button><button class="btn-primary">변경 사항 저장</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 B -->
+  <div>
+    <span class="sec-banner">섹션 B · 새 제휴 도메인 추가 Dialog (`+ 도메인 추가` 클릭 시)</span>
+    <div class="dialog">
+      <div class="d-head">
+        <div>
+          <h2 style="font-size:18px;font-weight:800;">새 제휴 도메인 추가</h2>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">화이트리스트에 새로운 검증된 쇼핑몰 도메인을 등록합니다.</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted);">✕</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="field"><span class="label">쇼핑몰명</span><input class="input" type="text" value="예: 어바웃펫" /></div>
+        <div class="field"><span class="label">허용 도메인</span><input class="input" type="text" value="aboutpet.co.kr" /></div>
+      </div>
+
+      <div class="field">
+        <span class="label">서브도메인 허용 정책</span>
+        <div class="pill-row">
+          <span class="pill active">모든 서브도메인 허용 (*.domain)</span>
+          <span class="pill">지정 서브도메인만 허용</span>
+          <span class="pill">서브도메인 불허 (루트만)</span>
+        </div>
+      </div>
+
+      <div class="toggle-card">
+        <div><div style="font-size:12px;font-weight:700;">즉시 활성화</div><div style="font-size:11px;color:var(--muted);">등록 즉시 게시글 상품 핀 URL 화이트리스트에 반영됩니다.</div></div>
+        <div class="switch"></div>
+      </div>
+
+      <div class="d-foot">
+        <span></span>
+        <div style="display:flex;gap:8px;"><button class="btn-ghost">취소</button><button class="btn-primary">도메인 등록</button></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

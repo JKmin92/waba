@@ -65,7 +65,7 @@ export default function PetRegisterModal({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isEditMode = Boolean(editingPet);
 
-    const [species, setSpecies] = useState<PetSpecies>('CAT');
+    const [species, setSpecies] = useState<PetSpecies | ''>('');
     const [customSpecies, setCustomSpecies] = useState('');
     const [name, setName] = useState('');
     const [breed, setBreed] = useState('');
@@ -100,7 +100,7 @@ export default function PetRegisterModal({
             setSelectedFile(null);
             setResetAvatar(false);
         } else {
-            setSpecies('CAT');
+            setSpecies('');
             setCustomSpecies('');
             setName('');
             setBreed('');
@@ -166,6 +166,10 @@ export default function PetRegisterModal({
     };
 
     const handleSubmit = async () => {
+        if (!species) {
+            toaster.create({ title: '반려동물 종류를 선택해주세요.', type: 'warning' });
+            return;
+        }
         const trimmedName = name.trim();
         const trimmedBreed = breed.trim();
         const trimmedCustomSpecies = customSpecies.trim();
@@ -275,7 +279,7 @@ export default function PetRegisterModal({
 
                         {/* 닫기 버튼 */}
                         <Dialog.CloseTrigger asChild position="absolute" top={5} right={5}>
-                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" />
+                            <CloseButton size="sm" borderRadius="full" bg="var(--waba-surface)" color="var(--waba-ink)" _hover={{ bg: 'var(--waba-line)' }} />
                         </Dialog.CloseTrigger>
 
                         {/* 1. 모달 헤더 */}
@@ -381,7 +385,7 @@ export default function PetRegisterModal({
                                                 rounded="full"
                                                 px={2.5}
                                                 fontSize="11px"
-                                                _hover={{ color: 'red.500', bg: 'red.50' }}
+                                                _hover={{ color: 'red.500', bg: 'rgba(239, 68, 68, 0.12)' }}
                                                 onClick={handleClearAvatar}
                                             >
                                                 기본 아이콘으로 변경
@@ -645,56 +649,6 @@ export default function PetRegisterModal({
                                         </Grid>
                                     </Box>
                                 </Grid>
-
-                                {/* 설정 토글 카드 2종 */}
-                                <VStack gap={2.5} align="stretch">
-                                    {/* 카드 1: 대표 반려동물 지정 */}
-                                    <Box
-                                        as="button"
-                                        w="full"
-                                        textAlign="left"
-                                        p={3.5}
-                                        borderRadius="16px"
-                                        border="1.5px solid"
-                                        borderColor={(existingPetsCount === 0 || isPrimary) ? '#6338A9' : 'var(--waba-line)'}
-                                        bg={(existingPetsCount === 0 || isPrimary) ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
-                                        transition="all 0.2s"
-                                        onClick={() => {
-                                            if (existingPetsCount > 0) setIsPrimary(!isPrimary);
-                                        }}
-                                    >
-                                        <HStack align="start" gap={3}>
-                                            <Flex
-                                                w="20px"
-                                                h="20px"
-                                                borderRadius="6px"
-                                                bg={(existingPetsCount === 0 || isPrimary) ? '#6338A9' : 'var(--waba-card)'}
-                                                border="1.5px solid"
-                                                borderColor={(existingPetsCount === 0 || isPrimary) ? '#6338A9' : 'var(--waba-line)'}
-                                                align="center"
-                                                justify="center"
-                                                color="white"
-                                                mt={0.5}
-                                                flexShrink={0}
-                                            >
-                                                {(existingPetsCount === 0 || isPrimary) && <Check size={13} strokeWidth={3} />}
-                                            </Flex>
-                                            <VStack align="start" gap={0.5} flex={1}>
-                                                <HStack gap={1.5}>
-                                                    <Crown size={14} color="#6338A9" />
-                                                    <Text fontSize="13px" fontWeight="700" color="var(--waba-ink)">
-                                                        대표 반려동물로 지정
-                                                    </Text>
-                                                </HStack>
-                                                <Text fontSize="11px" color="var(--waba-ink-3)" lineHeight="1.4">
-                                                    {existingPetsCount === 0
-                                                        ? '첫 번째로 등록하는 반려동물은 자동으로 대표 가족으로 지정됩니다.'
-                                                        : '마이페이지 및 커뮤니티 활동 시 가장 먼저 대표 가족으로 표시됩니다.'}
-                                                </Text>
-                                            </VStack>
-                                        </HStack>
-                                    </Box>
-                                </VStack>
                             </VStack>
                         </Dialog.Body>
 

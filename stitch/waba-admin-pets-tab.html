@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 회원 · 반려동물 관리 (반려동물 통합 관리 탭)</title>
+  <style>
+    :root {
+      --bg: #FAFBFD;
+      --card: #FFFFFF;
+      --border: #EAEAEF;
+      --text: #111115;
+      --muted: #6E6E7A;
+      --primary: #6338A9;
+      --primary-soft: #F6EBFB;
+      --danger: #D9383A;
+      --danger-soft: #FDECEC;
+      --success: #16803C;
+      --success-soft: #EAF7EE;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { width: 1440px; min-height: 920px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: #4A4A55; }
+    .nav-item.active { background: #111115; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .seg-tabs { display: inline-flex; background: #EFEFF4; padding: 4px; border-radius: 9999px; gap: 4px; }
+    .seg-tab { padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 700; color: var(--muted); }
+    .seg-tab.active { background: #111115; color: #fff; }
+    .btn-outline { padding: 8px 14px; border-radius: 12px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; color: var(--text); }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .table-panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .toolbar { display: flex; gap: 10px; align-items: center; }
+    .search-input { flex: 1; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; background: #FAFBFD; }
+    .select-box { padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 12px; font-weight: 600; background: #fff; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 11px 10px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 12px; }
+    td { padding: 14px 10px; border-bottom: 1px solid #F3F3F7; vertical-align: middle; }
+    .pet-cell { display: flex; align-items: center; gap: 10px; }
+    .av { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
+    .b-purple { background: var(--primary-soft); color: var(--primary); }
+    .b-green { background: var(--success-soft); color: var(--success); }
+    .b-red { background: var(--danger-soft); color: var(--danger); }
+    .b-gray { background: #F0F0F5; color: var(--muted); }
+    .actions { display: flex; gap: 6px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드</div>
+      <div class="nav-item active">회원 · 반려동물</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item">게시글 · 댓글</div>
+      <div class="nav-item">신고 · 제재</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item">감사 로그</div>
+      <div class="nav-item">시스템 설정</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>회원 · 반려동물 관리</h1>
+        <p>전체 등록 반려동물의 종별 현황, AI 건강수첩 동의 여부 및 삭제 상태를 관리합니다.</p>
+      </div>
+      <div class="header-actions">
+        <div class="seg-tabs">
+          <div class="seg-tab">회원 관리</div>
+          <div class="seg-tab active">반려동물 관리</div>
+        </div>
+        <button class="btn-outline">CSV 내보내기</button>
+        <button class="btn-outline">새로고침</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">전체 회원</div><div class="kpi-val">12,480</div><div class="kpi-sub">활성 12,190 · 정지 142</div></div>
+      <div class="kpi-card"><div class="kpi-label">전문가 · 운영진</div><div class="kpi-val">84</div><div class="kpi-sub">VET 52 · EDITOR 24 · ADMIN 8</div></div>
+      <div class="kpi-card"><div class="kpi-label">신고 · 정지 주의 회원</div><div class="kpi-val" style="color:var(--danger);">37</div><div class="kpi-sub">누적 신고 1건 이상</div></div>
+      <div class="kpi-card"><div class="kpi-label">등록 반려동물</div><div class="kpi-val" style="color:var(--primary);">18,920</div><div class="kpi-sub">강아지 11.2k · 고양이 6.8k · 소동물 0.9k</div></div>
+    </div>
+
+    <section class="table-panel">
+      <div class="toolbar">
+        <input class="search-input" type="text" placeholder="반려동물 이름, 품종, 보호자 닉네임/이메일 검색..." />
+        <select class="select-box"><option>종: 전체 (강아지/고양이/토끼/햄스터/기니피그/친칠라/기타)</option></select>
+        <select class="select-box"><option>상태: 전체 (활성/삭제됨)</option></select>
+        <select class="select-box"><option>AI 건강수첩 동의: 전체</option></select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>반려동물 정보</th>
+            <th>보호자</th>
+            <th>나이 · 성별 · 중성화 · 체중</th>
+            <th>AI 데이터 동의</th>
+            <th>수첩 / 게시글</th>
+            <th>상태</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="pet-cell"><div class="av">초</div><div><div style="font-weight:700;">초코 <span class="badge b-purple">대표</span></div><div style="font-size:12px;color:var(--muted);">DOG · 토이 푸들</div></div></div></td>
+            <td><div>김와바 수의사</div><div style="font-size:11px;color:var(--muted);">vet.kim@waba.kr</div></td>
+            <td>3살 · 여 · 중성화 O · 4.2kg</td>
+            <td><span class="badge b-green">동의함</span></td>
+            <td>수첩 14 · 글 21</td>
+            <td><span class="badge b-green">활성</span></td>
+            <td><div class="actions"><button class="btn-outline">보호자 상세</button><button class="btn-outline">삭제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="pet-cell"><div class="av">우</div><div><div style="font-weight:700;">우리집막...</div><div style="font-size:12px;color:var(--muted);">CAT · 코리안 숏헤어</div></div></div></td>
+            <td><div>김와바 수의사</div><div style="font-size:11px;color:var(--muted);">vet.kim@waba.kr</div></td>
+            <td>2살 · 남 · 중성화 O · 4.8kg</td>
+            <td><span class="badge b-green">동의함</span></td>
+            <td>수첩 4 · 글 8</td>
+            <td><span class="badge b-green">활성</span></td>
+            <td><div class="actions"><button class="btn-outline">보호자 상세</button><button class="btn-outline">삭제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="pet-cell"><div class="av">몽</div><div><div style="font-weight:700;">몽실이</div><div style="font-size:12px;color:var(--muted);">RABBIT · 롭이어</div></div></div></td>
+            <td><div>이집사</div><div style="font-size:11px;color:var(--muted);">lee.pet@gmail.com</div></td>
+            <td>1살 · 여 · 중성화 X · 1.6kg</td>
+            <td><span class="badge b-gray">미동의</span></td>
+            <td>수첩 3 · 글 2</td>
+            <td><span class="badge b-green">활성</span></td>
+            <td><div class="actions"><button class="btn-outline">보호자 상세</button><button class="btn-outline">삭제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="pet-cell"><div class="av">두</div><div><div style="font-weight:700;">두부</div><div style="font-size:12px;color:var(--muted);">CHINCHILA · 스탠다드 그레이</div></div></div></td>
+            <td><div>박해피</div><div style="font-size:11px;color:var(--muted);">happy@naver.com</div></td>
+            <td>4살 · 남 · 중성화 X · 0.55kg</td>
+            <td><span class="badge b-gray">미동의</span></td>
+            <td>수첩 1 · 글 0</td>
+            <td><span class="badge b-red">삭제됨</span></td>
+            <td><div class="actions"><button class="btn-outline">보호자 상세</button><button class="btn-outline">복구</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

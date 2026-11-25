@@ -1,3 +1,9 @@
+export const formatPetShortName = (name?: string | null, maxLen = 4): string => {
+    const trimmed = (name || '').trim();
+    const chars = Array.from(trimmed);
+    return chars.length > maxLen ? `${chars.slice(0, maxLen).join('')}...` : trimmed;
+};
+
 export function formatDate(dateString: string) {
     const date = new Date(dateString);
 

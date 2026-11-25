@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA - 반려동물 마리 수 구간별 마이페이지 상단 프로필(#1) &amp; 전체보기 Dialog</title>
+  <style>
+    :root {
+      --primary: #6338A9;
+      --primary-light: #F3EEFA;
+      --primary-border: #D9CCF2;
+      --bg: #F8F7FC;
+      --card: #FFFFFF;
+      --text: #1E1B2E;
+      --muted: #6E6A80;
+      --border: #E6E2F0;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-pill: 9999px;
+      --shadow: 0 8px 24px rgba(99, 56, 169, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 32px; line-height: 1.5; }
+    .container { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+    .state-badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 6px 14px; border-radius: var(--radius-pill); margin-bottom: 10px; }
+
+    .profile-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px 28px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+    .user-info { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+    .user-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #6338A9, #9B6EE8); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+    .user-meta h2 { font-size: 19px; font-weight: 700; }
+    .user-meta p { font-size: 13px; color: var(--muted); }
+
+    .pets-area { display: flex; align-items: center; gap: 12px; }
+    .pet-row-flex { display: flex; align-items: center; gap: 10px; }
+    .pet-card-full { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FAF9FD; min-width: 165px; }
+    .pet-av { width: 34px; height: 34px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .pet-info { flex: 1; min-width: 0; }
+    .pet-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pet-sub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .more-dots { color: var(--muted); font-size: 14px; cursor: pointer; padding: 0 2px; }
+
+    /* 4x2 그리드 */
+    .pet-grid-4x2 { display: grid; grid-template-columns: repeat(4, minmax(120px, 140px)); gap: 8px; }
+    .pet-card-compact { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 12px; background: #FAF9FD; }
+    .pet-av-sm { width: 26px; height: 26px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+    /* 우측 액션 버튼 */
+    .btn-add-circle { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 20px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .action-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+    .btn-more-rect { padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--primary-border); background: var(--primary-light); color: var(--primary); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+    /* 상태 4: 전체 반려동물 관리 Dialog */
+    .dialog { width: 720px; max-width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 18px 44px rgba(30, 27, 46, 0.14); overflow: hidden; }
+    .dialog-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .dialog-header h3 { font-size: 17px; font-weight: 700; }
+    .dialog-toolbar { padding: 16px 24px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #F1EEF8; }
+    .search-input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; outline: none; }
+    .search-input:focus { border-color: var(--primary); }
+    .btn-new-pet { padding: 10px 16px; border-radius: 12px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .dialog-list { padding: 16px 24px; height: 280px; overflow-y: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
+    .dialog-pet-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FAF9FD; }
+    .icon-actions { display: flex; gap: 6px; }
+    .icon-btn { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--muted); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 상태 1 -->
+    <div>
+      <span class="state-badge">상태 1 · 4마리 이하 (예: 3마리) — 기존 1줄 나열 + [+]</span>
+      <div class="profile-card">
+        <div class="user-info">
+          <div class="user-avatar">W</div>
+          <div class="user-meta"><h2>와바미 집사님</h2><p>반려동물 3마리 · 게시글 24</p></div>
+        </div>
+        <div class="pets-area">
+          <div class="pet-row-flex">
+            <div class="pet-card-full"><div class="pet-av">초</div><div class="pet-info"><div class="pet-name">초코</div><div class="pet-sub">푸들 · 4.2kg</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-full"><div class="pet-av">보</div><div class="pet-info"><div class="pet-name">보리</div><div class="pet-sub">코숏 · 4.8kg</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-full"><div class="pet-av">두</div><div class="pet-info"><div class="pet-name">두부</div><div class="pet-sub">말티즈 · 3.1kg</div></div><span class="more-dots">⋯</span></div>
+          </div>
+          <button class="btn-add-circle">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태 2 -->
+    <div>
+      <span class="state-badge">상태 2 · 5~8마리 (예: 7마리) — 컴팩트 4×2 그리드 + [+]</span>
+      <div class="profile-card">
+        <div class="user-info">
+          <div class="user-avatar">W</div>
+          <div class="user-meta"><h2>와바미 집사님</h2><p>반려동물 7마리 · 게시글 42</p></div>
+        </div>
+        <div class="pets-area">
+          <div class="pet-grid-4x2">
+            <div class="pet-card-compact"><div class="pet-av-sm">초</div><div class="pet-info"><div class="pet-name">초코</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">보</div><div class="pet-info"><div class="pet-name">보리</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">두</div><div class="pet-info"><div class="pet-name">두부</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">콩</div><div class="pet-info"><div class="pet-name">콩이</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">루</div><div class="pet-info"><div class="pet-name">루이</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">모</div><div class="pet-info"><div class="pet-name">모모</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">코</div><div class="pet-info"><div class="pet-name">코코</div></div><span class="more-dots">⋯</span></div>
+          </div>
+          <button class="btn-add-circle">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태 3 -->
+    <div>
+      <span class="state-badge">상태 3 · 9마리 이상 (예: 1,240마리) — 4×2 그리드(최대 8마리) + 우측 세로 스택([+] / [더보기])</span>
+      <div class="profile-card">
+        <div class="user-info">
+          <div class="user-avatar">W</div>
+          <div class="user-meta"><h2>와바미 집사님</h2><p>반려동물 1,240마리 · 게시글 348</p></div>
+        </div>
+        <div class="pets-area">
+          <div class="pet-grid-4x2">
+            <div class="pet-card-compact"><div class="pet-av-sm">초</div><div class="pet-info"><div class="pet-name">초코</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">보</div><div class="pet-info"><div class="pet-name">보리</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">두</div><div class="pet-info"><div class="pet-name">두부</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">콩</div><div class="pet-info"><div class="pet-name">콩이</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">루</div><div class="pet-info"><div class="pet-name">루이</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">모</div><div class="pet-info"><div class="pet-name">모모</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">코</div><div class="pet-info"><div class="pet-name">코코</div></div><span class="more-dots">⋯</span></div>
+            <div class="pet-card-compact"><div class="pet-av-sm">별</div><div class="pet-info"><div class="pet-name">별이</div></div><span class="more-dots">⋯</span></div>
+          </div>
+          <div class="action-stack">
+            <button class="btn-add-circle">+</button>
+            <button class="btn-more-rect">더보기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태 4 -->
+    <div>
+      <span class="state-badge">상태 4 · 전체 반려동물 관리 Dialog (`더보기` 클릭 시)</span>
+      <div class="dialog">
+        <div class="dialog-header">
+          <h3>등록된 반려동물 (총 1,240마리)</h3>
+          <span style="color:#6E6A80;cursor:pointer;font-size:18px;">✕</span>
+        </div>
+        <div class="dialog-toolbar">
+          <input class="search-input" type="text" placeholder="이름 또는 품종으로 검색..." />
+          <button class="btn-new-pet">+ 새 반려동물 등록</button>
+        </div>
+        <div class="dialog-list">
+          <div class="dialog-pet-card"><div style="display:flex;align-items:center;gap:10px;"><div class="pet-av">초</div><div><div class="pet-name">초코</div><div class="pet-sub">푸들 · 4.2kg</div></div></div><div class="icon-actions"><button class="icon-btn" title="수정">✎</button><button class="icon-btn" title="삭제">🗑</button></div></div>
+          <div class="dialog-pet-card"><div style="display:flex;align-items:center;gap:10px;"><div class="pet-av">보</div><div><div class="pet-name">보리</div><div class="pet-sub">코숏 · 4.8kg</div></div></div><div class="icon-actions"><button class="icon-btn" title="수정">✎</button><button class="icon-btn" title="삭제">🗑</button></div></div>
+          <div class="dialog-pet-card"><div style="display:flex;align-items:center;gap:10px;"><div class="pet-av">두</div><div><div class="pet-name">두부</div><div class="pet-sub">말티즈 · 3.1kg</div></div></div><div class="icon-actions"><button class="icon-btn" title="수정">✎</button><button class="icon-btn" title="삭제">🗑</button></div></div>
+          <div class="dialog-pet-card"><div style="display:flex;align-items:center;gap:10px;"><div class="pet-av">콩</div><div><div class="pet-name">콩이</div><div class="pet-sub">포메라니안 · 2.5kg</div></div></div><div class="icon-actions"><button class="icon-btn" title="수정">✎</button><button class="icon-btn" title="삭제">🗑</button></div></div>
+          <div class="dialog-pet-card"><div style="display:flex;align-items:center;gap:10px;"><div class="pet-av">루</div><div><div class="pet-name">루이</div><div class="pet-sub">러시안블루 · 4.0kg</div></div></div><div class="icon-actions"><button class="icon-btn" title="수정">✎</button><button class="icon-btn" title="삭제">🗑</button></div></div>
+          <div class="dialog-pet-card"><div style="display:flex;align-items:center;gap:10px;"><div class="pet-av">모</div><div><div class="pet-name">모모</div><div class="pet-sub">비숑 · 5.1kg</div></div></div><div class="icon-actions"><button class="icon-btn" title="수정">✎</button><button class="icon-btn" title="삭제">🗑</button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 게시판 상세 관리 &amp; 새 게시판 추가 Dialog</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1140px; background: var(--bg); color: var(--text); padding: 28px 32px; display: flex; flex-direction: column; gap: 28px; }
+    .sec-banner { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
+    .dialog { width: 820px; max-width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08); display: flex; flex-direction: column; gap: 16px; }
+    .d-head { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .b-mono { font-family: ui-monospace, monospace; background: #F1F5F9; color: #334155; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+    .b-active { background: var(--emerald-soft); color: var(--emerald); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .label { font-size: 12px; font-weight: 700; color: var(--text); }
+    .input { padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; background: #F8FAFC; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .toggle-card { padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: #F8FAFC; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .switch { width: 36px; height: 20px; border-radius: 999px; background: var(--primary); position: relative; flex-shrink: 0; }
+    .switch::after { content: ""; position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+    .switch.off { background: #CBD5E1; }
+    .switch.off::after { left: 2px; right: auto; }
+
+    .d-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+    .btn-ghost { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 700; }
+    .btn-primary { padding: 9px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <!-- 섹션 A -->
+  <div>
+    <span class="sec-banner">섹션 A · 게시판 상세 관리 Dialog (`상세 관리` 클릭 시)</span>
+    <div class="dialog">
+      <div class="d-head">
+        <div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+            <h2 style="font-size:18px;font-weight:800;">공식 룩북</h2>
+            <span class="b-mono">LOOKBOOK</span>
+            <span class="b-active">활성</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);">생성일 2026.10.27 · 등록 게시글 3건 (게시 중 3건)</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted);">✕</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="field"><span class="label">게시판 이름</span><input class="input" type="text" value="공식 룩북" /></div>
+        <div class="field"><span class="label">노출 순서</span><input class="input" type="text" value="1" /></div>
+      </div>
+      <div class="field"><span class="label">게시판 설명</span><input class="input" type="text" value="와바미 공식 화보 및 선정된 베스트 펫-리빙 룩북" /></div>
+
+      <div class="field">
+        <span class="label">최소 작성 권한</span>
+        <div class="pill-row">
+          <span class="pill">일반 유저</span>
+          <span class="pill">수의사</span>
+          <span class="pill active">에디터</span>
+          <span class="pill">관리자</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="toggle-card">
+          <div><div style="font-size:12px;font-weight:700;">상품 핀 태그 허용</div><div style="font-size:11px;color:var(--muted);">게시글 작성 시 추천 상품 핀 연결 허용</div></div>
+          <div class="switch"></div>
+        </div>
+        <div class="toggle-card">
+          <div><div style="font-size:12px;font-weight:700;">수의사 검증 허용</div><div style="font-size:11px;color:var(--muted);">수의사 검수 배지 부여 대상 게시판으로 표시</div></div>
+          <div class="switch off"></div>
+        </div>
+      </div>
+
+      <div class="toggle-card">
+        <div><div style="font-size:12px;font-weight:700;">활성 상태 (활성 / 비활성)</div><div style="font-size:11px;color:var(--muted);">비활성화 시 커뮤니티 탭 및 글쓰기에서 숨겨지며, 기존 게시글은 유지됩니다.</div></div>
+        <div class="switch"></div>
+      </div>
+
+      <div class="d-foot">
+        <span style="font-size:11px;color:var(--muted);">* 게시글이 존재하는 게시판은 데이터 보호를 위해 삭제 대신 비활성화로 관리됩니다.</span>
+        <div style="display:flex;gap:8px;"><button class="btn-ghost">취소</button><button class="btn-primary">변경 사항 저장</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 B -->
+  <div>
+    <span class="sec-banner">섹션 B · 새 게시판 추가 Dialog (`+ 새 게시판 추가` 클릭 시)</span>
+    <div class="dialog">
+      <div class="d-head">
+        <div>
+          <h2 style="font-size:18px;font-weight:800;">새 게시판 추가</h2>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">새로운 커뮤니티 게시판을 생성하고 권한과 기능을 설정합니다.</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted);">✕</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <span class="label">게시판 코드 (ID)</span>
+          <input class="input" type="text" value="PET_LIVING_TIP" />
+          <span style="font-size:11px;color:var(--muted);">영문 대문자·숫자·밑줄(_) 조합, 생성 후 변경 불가</span>
+        </div>
+        <div class="field"><span class="label">노출 순서</span><input class="input" type="text" value="6" /></div>
+      </div>
+
+      <div class="field"><span class="label">게시판 이름</span><input class="input" type="text" value="펫 리빙 팁" /></div>
+      <div class="field"><span class="label">게시판 설명</span><input class="input" type="text" placeholder="게시판 목적과 안내 문구를 입력하세요..." /></div>
+
+      <div class="field">
+        <span class="label">최소 작성 권한</span>
+        <div class="pill-row">
+          <span class="pill active">일반 유저</span>
+          <span class="pill">수의사</span>
+          <span class="pill">에디터</span>
+          <span class="pill">관리자</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="toggle-card">
+          <div><div style="font-size:12px;font-weight:700;">상품 핀 태그 허용</div><div style="font-size:11px;color:var(--muted);">추천 상품 핀 연결 허용</div></div>
+          <div class="switch"></div>
+        </div>
+        <div class="toggle-card">
+          <div><div style="font-size:12px;font-weight:700;">수의사 검증 허용</div><div style="font-size:11px;color:var(--muted);">수의사 검수 배지 부여 대상</div></div>
+          <div class="switch off"></div>
+        </div>
+      </div>
+
+      <div class="d-foot">
+        <span></span>
+        <div style="display:flex;gap:8px;"><button class="btn-ghost">취소</button><button class="btn-primary">게시판 생성</button></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

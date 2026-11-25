@@ -28,6 +28,7 @@ export interface UserProfileData extends User {
     like_count: number;
     draft_count: number;
     auto_journal_enabled?: boolean;
+    has_local_password?: boolean;
 }
 
 interface ProfileSectionProps {

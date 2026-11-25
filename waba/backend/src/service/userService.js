@@ -4,6 +4,61 @@ import jwt from 'jsonwebtoken';
 import { generateUserId, generateIdentityId, generatePetId } from '../../utils/simpleUtils.js';
 import { processAndSaveProfileImage, deleteProfileImageFile, processAndSavePetAvatar } from '../../utils/imageUtils.js';
 import { extractPetHealthEvent } from './geminiService.js';
+import { validatePasswordPolicy } from '../../utils/passwordUtils.js';
+
+export const changeUserPassword = async (userId, { currentPassword, newPassword } = {}) => {
+    const profile = await userModel.getUserProfile(userId);
+    if (!profile) {
+        const error = new Error('사용자를 찾을 수 없습니다.');
+        error.status = 404;
+        error.code = 'USER_NOT_FOUND';
+        throw error;
+    }
+
+    const currentHash = await userModel.getUserPasswordHash(userId);
+    if (!currentHash) {
+        const error = new Error('소셜 로그인 전용 계정은 비밀번호를 변경할 수 없습니다.');
+        error.status = 400;
+        error.code = 'SOCIAL_ONLY_ACCOUNT';
+        throw error;
+    }
+
+    if (!currentPassword) {
+        const error = new Error('현재 비밀번호를 입력해주세요.');
+        error.status = 400;
+        error.code = 'CURRENT_PASSWORD_REQUIRED';
+        throw error;
+    }
+
+    const matches = await bcrypt.compare(String(currentPassword), currentHash);
+    if (!matches) {
+        const error = new Error('현재 비밀번호가 일치하지 않습니다.');
+        error.status = 400;
+        error.code = 'INVALID_CURRENT_PASSWORD';
+        throw error;
+    }
+
+    const pwValidation = validatePasswordPolicy(newPassword, profile.email);
+    if (!pwValidation.valid) {
+        const error = new Error(pwValidation.message);
+        error.status = 400;
+        error.code = pwValidation.code;
+        throw error;
+    }
+
+    const isSame = await bcrypt.compare(String(newPassword), currentHash);
+    if (isSame) {
+        const error = new Error('새 비밀번호는 현재 비밀번호와 다르게 입력해주세요.');
+        error.status = 400;
+        error.code = 'SAME_AS_CURRENT_PASSWORD';
+        throw error;
+    }
+
+    const newHash = await bcrypt.hash(String(newPassword), 12);
+    await userModel.updateLocalPasswordHash(userId, newHash);
+
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
+};
 
 export const checkNickname = async (nickname) => {
     return await userModel.checkNickname(nickname);
@@ -16,6 +71,14 @@ export const checkEmail = async (email) => {
 export const joinUser = async (userData, clientIp = null) => {
     const { email, password, nickname, agreeMarketing } = userData;
     const normalizedEmail = String(email || '').toLowerCase().trim();
+
+    const pwValidation = validatePasswordPolicy(password, normalizedEmail);
+    if (!pwValidation.valid) {
+        const error = new Error(pwValidation.message);
+        error.status = 400;
+        error.code = pwValidation.code;
+        throw error;
+    }
 
     // 1. 이메일 중복 및 연동 여부 정밀 검사
     const existingUser = await userModel.findUserByEmail(normalizedEmail);
@@ -598,8 +661,8 @@ export const restoreUserPet = async (userId, petId) => {
     };
 };
 
-export const getUserHistories = async (userId) => {
-    return await userModel.getUserHistories(userId);
+export const getUserHistories = async (userId, options = {}) => {
+    return await userModel.getUserHistories(userId, options);
 };
 
 export const createUserHistory = async (userId, data) => {
@@ -767,7 +830,8 @@ export const createPetJourney = async (userId, petId, data) => {
         share_scope: validScope,
         category: category ? String(category).trim() : null,
         goal_summary: goal_summary ? String(goal_summary).trim() : null,
-        status: status ? String(status).trim().toUpperCase() : undefined
+        status: status ? String(status).trim().toUpperCase() : undefined,
+        pet_ids: data?.pet_ids
     });
 };
 
@@ -791,7 +855,8 @@ export const updatePetJourney = async (userId, petId, journeyId, data) => {
         share_scope: validScope,
         category: category !== undefined ? (category ? String(category).trim() : null) : undefined,
         goal_summary: goal_summary !== undefined ? (goal_summary ? String(goal_summary).trim() : null) : undefined,
-        status: status !== undefined ? (status ? String(status).trim().toUpperCase() : undefined) : undefined
+        status: status !== undefined ? (status ? String(status).trim().toUpperCase() : undefined) : undefined,
+        pet_ids: data?.pet_ids
     });
 };
 

@@ -17,6 +17,9 @@ router.get('/board/:boardId', postController.getPostList);
 router.get('/user/posts', verifyToken, postController.getUserPosts);
 router.get('/user/bookmarks', verifyToken, postController.getUserBookmarks);
 router.get('/user/likes', verifyToken, postController.getUserLikes);
+router.get('/user/reported-deleted', verifyToken, postController.getUserReportedDeletedPosts);
+router.post('/:id/appeal', verifyToken, postController.submitPostAppeal);
+router.post('/:id/report', verifyToken, postController.createPostReport);
 router.get('/:id/edit', verifyToken, postController.getEditablePost);
 router.get('/:id', optionalAuth, postController.getPostDetail);
 router.put('/:id', verifyToken, uploadPostImages, postController.updatePost);
@@ -26,6 +29,7 @@ router.post('/:id/like', verifyToken, postController.togglePostLike);
 router.post('/:id/bookmark', verifyToken, postController.togglePostBookmark);
 router.post('/:id/comment', verifyToken, postController.createComment);
 router.patch('/:id/comments/:commentId/pin', verifyToken, postController.togglePinComment);
+router.post('/comment/:commentId/like', verifyToken, postController.toggleCommentLike);
 router.delete('/comment/:commentId', verifyToken, postController.deleteComment);
 router.put('/comment/:commentId', verifyToken, postController.updateComment);
 

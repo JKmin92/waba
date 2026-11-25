@@ -51,12 +51,10 @@ export default function BoardEqualGridCard({ postList }: BoardEqualGridCardProps
                 );
                 const firstText =
                     item.post.content?.find((c) => c.type === 'text')?.content || '';
-                const petLabel = item.post_pets?.[0]?.name
-                    ? `🐾 ${item.post_pets[0].name}`
-                    : item.board?.name || '커뮤니티';
+                const postPets = item.post_pets || [];
+                const boardLabel = item.board?.name || '커뮤니티';
 
-                if (hasImage) {
-                    return (
+                return (
                         <Box
                             key={item.post.id}
                             bg="var(--waba-card)"
@@ -84,33 +82,104 @@ export default function BoardEqualGridCard({ postList }: BoardEqualGridCardProps
                                 flexShrink={0}
                                 bg="var(--waba-surface)"
                             >
-                                <Image
-                                    src={thumbnail}
-                                    alt={item.post.title}
-                                    w="100%"
-                                    h="100%"
-                                    objectFit="cover"
-                                    display="block"
-                                />
+                                {thumbnail ? (
+                                    <Image
+                                        src={thumbnail}
+                                        alt={item.post.title}
+                                        w="100%"
+                                        h="100%"
+                                        objectFit="cover"
+                                        display="block"
+                                    />
+                                ) : (
+                                    <Flex
+                                        w="100%"
+                                        h="100%"
+                                        p={5}
+                                        align="center"
+                                        justify="center"
+                                        bg="var(--waba-purple-soft)"
+                                    >
+                                        <Text
+                                            fontSize="13px"
+                                            color="var(--waba-purple-text)"
+                                            fontWeight="600"
+                                            lineClamp={3}
+                                            textAlign="center"
+                                        >
+                                            {firstText || item.post.title}
+                                        </Text>
+                                    </Flex>
+                                )}
                                 <SensitiveImageOverlay isSensitive={isSensitive} compact />
 
-                                <Box
-                                    position="absolute"
-                                    top="12px"
-                                    left="12px"
-                                    bg="var(--waba-glass-btn)"
-                                    backdropFilter="blur(8px)"
-                                    fontSize="11px"
-                                    fontWeight="700"
-                                    px="10px"
-                                    py="4px"
-                                    borderRadius="999px"
-                                    color="var(--waba-ink)"
-                                    maxW="70%"
-                                    truncate
-                                >
-                                    {petLabel}
-                                </Box>
+                                {postPets.length > 0 ? (
+                                    <HStack
+                                        position="absolute"
+                                        top="12px"
+                                        left="12px"
+                                        gap={0}
+                                        title={postPets.map((p) => p.name).join(', ')}
+                                    >
+                                        {postPets.slice(0, 3).map((p, idx) => (
+                                            <Box
+                                                key={String(p.pet_id)}
+                                                position="relative"
+                                                zIndex={idx}
+                                                ml={idx > 0 ? '-8px' : 0}
+                                                borderRadius="full"
+                                                boxShadow="var(--waba-avatar-shadow)"
+                                                title={p.name}
+                                            >
+                                                <UserAvatar
+                                                    src={p.avatar_url}
+                                                    alt={p.name}
+                                                    w="28px"
+                                                    h="28px"
+                                                    iconSize={14}
+                                                    fallbackType="pet"
+                                                />
+                                            </Box>
+                                        ))}
+                                        {postPets.length > 3 && (
+                                            <Flex
+                                                position="relative"
+                                                zIndex={3}
+                                                ml="-8px"
+                                                w="28px"
+                                                h="28px"
+                                                borderRadius="full"
+                                                bg="var(--waba-card)"
+                                                color="var(--waba-ink)"
+                                                boxShadow="var(--waba-avatar-shadow)"
+                                                fontSize="11px"
+                                                fontWeight="800"
+                                                align="center"
+                                                justify="center"
+                                            >
+                                                +{postPets.length - 3}
+                                            </Flex>
+                                        )}
+                                    </HStack>
+                                ) : (
+                                    <Box
+                                        position="absolute"
+                                        top="12px"
+                                        left="12px"
+                                        bg="var(--waba-glass-btn)"
+                                        backdropFilter="blur(8px)"
+                                        fontSize="11px"
+                                        fontWeight="700"
+                                        px="10px"
+                                        py="4px"
+                                        borderRadius="999px"
+                                        color="var(--waba-ink)"
+                                        maxW="70%"
+                                        truncate
+                                    >
+                                        {boardLabel}
+                                    </Box>
+                                )}
 
                                 <Box
                                     position="absolute"
@@ -177,128 +246,6 @@ export default function BoardEqualGridCard({ postList }: BoardEqualGridCardProps
                             </Box>
                         </Box>
                     );
-                }
-
-                // Text-only Card (Equal height with Image Cards)
-                return (
-                    <Box
-                        key={item.post.id}
-                        bg="var(--waba-card)"
-                        border="1px solid"
-                        borderColor="var(--waba-line)"
-                        borderRadius="20px"
-                        p="20px"
-                        display="flex"
-                        flexDirection="column"
-                        justifyContent="space-between"
-                        h="100%"
-                        minH={{ base: '250px', md: '310px' }}
-                        gap="12px"
-                        cursor="pointer"
-                        onClick={() => router.push(`/post/${item.post.id}`)}
-                        _hover={{
-                            transform: 'translateY(-3px)',
-                            borderColor: 'var(--waba-purple-border)',
-                        }}
-                        transition="all 0.2s ease"
-                        minW={0}
-                    >
-                        <Flex direction="column" gap="10px" minW={0}>
-                            <Flex justify="space-between" align="center" gap={2}>
-                                <Box
-                                    bg="var(--waba-purple-soft)"
-                                    color="var(--waba-purple-text)"
-                                    fontSize="11px"
-                                    fontWeight="700"
-                                    px="10px"
-                                    py="4px"
-                                    borderRadius="999px"
-                                >
-                                    {item.board?.name || '커뮤니티'}
-                                </Box>
-                                <Text fontSize="11px" color="var(--waba-ink-3)">
-                                    조회 {item.post.view_count ?? 0}
-                                </Text>
-                            </Flex>
-
-                            <Text
-                                fontSize="16px"
-                                fontWeight="800"
-                                color="var(--waba-ink)"
-                                lineHeight="1.4"
-                                lineClamp={2}
-                            >
-                                {item.post.title}
-                            </Text>
-
-                            <Text
-                                fontSize="13px"
-                                color="var(--waba-ink-2)"
-                                lineHeight="1.55"
-                                lineClamp={4}
-                            >
-                                {firstText || '커뮤니티에서 자세한 내용을 확인해 보세요.'}
-                            </Text>
-                        </Flex>
-
-                        <Flex direction="column" gap="10px" minW={0}>
-                            {/* Tags / Summary Box */}
-                            <Box
-                                bg="var(--waba-surface)"
-                                borderRadius="12px"
-                                px="12px"
-                                py="10px"
-                                fontSize="12px"
-                                color="var(--waba-ink-2)"
-                            >
-                                {item.tags && item.tags.length > 0 ? (
-                                    <HStack gap="6px" flexWrap="wrap">
-                                        {item.tags.slice(0, 3).map((tag) => (
-                                            <Box
-                                                key={tag}
-                                                bg="var(--waba-purple-soft)"
-                                                color="var(--waba-purple-text)"
-                                                fontSize="11px"
-                                                fontWeight="700"
-                                                px="8px"
-                                                py="2px"
-                                                borderRadius="999px"
-                                            >
-                                                #{tag}
-                                            </Box>
-                                        ))}
-                                    </HStack>
-                                ) : (
-                                    <Text truncate>
-                                        💬 댓글 {item.post.comment_count ?? 0}개의 의견이 모여있어요
-                                    </Text>
-                                )}
-                            </Box>
-
-                            <Flex
-                                align="center"
-                                justify="space-between"
-                                fontSize="12px"
-                                color="var(--waba-ink-3)"
-                                gap={2}
-                                minW={0}
-                            >
-                                <HStack gap="7px" minW={0} flex="1" color="var(--waba-ink-2)" fontWeight="600">
-                                    <UserAvatar
-                                        src={item.user?.profile_image_url}
-                                        alt={item.user?.nickname || '프로필'}
-                                        size="2xs"
-                                    />
-                                    <Text truncate>@{item.user?.nickname || '집사'}</Text>
-                                </HStack>
-
-                                <Text flexShrink={0}>
-                                    ♥ {item.post.like_count ?? 0} · 💬 {item.post.comment_count ?? 0}
-                                </Text>
-                            </Flex>
-                        </Flex>
-                    </Box>
-                );
             })}
         </Grid>
     );

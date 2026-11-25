@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Box,
     Button,
@@ -19,6 +19,8 @@ import { LuBookmark, LuEllipsis, LuExternalLink, LuFolder, LuLogOut, LuPencil, L
 import { useRouter } from 'next/navigation';
 import { Pet } from '@/interface';
 import UserAvatar from '../../common/UserAvatar';
+import { formatPetShortName } from '@/utils/simpleUtils';
+import PetFilterSelectModal from './PetFilterSelectModal';
 import { getNotebookStatusBadge, NotebookItem } from '../../notebook/notebook-components/types';
 
 export interface MypageHistoryPet {
@@ -50,6 +52,10 @@ export interface MypageHistoryRecord {
 
 export interface MypageJourneyRecord {
     id: string | number;
+    note_code?: string;
+    pet_id?: string | number;
+    pet_ids?: string[];
+    pets?: MypageHistoryPet[];
     title: string;
     category?: string;
     status?: string;
@@ -69,6 +75,16 @@ interface MypageNotebookTabProps {
     histories: MypageHistoryRecord[];
     journeys: MypageJourneyRecord[];
     autoJournalEnabled: boolean;
+    selectedHistoryPetIds?: string[];
+    onSelectAllHistoryPets?: () => void;
+    onToggleHistoryPetId?: (petId: string) => void;
+    onApplyHistoryPetIds?: (petIds: string[]) => void;
+    filterMode?: 'all' | 'group' | 'unclassified';
+    onChangeFilterMode?: (mode: 'all' | 'group' | 'unclassified') => void;
+    historyTotal?: number;
+    historyHasMore?: boolean;
+    isLoadingMoreHistories?: boolean;
+    onLoadMoreHistories?: () => void;
     onOpenRecordModal: () => void;
     onOpenManageModal: () => void;
     onEditJourney: (journey: MypageJourneyRecord) => void;
@@ -84,6 +100,16 @@ export function MypageNotebookTab({
     histories,
     journeys,
     autoJournalEnabled,
+    selectedHistoryPetIds = [],
+    onSelectAllHistoryPets,
+    onToggleHistoryPetId,
+    onApplyHistoryPetIds,
+    filterMode: controlledFilterMode,
+    onChangeFilterMode,
+    historyTotal,
+    historyHasMore = false,
+    isLoadingMoreHistories = false,
+    onLoadMoreHistories,
     onOpenRecordModal,
     onOpenManageModal,
     onEditJourney,
@@ -93,7 +119,34 @@ export function MypageNotebookTab({
     onOpenPetRegister,
 }: MypageNotebookTabProps) {
     const router = useRouter();
-    const [filterMode, setFilterMode] = useState<'all' | 'group' | 'unclassified'>('all');
+    const [localFilterMode, setLocalFilterMode] = useState<'all' | 'group' | 'unclassified'>('all');
+    const [filterModalOpen, setFilterModalOpen] = useState(false);
+    const [isPetBarOverflow, setIsPetBarOverflow] = useState(false);
+    const petChipsRef = useRef<HTMLDivElement | null>(null);
+
+    const orderedPets = useMemo(() => {
+        if (selectedHistoryPetIds.length === 0) return pets;
+        const selected = pets.filter((p) => selectedHistoryPetIds.includes(String(p.id)));
+        const unselected = pets.filter((p) => !selectedHistoryPetIds.includes(String(p.id)));
+        return [...selected, ...unselected];
+    }, [pets, selectedHistoryPetIds]);
+
+    useEffect(() => {
+        const el = petChipsRef.current;
+        if (!el) return;
+        const checkOverflow = () => {
+            setIsPetBarOverflow(el.scrollHeight > el.clientHeight + 2 || orderedPets.length > 30);
+        };
+        checkOverflow();
+        const observer = new ResizeObserver(checkOverflow);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [orderedPets]);
+    const filterMode = controlledFilterMode ?? localFilterMode;
+    const setFilterMode = (mode: 'all' | 'group' | 'unclassified') => {
+        if (onChangeFilterMode) onChangeFilterMode(mode);
+        else setLocalFilterMode(mode);
+    };
 
     if (!pet) {
         return (
@@ -137,7 +190,7 @@ export function MypageNotebookTab({
             <Flex justify="space-between" align={{ base: 'flex-start', sm: 'center' }} direction={{ base: 'column', sm: 'row' }} gap={3}>
                 <Box>
                     <Heading as="h2" fontSize="16px" fontWeight="800" color="var(--waba-ink)">
-                        AI 건강 수첩 타임라인
+                        건강 수첩 타임라인
                     </Heading>
                     <Text fontSize="12px" color="var(--waba-ink-3)" mt="2px">
                         커뮤니티 글과 직접 기록이 시간순으로 누적됩니다.
@@ -158,6 +211,102 @@ export function MypageNotebookTab({
                     </Box>
                 </HStack>
             </Flex>
+
+            {/* 반려동물별 다중 선택 필터 바 */}
+            {pets.length > 0 && (
+                <Flex align="center" gap="6px" w="100%" minW={0}>
+                    <Button
+                        size="xs"
+                        h="30px"
+                        px="12px"
+                        borderRadius="999px"
+                        border="1px solid"
+                        borderColor={selectedHistoryPetIds.length === 0 ? '#6338A9' : 'var(--waba-line)'}
+                        bg={selectedHistoryPetIds.length === 0 ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                        color={selectedHistoryPetIds.length === 0 ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                        fontSize="12px"
+                        fontWeight={selectedHistoryPetIds.length === 0 ? '700' : '600'}
+                        flexShrink={0}
+                        onClick={() => onSelectAllHistoryPets?.()}
+                    >
+                        전체
+                    </Button>
+                    <Box
+                        ref={petChipsRef}
+                        flex="1"
+                        minW={0}
+                        h="30px"
+                        overflow="hidden"
+                        display="flex"
+                        flexWrap="wrap"
+                        columnGap="6px"
+                        rowGap="8px"
+                        alignContent="flex-start"
+                    >
+                        {orderedPets.slice(0, 30).map((p) => {
+                            const isSelected = selectedHistoryPetIds.includes(String(p.id));
+                            return (
+                                <Button
+                                    key={p.id}
+                                    size="xs"
+                                    h="30px"
+                                    pl="6px"
+                                    pr="12px"
+                                    borderRadius="999px"
+                                    border={isSelected ? '1.5px solid' : '1px solid'}
+                                    borderColor={isSelected ? '#6338A9' : 'var(--waba-line)'}
+                                    bg={isSelected ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                    color={isSelected ? 'var(--waba-purple-text)' : 'var(--waba-ink-2)'}
+                                    fontSize="12px"
+                                    fontWeight={isSelected ? '700' : '600'}
+                                    flexShrink={0}
+                                    gap={1.5}
+                                    title={p.name}
+                                    onClick={() => onToggleHistoryPetId?.(String(p.id))}
+                                >
+                                    <UserAvatar
+                                        src={p.current_avatar_url}
+                                        alt={p.name}
+                                        size="2xs"
+                                        fallbackType="pet"
+                                    />
+                                    {formatPetShortName(p.name)}
+                                </Button>
+                            );
+                        })}
+                    </Box>
+                    <Button
+                        data-overflow={isPetBarOverflow ? 'true' : 'false'}
+                        size="xs"
+                        h="30px"
+                        px="10px"
+                        borderRadius="999px"
+                        variant="outline"
+                        borderColor="var(--waba-line)"
+                        bg="var(--waba-card)"
+                        color="var(--waba-purple-text)"
+                        fontSize="11px"
+                        fontWeight="700"
+                        flexShrink={0}
+                        onClick={() => setFilterModalOpen(true)}
+                        css={{
+                            '&[data-overflow="false"]': {
+                                display: 'none',
+                            },
+                        }}
+                    >
+                        더보기 ({pets.length})
+                    </Button>
+                </Flex>
+            )}
+
+            <PetFilterSelectModal
+                open={filterModalOpen}
+                onOpenChange={setFilterModalOpen}
+                pets={pets}
+                selectedPetIds={selectedHistoryPetIds}
+                onApply={(ids) => onApplyHistoryPetIds?.(ids)}
+            />
 
             {/* [전체 | 그룹 | 미분류] 세그먼트 필터 칩 + 우측 액션 버튼 */}
             <Flex
@@ -180,9 +329,9 @@ export function MypageNotebookTab({
                     css={{ '&::-webkit-scrollbar': { display: 'none' } }}
                 >
                     {[
-                        { key: 'all' as const, label: `전체 (${histories.length})` },
+                        { key: 'all' as const, label: `전체 (${filterMode === 'all' && typeof historyTotal === 'number' ? historyTotal : histories.length})` },
                         { key: 'group' as const, label: `그룹 (${journeys.length})` },
-                        { key: 'unclassified' as const, label: `미분류 (${unclassifiedHistories.length})` },
+                        { key: 'unclassified' as const, label: `미분류 (${filterMode === 'unclassified' && typeof historyTotal === 'number' ? historyTotal : unclassifiedHistories.length})` },
                     ].map((chip) => {
                         const isSelected = filterMode === chip.key;
                         return (
@@ -282,7 +431,7 @@ export function MypageNotebookTab({
                                     justifyContent="space-between"
                                     gap="10px"
                                     cursor="pointer"
-                                    onClick={() => router.push(`/notebook/${j.id}`)}
+                                    onClick={() => router.push(`/notebook/${j.note_code || j.id}`)}
                                     _hover={{ borderColor: 'var(--waba-purple-border)' }}
                                     transition="border-color 0.15s"
                                     minW={0}
@@ -334,6 +483,9 @@ export function MypageNotebookTab({
                                                                 borderRadius="10px"
                                                                 py={1.5}
                                                                 px={2.5}
+                                                                color="var(--waba-ink)"
+                                                                _hover={{ bg: 'var(--waba-surface)' }}
+                                                                _highlighted={{ bg: 'var(--waba-surface)' }}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     onEditJourney(j);
@@ -349,7 +501,7 @@ export function MypageNotebookTab({
                                                                 py={1.5}
                                                                 px={2.5}
                                                                 color="red.500"
-                                                                _hover={{ bg: 'red.50' }}
+                                                                _hover={{ bg: 'rgba(239, 68, 68, 0.12)' }} _highlighted={{ bg: 'rgba(239, 68, 68, 0.12)' }}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     onDeleteJourney(j.id);
@@ -399,7 +551,9 @@ export function MypageNotebookTab({
                     <Text fontSize="13px" color="var(--waba-ink-3)" mb={3}>
                         {filterMode === 'unclassified'
                             ? '그룹에 속하지 않은 미분류 기록이 없습니다.'
-                            : `아직 ${pet.name}의 건강 수첩 기록이 없습니다.`}
+                            : selectedHistoryPetIds.length === 1
+                                ? `아직 ${pets.find((p) => String(p.id) === selectedHistoryPetIds[0])?.name ?? pet.name}의 건강 수첩 기록이 없습니다.`
+                                : '아직 등록된 건강 수첩 기록이 없습니다.'}
                     </Text>
                     {filterMode === 'all' && (
                         <Button size="xs" rounded="full" bg="#6338A9" color="white" px={4} onClick={onOpenRecordModal}>
@@ -462,8 +616,7 @@ export function MypageNotebookTab({
                                                     w="24px"
                                                     h="24px"
                                                     borderRadius="full"
-                                                    border="2px solid"
-                                                    borderColor={isAI ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                                    boxShadow="var(--waba-avatar-shadow)"
                                                     overflow="hidden"
                                                     flexShrink={0}
                                                     title={p.name}
@@ -486,8 +639,7 @@ export function MypageNotebookTab({
                                                     w="24px"
                                                     h="24px"
                                                     borderRadius="full"
-                                                    border="2px solid"
-                                                    borderColor={isAI ? 'var(--waba-purple-soft)' : 'var(--waba-surface)'}
+                                                    boxShadow="var(--waba-avatar-shadow)"
                                                     bg="var(--waba-subtle)"
                                                     color="var(--waba-ink-2)"
                                                     fontSize="10px"
@@ -578,7 +730,7 @@ export function MypageNotebookTab({
                                             maxW="160px"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                router.push(`/notebook/${resolvedJourneyId}`);
+                                                router.push(`/notebook/${(item.journey as any)?.note_code || resolvedJourneyId}`);
                                             }}
                                             _hover={{ bg: 'var(--waba-purple-soft)' }}
                                         >
@@ -620,6 +772,8 @@ export function MypageNotebookTab({
                                                             py={1.5}
                                                             px={2.5}
                                                             color="var(--waba-purple-text)"
+                                                            _hover={{ bg: 'var(--waba-surface)' }}
+                                                            _highlighted={{ bg: 'var(--waba-surface)' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 router.push(`/post/${linkedPostId}`);
@@ -633,6 +787,9 @@ export function MypageNotebookTab({
                                                         value="edit"
                                                         cursor="pointer"
                                                         borderRadius="10px"
+                                                        color="var(--waba-ink)"
+                                                        _hover={{ bg: 'var(--waba-surface)' }}
+                                                        _highlighted={{ bg: 'var(--waba-surface)' }}
                                                         py={1.5}
                                                         px={2.5}
                                                         onClick={(e) => {
@@ -650,7 +807,7 @@ export function MypageNotebookTab({
                                                         py={1.5}
                                                         px={2.5}
                                                         color="red.500"
-                                                        _hover={{ bg: 'red.50' }}
+                                                        _hover={{ bg: 'rgba(239, 68, 68, 0.12)' }} _highlighted={{ bg: 'rgba(239, 68, 68, 0.12)' }}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             onDeleteHistory(item.id);
@@ -667,6 +824,25 @@ export function MypageNotebookTab({
                             </Grid>
                         );
                     })}
+                    {historyHasMore && (
+                        <Flex justify="center" pt={2}>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                borderRadius="999px"
+                                borderColor="var(--waba-line)"
+                                bg="var(--waba-surface)"
+                                color="var(--waba-ink)"
+                                fontSize="12px"
+                                fontWeight="700"
+                                px={6}
+                                loading={isLoadingMoreHistories}
+                                onClick={onLoadMoreHistories}
+                            >
+                                더 보기
+                            </Button>
+                        </Flex>
+                    )}
                 </VStack>
             )}
         </Box>
@@ -741,7 +917,7 @@ export function MypageScrappedNotebooks({
                                 align="center"
                                 gap={3}
                                 cursor="pointer"
-                                onClick={() => router.push(`/notebook/${nb.id}`)}
+                                onClick={() => router.push(`/notebook/${nb.note_code || nb.id}`)}
                                 _hover={{ borderColor: 'var(--waba-purple-border)' }}
                                 minW={0}
                             >
@@ -895,7 +1071,7 @@ export function MypageSettingsTab({
                         variant="outline"
                         borderColor="red.300"
                         color="red.500"
-                        _hover={{ bg: 'red.50' }}
+                        _hover={{ bg: 'rgba(239, 68, 68, 0.12)' }} _highlighted={{ bg: 'rgba(239, 68, 68, 0.12)' }}
                         onClick={onLogout}
                         gap={1.5}
                     >

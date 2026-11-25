@@ -221,6 +221,8 @@ export default function NotebookDetailPage() {
                 <NotebookTimeline
                     histories={detail.histories}
                     summaryFlow={detail.notebook.summary_flow}
+                    status={detail.notebook.status}
+                    completedAt={(detail.notebook as any).completed_at || (detail.notebook as any).end_date || (detail.notebook as any).updated_at}
                     isOwner={isOwner}
                     onEditRecord={(item) => {
                         setEditingRecord(item);

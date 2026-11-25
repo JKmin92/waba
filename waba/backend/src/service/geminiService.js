@@ -1,4 +1,11 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKEND_PUBLIC_DIR = path.resolve(__dirname, '../../public');
 
 const VALID_CATEGORIES = [
     'CHECKUP',
@@ -192,6 +199,174 @@ const healthEventsSchema = {
 /**
  * 게시글 본문(텍스트)에서 다중 반려동물/다중 건강 이벤트를 1회 호출로 분리 추출합니다.
  */
+const extractImageUrlsFromContent = (content) => {
+    if (!content) return [];
+    const urls = [];
+
+    const tryParseBlocks = (raw) => {
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+            const trimmed = raw.trim();
+            if (trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) return parsed;
+                } catch {
+                    // ignore
+                }
+            }
+        }
+        return null;
+    };
+
+    const blocks = tryParseBlocks(content);
+    if (blocks) {
+        for (const block of blocks) {
+            if (block?.type === 'image') {
+                const candidate = block.url || block.src || block.image_url;
+                if (typeof candidate === 'string' && candidate.trim()) {
+                    urls.push(candidate.trim());
+                }
+            }
+        }
+    }
+
+    const text = typeof content === 'string' ? content : JSON.stringify(content);
+    const htmlImgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+    let match;
+    while ((match = htmlImgRegex.exec(text)) !== null) {
+        if (match[1]?.trim()) urls.push(match[1].trim());
+    }
+
+    const mdImgRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
+    while ((match = mdImgRegex.exec(text)) !== null) {
+        if (match[1]?.trim()) urls.push(match[1].trim());
+    }
+
+    return [...new Set(urls)];
+};
+
+const readLocalImageInlineData = (imageUrl) => {
+    if (!imageUrl || typeof imageUrl !== 'string') return null;
+    const trimmed = imageUrl.trim();
+    if (!trimmed.startsWith('/uploads/')) return null;
+
+    const relativePath = trimmed.replace(/^\/+/, '');
+    const resolvedPath = path.resolve(BACKEND_PUBLIC_DIR, relativePath);
+    if (!resolvedPath.startsWith(BACKEND_PUBLIC_DIR)) return null;
+
+    try {
+        if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+            return null;
+        }
+        const ext = path.extname(resolvedPath).toLowerCase();
+        const mimeMap = {
+            '.webp': 'image/webp',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif'
+        };
+        const mimeType = mimeMap[ext];
+        if (!mimeType) return null;
+
+        const data = fs.readFileSync(resolvedPath).toString('base64');
+        return { mimeType, data };
+    } catch {
+        return null;
+    }
+};
+
+const getDecisionAiClient = () => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || !String(apiKey).trim()) {
+        const error = new Error('GEMINI_API_KEY_MISSING');
+        error.status = 503;
+        throw error;
+    }
+    return new GoogleGenAI({ apiKey: String(apiKey).trim(), apiVersion: 'v1beta' });
+};
+
+const getDecisionModelName = () => process.env.GEMINI_DECISION_MODEL || 'gemini-decision-1';
+
+const getDecisionHealthThreshold = () => {
+    const parsed = Number(process.env.DECISION_HEALTH_THRESHOLD);
+    return Number.isFinite(parsed) ? parsed : 0.5;
+};
+
+/**
+ * Gemini Decisions API(gemini-decision-1)를 이용해 1차 일상글 필터링을 수행합니다.
+ * Fail-open: 오류 발생 시 경고 로그만 남기고 true를 반환하여 기존 추출로 진행합니다.
+ */
+export const shouldExtractHealthEvents = async ({
+    ai,
+    title = '',
+    content = '',
+    normalizedPets = '',
+    imageInlineData = null
+} = {}) => {
+    if (process.env.ENABLE_DECISIONS_FILTER === 'false') {
+        return true;
+    }
+
+    const decisionInput = [
+        normalizedPets ? `[등록된 반려동물 목록]\n${normalizedPets}` : null,
+        title ? `[게시글 제목] ${title}` : null,
+        content ? `[게시글 본문]\n${content}` : null
+    ].filter(Boolean).join('\n\n');
+
+    if (!decisionInput) {
+        return false;
+    }
+
+    const threshold = getDecisionHealthThreshold();
+    const model = getDecisionModelName();
+
+    try {
+        const decisionAi = getDecisionAiClient() || ai;
+        const inputPayload = imageInlineData
+            ? [decisionInput, { inlineData: imageInlineData }]
+            : decisionInput;
+        const result = await decisionAi.decisions.create({
+            model,
+            input: inputPayload,
+            questions: {
+                has_health_event: {
+                    type: 'noul',
+                    instructions: '반려동물 커뮤니티 게시글에 등록된 반려동물의 건강·진료·예방접종·수술·투약·신체 이상 증상·사고/이물질 섭취·체중 변화·위생 케어·완치 등 건강 수첩에 기록할 만한 실제 사건이 포함되어 있는지 판정하세요. 단순 산책·나들이·간식 먹방·일상·감정 언급이나 단순 제품 추천/비용 문의 같은 일반 질문은 제외하되, "초코 다쳤어요. 어떻게해요?"처럼 본인 반려동물의 실제 부상·증상·이상 징후가 사진이나 글로 보고된 경우는 true입니다.'
+                },
+                ...(normalizedPets ? {
+                    is_own_registered_pet: {
+                        type: 'noul',
+                        instructions: '게시글 속 건강/케어 사건의 실제 당사자가 [등록된 반려동물 목록]에 포함된 작성자 본인의 반려동물인지 판정하세요. 목록의 반려동물 이름이 직접 언급되었거나, 등록된 반려동물 이름의 한글 음차/영문 표기 변형(예: john ↔ 존, coco ↔ 코코)이 사용되었거나, 이름이 생략되었더라도 문맥상 작성자 본인의 반려동물 이야기면 true입니다. 반면 친구·지인·이웃·타인의 반려동물, 길고양이·유기동물, 또는 특정 반려동물 사건이 아닌 일반 건강 정보·질문글이면 false입니다.'
+                    }
+                } : {})
+            }
+        });
+
+        const noul = result?.answers?.has_health_event?.noul;
+        const ownPetNoul = result?.answers?.is_own_registered_pet?.noul;
+        if (typeof noul === 'number' && Number.isFinite(noul)) {
+            if (noul < threshold) {
+                console.info(`[Gemini Decisions] 일상글로 판정되어 건강 수첩 추출을 건너뜁니다. (has_health_event=${noul}, threshold=${threshold})`);
+                return false;
+            }
+            if (normalizedPets && typeof ownPetNoul === 'number' && Number.isFinite(ownPetNoul) && ownPetNoul < threshold) {
+                console.info(`[Gemini Decisions] 작성자 본인의 등록된 반려동물 사건이 아니므로 건강 수첩 추출을 건너뜁니다. (has_health_event=${noul}, is_own_registered_pet=${ownPetNoul}, threshold=${threshold})`);
+                return false;
+            }
+            console.info(`[Gemini Decisions] 건강 수첩 추출 대상 판정 (has_health_event=${noul}${normalizedPets ? `, is_own_registered_pet=${ownPetNoul}` : ''}, threshold=${threshold})`);
+            return true;
+        }
+
+        console.warn('[Gemini Decisions] 응답 형식이 예상과 달라 기존 추출로 진행합니다.');
+        return true;
+    } catch (err) {
+        console.warn('[Gemini Decisions] 필터 호출 실패, 기존 추출로 폴백합니다:', err?.message || err);
+        return true;
+    }
+};
+
 export const extractPetHealthEvents = async ({
     title = '',
     content = '',
@@ -205,9 +380,31 @@ export const extractPetHealthEvents = async ({
 
     const textTitle = String(title || '').trim();
     const textContent = normalizeContentText(content);
+    const imageUrls = extractImageUrlsFromContent(content);
+    const hasImage = imageUrls.length > 0;
+    const compactLength = [textTitle, textContent].filter(Boolean).join('').replace(/\s+/g, '').length;
 
-    if (!textTitle && !textContent) {
+    if (!textTitle && !textContent && !hasImage) {
         return { events: [] };
+    }
+
+    if (!hasImage && compactLength < 10) {
+        return { events: [] };
+    }
+
+    const petNamesList = Array.isArray(pets) && pets.length > 0
+        ? pets.map((p) => String(p?.name || '').trim()).filter(Boolean)
+        : (petName ? [String(petName).trim()] : []);
+
+    let imageInlineData = null;
+    if (hasImage && compactLength <= 30) {
+        const combinedTextLower = `${textTitle} ${textContent}`.toLowerCase();
+        const hasMentionedPet = petNamesList.some((n) => combinedTextLower.includes(n.toLowerCase()));
+        const hasEnglishPetName = petNamesList.some((n) => /[a-zA-Z]/.test(n));
+        if (!hasMentionedPet && !hasEnglishPetName) {
+            return { events: [] };
+        }
+        imageInlineData = readLocalImageInlineData(imageUrls[0]);
     }
 
     const normalizedPets = Array.isArray(pets) && pets.length > 0
@@ -217,6 +414,17 @@ export const extractPetHealthEvents = async ({
             return `- ${p.name}${sp ? ` (${sp}${br})` : ''}`;
         }).join('\n')
         : (petName ? `- ${petName}${species ? ` (${species})` : ''}` : '');
+
+    const shouldExtract = await shouldExtractHealthEvents({
+        ai,
+        title: textTitle,
+        content: textContent,
+        normalizedPets,
+        imageInlineData
+    });
+    if (!shouldExtract) {
+        return { events: [] };
+    }
 
     const systemInstruction = [
         '당신은 반려동물 커뮤니티 WABA의 스마트 건강 수첩 AI 어시스턴트입니다.',
@@ -229,9 +437,10 @@ export const extractPetHealthEvents = async ({
         '[다중 반려동물·다중 이벤트 분리 및 엄격한 일상 제외 규칙]',
         '1. 글 안에 서로 다른 건강/케어 이벤트(예: "심장사상충 주사 맞음"과 "다음주 중성화 수술 예약")가 함께 있으면 최대 4건까지 각각 독립적인 이벤트 객체로 분리해 `events` 배열에 담으세요.',
         '2. 둘 이상의 반려동물이 **같은 건강/케어 이벤트를 함께** 겪은 경우(예: "오늘 모아랑 초코가 심장사상충 주사 맞고 왔어요")에는 1개의 이벤트에 `pet_names: ["모아", "초코"]`로 함께 묶으세요.',
-        '3. 각 이벤트의 `pet_names`에는 [등록된 반려동물 목록] 중 **해당 건강/케어 이벤트의 실제 당사자** 이름만 정확히 넣으세요.',
+        '3. 각 이벤트의 `pet_names`에는 [등록된 반려동물 목록] 중 **해당 건강/케어 이벤트의 실제 당사자** 이름만 정확히 넣으세요. 영문↔한글 음차(예: `존` → `john`)로 언급된 경우에도 `pet_names`에는 반드시 `[등록된 반려동물 목록]`에 등록된 이름 그대로 출력하세요.',
         '4. **엄격한 일상 제외 규칙:** 어떤 반려동물이 건강·진료·접종·수술·투약·증상·체중·위생 케어의 당사자가 아니라 단순히 감정·안부·일상 맥락으로만 언급된 경우(예: "초코 중성화 수술 무사히 끝났어요. 집에서 혼자 기다렸을 모아에게 미안하네요")에는 그 반려동물(모아)을 **절대** `pet_names`에 넣거나 별도 이벤트로 생성하지 마세요. 오직 실제 건강 이벤트 당사자(초코) 1건만 추출하세요.',
-        '5. 기록할 만한 건강/케어 이벤트가 전혀 없으면 `events: []` 빈 배열을 반환하세요.',
+        '5. **작성자 본인 반려동물 한정 규칙 (제3자 제외):** 친구·지인·이웃·타인의 반려동물, 길고양이·유기동물, 또는 일반 건강 정보글의 사례는 **절대** 추출하지 마세요. 반드시 `[등록된 반려동물 목록]`에 속한 작성자 본인의 반려동물에게 실제로 발생한 사건만 추출하세요.',
+        '6. 기록할 만한 건강/케어 이벤트가 전혀 없으면 `events: []` 빈 배열을 반환하세요.',
         '',
         '[반드시 기록 대상에 포함해야 할 케이스]',
         '1. 병원 진료, 건강검진(CHECKUP), 예방접종(VACCINE), 수술(SURGERY), 수술/진료 예약, 영수증/처방전/진단서',
@@ -262,7 +471,7 @@ export const extractPetHealthEvents = async ({
 
     const response = await callGeminiWithTimeout(ai, {
         model,
-        contents: userPrompt,
+        contents: imageInlineData ? [userPrompt, { inlineData: imageInlineData }] : userPrompt,
         config: {
             systemInstruction,
             responseMimeType: 'application/json',

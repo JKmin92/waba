@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WABA - 마이페이지 상단 프로필(#1) 대량 펫 3가지 디자인 대안</title>
+  <style>
+    :root {
+      --primary: #6338A9;
+      --primary-light: #F3EEFA;
+      --primary-border: #D9CCF2;
+      --bg: #F8F7FC;
+      --card: #FFFFFF;
+      --text: #1E1B2E;
+      --muted: #6E6A80;
+      --border: #E6E2F0;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-pill: 9999px;
+      --shadow: 0 8px 24px rgba(99, 56, 169, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 32px; line-height: 1.5; }
+    .container { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+    .section-tag { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 6px 14px; border-radius: var(--radius-pill); margin-bottom: 10px; }
+
+    .profile-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px 28px; box-shadow: var(--shadow); }
+    .profile-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .user-info { display: flex; align-items: center; gap: 16px; }
+    .user-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #6338A9, #9B6EE8); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+    .user-meta h2 { font-size: 19px; font-weight: 700; }
+    .user-meta p { font-size: 13px; color: var(--muted); }
+
+    .btn-add-circle { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 20px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+
+    /* 안 A: 아바타 스택 + 요약 필 버튼 */
+    .opt-a-right { display: flex; align-items: center; gap: 10px; }
+    .avatar-stack { display: flex; align-items: center; }
+    .stack-item { width: 34px; height: 34px; border-radius: 50%; background: var(--primary-light); color: var(--primary); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; margin-left: -10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .stack-item:first-child { margin-left: 0; }
+    .btn-pill-summary { padding: 9px 16px; border-radius: var(--radius-pill); border: 1px solid var(--primary-border); background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    /* 안 B: 가로 캐러셀 + 전체보기 고정 */
+    .opt-b-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .nav-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: #fff; color: var(--text); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .pet-mini-card { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FAF9FD; }
+    .pet-av { width: 30px; height: 30px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .btn-all-count { padding: 9px 14px; border-radius: var(--radius-pill); border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    /* 안 C: 2단 분리형 */
+    .opt-c-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-manage { padding: 9px 16px; border-radius: var(--radius-pill); border: 1px solid var(--primary-border); background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-register { padding: 9px 16px; border-radius: var(--radius-pill); border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .divider { height: 1px; background: var(--border); margin: 18px 0 14px; }
+    .pet-rail { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--border); background: #FAF9FD; font-size: 13px; font-weight: 600; }
+    .pet-chip-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .pet-chip-more { padding: 6px 14px; border-radius: var(--radius-pill); border: 1px dashed var(--primary); background: #fff; color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 안 A -->
+    <div>
+      <span class="section-tag">안 A · 아바타 스택 + 요약 필 버튼 (1줄 초미니멀형)</span>
+      <div class="profile-card">
+        <div class="profile-row">
+          <div class="user-info">
+            <div class="user-avatar">W</div>
+            <div class="user-meta">
+              <h2>와바미 집사님</h2>
+              <p>반려동물 12마리 · 게시글 48 · 건강수첩 19</p>
+            </div>
+          </div>
+          <div class="opt-a-right">
+            <div class="avatar-stack">
+              <div class="stack-item">초</div>
+              <div class="stack-item">보</div>
+              <div class="stack-item">두</div>
+              <div class="stack-item">콩</div>
+            </div>
+            <button class="btn-pill-summary">초코 외 11마리 · 전체보기 ▾</button>
+            <button class="btn-add-circle" title="반려동물 등록">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 안 B -->
+    <div>
+      <span class="section-tag">안 B · 가로 캐러셀(1~2마리 카드 + &lt; &gt;) + 전체보기 고정</span>
+      <div class="profile-card">
+        <div class="profile-row">
+          <div class="user-info">
+            <div class="user-avatar">W</div>
+            <div class="user-meta">
+              <h2>와바미 집사님</h2>
+              <p>반려동물 12마리 · 게시글 48 · 건강수첩 19</p>
+            </div>
+          </div>
+          <div class="opt-b-right">
+            <button class="nav-btn">&lt;</button>
+            <div class="pet-mini-card">
+              <div class="pet-av">초</div>
+              <div><div style="font-size:13px;font-weight:700;">초코</div><div style="font-size:11px;color:#6E6A80;">푸들 · 3살</div></div>
+            </div>
+            <div class="pet-mini-card">
+              <div class="pet-av">보</div>
+              <div><div style="font-size:13px;font-weight:700;">보리</div><div style="font-size:11px;color:#6E6A80;">코숏 · 2살</div></div>
+            </div>
+            <button class="nav-btn">&gt;</button>
+            <button class="btn-all-count">전체 12</button>
+            <button class="btn-add-circle" title="반려동물 등록">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 안 C -->
+    <div>
+      <span class="section-tag">안 C · 2단 분리형 (상단 액션 버튼 + 하단 펫 칩 레일)</span>
+      <div class="profile-card">
+        <div class="profile-row">
+          <div class="user-info">
+            <div class="user-avatar">W</div>
+            <div class="user-meta">
+              <h2>와바미 집사님</h2>
+              <p>반려동물 12마리 · 게시글 48 · 건강수첩 19</p>
+            </div>
+          </div>
+          <div class="opt-c-actions">
+            <button class="btn-manage">🐾 반려동물 12마리 관리</button>
+            <button class="btn-register">+ 등록</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="pet-rail">
+          <span class="pet-chip"><span class="pet-chip-dot">초</span>초코</span>
+          <span class="pet-chip"><span class="pet-chip-dot">보</span>보리</span>
+          <span class="pet-chip"><span class="pet-chip-dot">두</span>두부</span>
+          <span class="pet-chip"><span class="pet-chip-dot">콩</span>콩이</span>
+          <span class="pet-chip"><span class="pet-chip-dot">루</span>루이</span>
+          <button class="pet-chip-more">+7 더보기 · 검색</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

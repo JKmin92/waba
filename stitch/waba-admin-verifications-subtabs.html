@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 수의사 검증 상세 · 계정 인증 · 질병 이력</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --amber: #D97706;
+      --amber-soft: #FEF3C7;
+      --danger: #DC2626;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1420px; background: var(--bg); color: var(--text); padding: 28px 32px; display: flex; flex-direction: column; gap: 28px; }
+    .sec-banner { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-verified { background: var(--emerald-soft); color: var(--emerald); }
+    .b-amber { background: var(--amber-soft); color: var(--amber); }
+    .b-red { background: var(--danger-soft); color: var(--danger); }
+    .b-board { background: #F1F5F9; color: #334155; }
+    .b-purple { background: var(--primary-soft); color: var(--primary); }
+
+    .role-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; border: 1px solid var(--border); background: #fff; color: #334155; }
+    .role-vet { border-color: #C4B5FD; background: var(--primary-soft); color: var(--primary); }
+
+    .pet-av-stack { display: flex; align-items: center; gap: 10px; }
+    .pet-av { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22); border: 2px solid #fff; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 600; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .input-sm { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #F8FAFC; }
+    .btn-dark { padding: 8px 16px; border-radius: 999px; border: none; background: #0F172A; color: #fff; font-size: 12px; font-weight: 700; }
+    .btn-detail { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <!-- 섹션 A -->
+  <div>
+    <span class="sec-banner">섹션 A · 게시글 수의사 검증 상세 Dialog 미리보기</span>
+    <div class="panel" style="max-width:940px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <span class="badge b-board">케어 라운지</span>
+            <span class="badge b-verified">✓ 수의사 검증</span>
+          </div>
+          <h2 style="font-size:18px;font-weight:800;">비절병 초기 관리와 메모리폼 매트 교체 3개월 후기 ↗</h2>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">이집사 <span class="role-badge">일반 유저</span> · 2026.11.24</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted);">✕</span>
+      </div>
+
+      <div style="padding:12px 14px;border-radius:14px;background:#F8FAFC;border:1px solid var(--border);font-size:12px;color:#334155;">
+        바닥재 교체 후 3개월간 발바닥 발적 부위가 점차 호전되었으며, 정기 진료 시 수의사 선생님께 경과를 확인받았습니다.
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div class="pet-av-stack">
+          <div class="pet-av">구</div><span style="font-size:12px;font-weight:700;">구름이 (고양이)</span>
+          <div class="pet-av" style="margin-left:8px;">모</div><span style="font-size:12px;font-weight:700;">모찌 (토끼)</span>
+        </div>
+        <div style="padding:8px 14px;border-radius:12px;background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:700;">
+          연계 질병: 비절병(족저피부염) 초기 · 완치/관찰 · 에코 특수동물병원
+        </div>
+      </div>
+
+      <div style="padding:14px;border-radius:14px;background:#F8FAFC;border:1px solid var(--border);display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;font-weight:800;">수의사 검증 관리</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="pill active">수의사 검증 부여</button>
+          <button class="pill">검증 해제</button>
+          <select class="input-sm"><option>김와바 · 와바미 동물의료센터</option></select>
+          <input class="input-sm" style="flex:1;min-width:200px;" type="text" placeholder="감수 사유 / 메모 입력..." />
+          <button class="btn-dark">적용</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 B -->
+  <div>
+    <span class="sec-banner">섹션 B · 수의사 계정 · 인증 탭 미리보기</span>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="display:flex;gap:6px;"><span class="pill active">전체</span><span class="pill">인증 완료</span><span class="pill">심사 대기</span></div>
+        <input class="input-sm" style="width:300px;" type="text" placeholder="수의사 이름, 이메일, 면허번호 검색..." />
+      </div>
+      <table>
+        <thead><tr><th>상태</th><th>수의사 정보</th><th>면허번호 · 소속 병원</th><th>검증 글 / 답변</th><th>액션</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-verified">인증 완료</span></td>
+            <td>김와바 <span class="role-badge role-vet">수의사</span> · vet@wabami.com</td>
+            <td>면허 제 18492호 · 와바미 동물의료센터</td>
+            <td>검증 142건 · 채택 답변 38건</td>
+            <td><button class="btn-detail">상세보기</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-amber">심사 대기</span></td>
+            <td>박진료 <span class="role-badge">일반 유저</span> · parkvet@clinic.kr</td>
+            <td>면허 제 21045호 (검토 중) · 성수 바른동물병원</td>
+            <td>검증 0건 · 답변 4건</td>
+            <td><button class="btn-detail">상세보기</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 섹션 C -->
+  <div>
+    <span class="sec-banner">섹션 C · 질병 이력 탭 미리보기 (pet_diseases)</span>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="display:flex;gap:6px;"><span class="pill active">전체</span><span class="pill">치료 중</span><span class="pill">완치 · 관찰</span><span class="pill">공개</span><span class="pill">비공개</span></div>
+        <input class="input-sm" style="width:300px;" type="text" placeholder="질병명, 병원명, 반려동물 이름 검색..." />
+      </div>
+      <table>
+        <thead><tr><th>상태 / 공개</th><th>질병명 및 병원</th><th>반려동물</th><th>진단 기간 · 기록</th><th>액션</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-verified">완치 · 관찰</span> <span class="badge b-purple">공개</span></td>
+            <td><strong>비절병(족저피부염) 초기</strong> · 에코 특수동물병원</td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="pet-av">모</div><span>모아 (토끼)</span></div></td>
+            <td>2026.04.10 ~ 2026.07.20 · 경과 3건</td>
+            <td><button class="btn-detail">상세보기</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-amber">치료 중</span> <span class="badge b-red">비공개</span></td>
+            <td><strong>아토피성 피부염</strong> · 서울동물메디컬센터</td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="pet-av">구</div><span>구름이 (고양이)</span></div></td>
+            <td>2026.09.04 ~ 진행 중 · 경과 5건</td>
+            <td><button class="btn-detail">상세보기</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="font-size:12px;color:var(--muted);padding-top:4px;">
+        * 상세보기 클릭 시 경과 타임라인 조회 및 필수 사유 기반 비공개 전환 다이얼로그로 연결됩니다.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

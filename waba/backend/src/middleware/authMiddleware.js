@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import db from '../../config/db.js';
 
 /**
  * 로그인 필수 인증 미들웨어
@@ -45,4 +46,40 @@ export const optionalAuth = (req, res, next) => {
         req.user = null;
     }
     next();
+};
+
+/**
+ * 관리자 권한 실시간 검증 미들웨어 (verifyToken 이후 실행)
+ */
+export const verifyAdmin = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(403).json({
+                success: false,
+                message: '관리자 권한이 필요합니다.'
+            });
+        }
+
+        const [rows] = await db.query(
+            `SELECT id, email, nickname, role, status, profile_image_url
+             FROM users
+             WHERE id = ?
+             LIMIT 1`,
+            [userId]
+        );
+        const user = rows[0];
+
+        if (!user || user.status !== 'ACTIVE' || String(user.role || '').toUpperCase() !== 'ADMIN') {
+            return res.status(403).json({
+                success: false,
+                message: '관리자 권한이 필요합니다.'
+            });
+        }
+
+        req.adminUser = user;
+        next();
+    } catch (err) {
+        next(err);
+    }
 };
