@@ -57,15 +57,17 @@ export default function PasswordStrengthInput({
                         ? {
                               h: '48px',
                               borderRadius: '16px',
-                              bg: 'waba.subtle',
+                              bg: 'var(--waba-surface)',
+                              color: 'var(--waba-ink)',
+                              _placeholder: { color: 'var(--waba-ink-3)' },
                               border: '1px solid',
-                              borderColor: hasEmailOverlapError ? 'red.400' : 'transparent',
+                              borderColor: hasEmailOverlapError ? 'red.400' : 'var(--waba-line)',
                               px: 5,
                               pr: 12,
                               fontSize: '14px',
                               _focus: {
-                                  borderColor: hasEmailOverlapError ? 'red.500' : 'waba.purple',
-                                  bg: 'white',
+                                  borderColor: hasEmailOverlapError ? 'red.500' : '#6338A9',
+                                  bg: 'var(--waba-card)',
                                   outline: 'none',
                               },
                           }
@@ -79,6 +81,7 @@ export default function PasswordStrengthInput({
                               pr: 11,
                               fontSize: '14px',
                               color: 'var(--waba-ink)',
+                              _placeholder: { color: 'var(--waba-ink-3)' },
                               _focus: {
                                   borderColor: hasEmailOverlapError ? 'red.500' : '#6338A9',
                                   outline: 'none',
@@ -94,8 +97,8 @@ export default function PasswordStrengthInput({
                     right={isJoin ? 3 : 2}
                     top="50%"
                     transform="translateY(-50%)"
-                    color={isJoin ? 'waba.muted' : 'var(--waba-ink-3)'}
-                    _hover={{ color: isJoin ? 'waba.charcoal' : 'var(--waba-ink)' }}
+                    color="var(--waba-ink-3)"
+                    _hover={{ color: 'var(--waba-ink)' }}
                     onClick={() => setShowPw((v) => !v)}
                     disabled={disabled}
                 >
@@ -198,7 +201,7 @@ export default function PasswordStrengthInput({
                         </motion.span>
                     </AnimatePresence>
                 </Box>
-                <Text fontSize="11px" color={isJoin ? 'waba.muted' : 'var(--waba-ink-3)'}>
+                <Text fontSize="11px" color="var(--waba-ink-3)">
                     8자 이상 · 영문·숫자·특수문자
                 </Text>
             </Flex>
@@ -214,16 +217,12 @@ export default function PasswordStrengthInput({
                         ? 'rgba(239, 68, 68, 0.12)'
                         : satisfied
                             ? 'rgba(34, 197, 94, 0.12)'
-                            : isJoin
-                                ? 'waba.subtle'
-                                : 'var(--waba-surface)';
+                            : 'var(--waba-surface)';
                     const color = violatedOverlap
                         ? '#EF4444'
                         : satisfied
                             ? '#16A34A'
-                            : isJoin
-                                ? 'waba.muted'
-                                : 'var(--waba-ink-3)';
+                            : 'var(--waba-ink-3)';
                     const borderColor = violatedOverlap
                         ? 'rgba(239, 68, 68, 0.35)'
                         : satisfied

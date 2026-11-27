@@ -62,7 +62,7 @@ export const verifyAdmin = async (req, res, next) => {
         }
 
         const [rows] = await db.query(
-            `SELECT id, email, nickname, role, status, profile_image_url
+            `SELECT id, email, nickname, role, status, profile_image_url, admin_level, admin_name, admin_title
              FROM users
              WHERE id = ?
              LIMIT 1`,
@@ -77,9 +77,24 @@ export const verifyAdmin = async (req, res, next) => {
             });
         }
 
+        user.admin_level = String(user.admin_level || '').toUpperCase() === 'NORMAL' ? 'NORMAL' : 'SUPER';
         req.adminUser = user;
         next();
     } catch (err) {
         next(err);
     }
+};
+
+/**
+ * 슈퍼 관리자 권한 검증 미들웨어 (verifyAdmin 이후 실행)
+ */
+export const verifySuperAdmin = (req, res, next) => {
+    if (String(req.adminUser?.admin_level || '').toUpperCase() !== 'SUPER') {
+        return res.status(403).json({
+            success: false,
+            code: 'SUPER_ADMIN_REQUIRED',
+            message: '슈퍼 관리자 권한이 필요합니다.'
+        });
+    }
+    next();
 };

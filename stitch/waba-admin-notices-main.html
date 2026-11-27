@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 공지 · 배너 · 팝업 관리</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --amber: #D97706;
+      --amber-soft: #FEF3C7;
+      --danger: #DC2626;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1050px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #475569; }
+    .nav-item.active { background: #0F172A; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-primary { padding: 9px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .seg-tabs { display: inline-flex; background: #E2E8F0; padding: 4px; border-radius: 999px; gap: 4px; align-self: flex-start; }
+    .seg-tab { padding: 8px 18px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #475569; }
+    .seg-tab.active { background: #0F172A; color: #fff; }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .filter-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pill-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 600; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .search-input { width: 260px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #F8FAFC; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-pin { background: #0F172A; color: #fff; margin-right: 4px; }
+    .b-notice { background: #F1F5F9; color: #334155; }
+    .b-event { background: var(--primary-soft); color: var(--primary); }
+    .b-show { background: var(--emerald-soft); color: var(--emerald); }
+    .b-sched { background: var(--amber-soft); color: var(--amber); }
+    .b-hide { background: #F1F5F9; color: var(--muted); }
+    .btn-detail { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드</div>
+      <div class="nav-item">회원 · 반려동물</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item">게시글 · 댓글 · 큐레이션</div>
+      <div class="nav-item">건강 수첩 · AI 분석</div>
+      <div class="nav-item">수의사 검증 · 질병</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item">게시판 관리</div>
+      <div class="nav-item">제휴 도메인 관리</div>
+      <div class="nav-item active">공지 · 배너</div>
+      <div class="nav-item">감사 로그</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>공지 · 배너 · 팝업 관리</h1>
+        <p>커뮤니티 공지/이벤트 작성과 위치·디바이스별 배너 및 메인 페이지 팝업을 통합 관리합니다.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary">+ 공지 작성</button>
+        <button class="btn-icon" title="새로고침">↻</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">공지 · 이벤트</div><div class="kpi-val">14</div><div class="kpi-sub">노출 중 8 · 예약 2 · 미노출 4</div></div>
+      <div class="kpi-card"><div class="kpi-label">운영 중인 배너</div><div class="kpi-val" style="color:var(--primary);">4 슬롯</div><div class="kpi-sub">단일 1 · 스와이퍼 2 · 랜덤 1</div></div>
+      <div class="kpi-card"><div class="kpi-label">메인 팝업</div><div class="kpi-val" style="color:var(--emerald);">노출 중 (3장)</div><div class="kpi-sub">2장 이상 스와이퍼 자동 전환</div></div>
+      <div class="kpi-card"><div class="kpi-label">일정 알림</div><div class="kpi-val" style="color:var(--amber);">2건</div><div class="kpi-sub">7일 내 시작/종료 예정</div></div>
+    </div>
+
+    <div class="seg-tabs">
+      <div class="seg-tab active">공지사항 (14)</div>
+      <div class="seg-tab">배너 관리 (4)</div>
+      <div class="seg-tab">메인 팝업 (3)</div>
+    </div>
+
+    <section class="panel">
+      <div class="filter-row">
+        <div class="pill-group">
+          <span class="pill active">전체</span><span class="pill">공지</span><span class="pill">이벤트</span>
+          <span style="width:1px;height:18px;background:var(--border);margin:0 4px;"></span>
+          <span class="pill active">전체</span><span class="pill">노출 중</span><span class="pill">예약</span><span class="pill">미노출</span><span class="pill">만료</span>
+        </div>
+        <input class="search-input" type="text" placeholder="제목 · 내용 검색..." />
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>구분</th><th>제목 · 요약</th><th>이벤트 기간</th><th>노출 상태 · 기간</th><th>조회수</th><th>등록일</th><th>관리</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-pin">고정</span><span class="badge b-notice">공지</span></td>
+            <td><strong>와바미 커뮤니티 이용가이드 및 제휴 링크 정책 안내</strong></td>
+            <td style="color:var(--muted);">-</td>
+            <td><span class="badge b-show">노출 중 · 상시</span></td>
+            <td>4,812</td>
+            <td style="color:var(--muted);">2026.01.10</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-event">이벤트</span></td>
+            <td><strong>봄맞이 우리 아이 룩북 챌린지 (리워드 2배)</strong></td>
+            <td>2026.03.01 ~ 2026.03.31</td>
+            <td><span class="badge b-show">노출 중 (02.25 ~ 03.31)</span></td>
+            <td>1,945</td>
+            <td style="color:var(--muted);">2026.02.24</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-event">이벤트</span></td>
+            <td><strong>신규 집사 웰컴 3,000P 지급 이벤트</strong></td>
+            <td>2026.01.01 ~ 종료일 없음</td>
+            <td><span class="badge b-show">노출 중 · 상시</span></td>
+            <td>3,120</td>
+            <td style="color:var(--muted);">2026.01.01</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-notice">공지</span></td>
+            <td><strong>4월 시스템 정기 점검 및 서버 안정화 안내</strong></td>
+            <td style="color:var(--muted);">-</td>
+            <td><span class="badge b-sched">예약됨 (D-2 · 04.01 ~ 04.02)</span></td>
+            <td>0</td>
+            <td style="color:var(--muted);">2026.03.28</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-notice">공지</span></td>
+            <td><strong>다종 합사 가구 뱃지 기준 개편 초안</strong></td>
+            <td style="color:var(--muted);">-</td>
+            <td><span class="badge b-hide">미노출</span></td>
+            <td>12</td>
+            <td style="color:var(--muted);">2026.03.25</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

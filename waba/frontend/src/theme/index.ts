@@ -16,6 +16,9 @@ const customConfig = defineConfig({
       '--waba-purple-border': '#E5D4F3',
       '--waba-glass-btn': 'rgba(255, 255, 255, 0.92)',
       '--waba-avatar-shadow': '0 2px 8px rgba(0, 0, 0, 0.22)',
+      '--waba-scroll-track': '#FAFBFD',
+      '--waba-scroll-thumb': '#D4D4DC',
+      '--waba-scroll-thumb-hover': '#A8A8B6',
     },
     '[data-theme="dark"]': {
       '--waba-bg': '#0F1014',
@@ -31,6 +34,41 @@ const customConfig = defineConfig({
       '--waba-purple-border': '#3B285B',
       '--waba-glass-btn': 'rgba(20, 22, 29, 0.88)',
       '--waba-avatar-shadow': '0 2px 10px rgba(255, 255, 255, 0.22)',
+      '--waba-scroll-track': '#0F1014',
+      '--waba-scroll-thumb': '#2D3140',
+      '--waba-scroll-thumb-hover': '#464C64',
+    },
+    html: {
+      colorScheme: 'light',
+    },
+    'html[data-theme="dark"]': {
+      colorScheme: 'dark',
+    },
+    '*': {
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'var(--waba-scroll-thumb) var(--waba-scroll-track)',
+    },
+    '::-webkit-scrollbar': {
+      width: '8px',
+      height: '8px',
+    },
+    '::-webkit-scrollbar-track': {
+      background: 'var(--waba-scroll-track)',
+    },
+    '::-webkit-scrollbar-thumb': {
+      background: 'var(--waba-scroll-thumb)',
+      borderRadius: '999px',
+      border: '2px solid transparent',
+      backgroundClip: 'content-box',
+    },
+    '::-webkit-scrollbar-thumb:hover': {
+      background: 'var(--waba-scroll-thumb-hover)',
+      borderRadius: '999px',
+      border: '2px solid transparent',
+      backgroundClip: 'content-box',
+    },
+    '::-webkit-scrollbar-corner': {
+      background: 'var(--waba-scroll-track)',
     },
     body: {
       bg: 'var(--waba-bg)',

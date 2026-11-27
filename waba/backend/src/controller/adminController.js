@@ -352,6 +352,117 @@ export const deleteAffiliateDomain = async (req, res, next) => {
     }
 };
 
+export const getAuditLogs = async (req, res, next) => {
+    try {
+        const result = await adminService.getAdminAuditLogs(req.query || {});
+        return res.status(200).json({ success: true, ...result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const escapeCsvCell = (val) => {
+    let str = val === null || val === undefined ? '' : String(val);
+    if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
+    }
+    return `"${str.replace(/"/g, '""')}"`;
+};
+
+export const exportAuditLogsCsv = async (req, res, next) => {
+    try {
+        const logs = await adminService.getAdminAuditLogsForExport(req.query || {});
+        const header = [
+            '로그 ID', '일시', '관리자 ID', '관리자명', '관리자 이메일',
+            '액션 코드', '위험도', '대상 구분', '대상 ID', '요약', 'IP 주소', '상세 JSON'
+        ].map(escapeCsvCell).join(',');
+
+        const lines = logs.map((l) => [
+            l.id,
+            l.created_at instanceof Date ? l.created_at.toISOString() : l.created_at,
+            l.admin_user_id,
+            l.admin_name,
+            l.admin_email,
+            l.action,
+            l.severity,
+            l.target_type,
+            l.target_id,
+            l.summary,
+            l.ip_address,
+            l.detail ? JSON.stringify(l.detail) : ''
+        ].map(escapeCsvCell).join(','));
+
+        const csvContent = '\uFEFF' + [header, ...lines].join('\r\n');
+        const now = new Date();
+        const yyyymmdd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="waba-audit-logs-${yyyymmdd}.csv"`);
+        return res.status(200).send(csvContent);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAdminAccounts = async (req, res, next) => {
+    try {
+        const result = await adminService.getAdminAccounts(req.query || {});
+        return res.status(200).json({ success: true, ...result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const searchAdminCandidates = async (req, res, next) => {
+    try {
+        const result = await adminService.searchAdminCandidates(req.query || {});
+        return res.status(200).json({ success: true, ...result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const promoteAdminAccount = async (req, res, next) => {
+    try {
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || null;
+        const admin = await adminService.promoteAdminAccount(req.body || {}, req.adminUser, ipAddress);
+        return res.status(201).json({ success: true, admin });
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ success: false, code: err.code, message: err.message });
+        }
+        next(err);
+    }
+};
+
+export const updateAdminAccount = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || null;
+        const admin = await adminService.updateAdminAccount(userId, req.body || {}, req.adminUser, ipAddress);
+        return res.status(200).json({ success: true, admin });
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ success: false, code: err.code, message: err.message });
+        }
+        next(err);
+    }
+};
+
+export const revokeAdminAccount = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || null;
+        const result = await adminService.revokeAdminAccount(userId, req.body || {}, req.adminUser, ipAddress);
+        return res.status(200).json({ success: true, ...result });
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ success: false, code: err.code, message: err.message });
+        }
+        next(err);
+    }
+};
+
 export const getUsers = async (req, res, next) => {
     try {
         const result = await adminService.getAdminUsers(req.query || {});
@@ -394,7 +505,10 @@ export const updateUser = async (req, res, next) => {
             return res.status(404).json({ success: false, message: '회원을 찾을 수 없습니다.' });
         }
         if (['INVALID_ROLE', 'INVALID_STATUS', 'CANNOT_DEMOTE_SELF'].includes(err.message)) {
-            return res.status(400).json({ success: false, message: '잘못된 요청입니다. (권한/상태 값 또는 자기 보호 정책 확인)' });
+            return res.status(400).json({ success: false, code: err.code, message: err.message });
+        }
+        if (err.status) {
+            return res.status(err.status).json({ success: false, code: err.code, message: err.message });
         }
         next(err);
     }

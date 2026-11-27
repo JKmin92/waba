@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA — 회원 탈퇴 확인 모달 &amp; 예외 케이스 쇼케이스</title>
+  <style>
+    :root {
+      --bg: #F7F7FA;
+      --card: #FFFFFF;
+      --border: #EAEAEF;
+      --text: #111115;
+      --muted: #6E6E7A;
+      --primary: #6338A9;
+      --danger: #EF4444;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1040px; background: var(--bg); color: var(--text); padding: 28px 32px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .stack { display: flex; flex-direction: column; gap: 24px; }
+    .modal { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 12px 28px rgba(17,17,21,0.06); display: flex; flex-direction: column; gap: 16px; }
+    .m-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .warn-box { padding: 14px 16px; border-radius: 14px; background: var(--danger-soft); border: 1px solid #FECACA; font-size: 12px; line-height: 1.6; color: #991B1B; }
+    .radio-card { padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+    .radio-card.selected { border-color: var(--danger); background: #FFF8F8; }
+    .input { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; background: #F7F7FA; }
+    .m-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .btn-ghost { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 700; }
+    .btn-danger { padding: 9px 18px; border-radius: 999px; border: none; background: var(--danger); color: #fff; font-size: 13px; font-weight: 700; }
+    .toast-err { padding: 14px 16px; border-radius: 14px; background: var(--danger-soft); border: 1px solid #FECACA; color: #B91C1C; font-size: 13px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="grid-2">
+    <!-- Left: 일반 회원 탈퇴 모달 -->
+    <div class="modal">
+      <div class="m-head">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--danger-soft);color:var(--danger);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div><h2 style="font-size:17px;font-weight:800;">회원 탈퇴</h2><div style="font-size:12px;color:var(--muted);">탈퇴 신청 전 안내 사항을 확인해 주세요.</div></div>
+      </div>
+
+      <div class="warn-box">
+        • 탈퇴 후 30일 동안은 계정 복구를 신청할 수 있으며, 해당 기간 내 동일 이메일로 재가입할 수 없습니다.<br/>
+        • 30일이 지나면 이메일·닉네임·프로필 이미지·반려동물·건강 수첩 및 관련 이미지 파일이 서버에서 영구 삭제됩니다.
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <strong style="font-size:13px;">작성한 게시글 · 댓글 처리 선택</strong>
+        <div class="radio-card">
+          <strong>게시글 · 댓글 유지</strong>
+          <span style="color:var(--muted);">글을 남깁니다. (0~30일 '정키 [탈퇴한 회원]' → 30일 후 '탈퇴회원_XXXX' 표시)</span>
+        </div>
+        <div class="radio-card selected">
+          <strong style="color:var(--danger);">게시글 · 댓글 함께 삭제 ✓</strong>
+          <span style="color:var(--muted);">탈퇴 즉시 글을 숨김(접속 차단) 처리하며, 30일 후 글·댓글·첨부 이미지를 서버에서 영구 삭제합니다.</span>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <select class="input"><option>탈퇴 사유: 서비스 이용 빈도가 낮음</option></select>
+        <input class="input" type="password" placeholder="현재 비밀번호 확인" />
+        <label style="font-size:12px;font-weight:700;"><input type="checkbox" checked /> 위 안내와 30일 후 영구 파기에 동의합니다.</label>
+      </div>
+
+      <div class="m-foot"><button class="btn-ghost">취소</button><button class="btn-danger">회원 탈퇴 진행</button></div>
+    </div>
+
+    <!-- Right: 소셜 확인 + 재가입 차단/관리자 보호 -->
+    <div class="stack">
+      <div class="modal">
+        <div class="m-head"><h2 style="font-size:16px;font-weight:800;">소셜 전용 회원 본인 확인</h2></div>
+        <p style="font-size:13px;color:var(--muted);">비밀번호가 없는 소셜 가입 회원은 아래 입력창에 <strong>"탈퇴합니다"</strong>를 직접 입력해 본인 확인을 진행합니다.</p>
+        <input class="input" value="탈퇴합니다" />
+        <div class="m-foot"><button class="btn-ghost">취소</button><button class="btn-danger">회원 탈퇴 진행</button></div>
+      </div>
+
+      <div class="modal">
+        <h3 style="font-size:15px;font-weight:800;">30일 이내 재가입 차단 &amp; 관리자 보호</h3>
+        <div class="toast-err">
+          <strong>탈퇴 후 30일 이내에는 동일 이메일로 재가입할 수 없습니다.</strong><br/>
+          복구 신청 또는 유예 만료 후 재가입해 주세요.
+        </div>
+        <div style="padding:14px 16px;border-radius:14px;background:var(--bg);border:1px solid var(--border);font-size:13px;font-weight:600;color:var(--muted);">
+          관리자(ADMIN) 계정은 보안 정책상 직접 탈퇴할 수 없습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

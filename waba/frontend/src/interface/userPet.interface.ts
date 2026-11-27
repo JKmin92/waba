@@ -69,6 +69,8 @@ export interface User {
   last_login_at: string | null;
   /** 회원 탈퇴 일시 */
   withdrawn_at?: string | null;
+  /** 탈퇴 후 개인정보 파기 일시 */
+  withdrawn_purged_at?: string | null;
   /** 가입 일시 */
   created_at: string;
   /** 수정 일시 */

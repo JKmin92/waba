@@ -609,6 +609,131 @@ const pool = mysql.createPool({
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log("✅ [DB Migration] comment_likes 테이블 확인/생성 완료.");
+
+        // 18) 공지·배너·팝업 관리 테이블 마이그레이션
+        const [noticeTypeCols] = await pool.query("SHOW COLUMNS FROM `admin_notices` LIKE 'type'");
+        if (noticeTypeCols.length > 0 && !String(noticeTypeCols[0].Type || '').includes("'EVENT'")) {
+            await pool.query("ALTER TABLE `admin_notices` MODIFY COLUMN `type` ENUM('NOTICE','EVENT','BANNER') NOT NULL DEFAULT 'NOTICE'");
+            console.log("✅ [DB Migration] admin_notices.type ENUM 확장 완료.");
+        }
+
+        const noticeExtraCols = [
+            { name: 'display_status', sql: "ADD COLUMN `display_status` ENUM('VISIBLE','HIDDEN','SCHEDULED') NOT NULL DEFAULT 'VISIBLE' AFTER `is_active`" },
+            { name: 'is_pinned', sql: 'ADD COLUMN `is_pinned` TINYINT(1) NOT NULL DEFAULT 0 AFTER `display_status`' },
+            { name: 'event_start_at', sql: 'ADD COLUMN `event_start_at` DATETIME NULL AFTER `is_pinned`' },
+            { name: 'event_end_at', sql: 'ADD COLUMN `event_end_at` DATETIME NULL AFTER `event_start_at`' },
+            { name: 'thumbnail_url', sql: 'ADD COLUMN `thumbnail_url` VARCHAR(500) NULL AFTER `link_url`' },
+            { name: 'view_count', sql: 'ADD COLUMN `view_count` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `thumbnail_url`' }
+        ];
+        for (const col of noticeExtraCols) {
+            const [cols] = await pool.query(`SHOW COLUMNS FROM \`admin_notices\` LIKE '${col.name}'`);
+            if (cols.length === 0) {
+                await pool.query(`ALTER TABLE \`admin_notices\` ${col.sql}`);
+                console.log(`✅ [DB Migration] admin_notices.${col.name} 컬럼 추가 완료.`);
+            }
+        }
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`admin_banners\` (
+              \`id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              \`banner_key\` VARCHAR(80) NOT NULL,
+              \`title\` VARCHAR(150) NOT NULL,
+              \`banner_type\` ENUM('SINGLE','SWIPER','RANDOM') NOT NULL DEFAULT 'SINGLE',
+              \`display_status\` ENUM('VISIBLE','HIDDEN','SCHEDULED') NOT NULL DEFAULT 'VISIBLE',
+              \`start_at\` DATETIME NULL,
+              \`end_at\` DATETIME NULL,
+              \`autoplay_enabled\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`autoplay_interval_ms\` INT UNSIGNED NOT NULL DEFAULT 4000,
+              \`show_indicators\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`click_count\` INT UNSIGNED NOT NULL DEFAULT 0,
+              \`created_by\` VARCHAR(30) NULL,
+              \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY \`uk_admin_banners_key\` (\`banner_key\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log("✅ [DB Migration] admin_banners 테이블 확인/생성 완료.");
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`admin_banner_items\` (
+              \`id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              \`banner_id\` BIGINT NOT NULL,
+              \`sort_order\` INT NOT NULL DEFAULT 0,
+              \`title\` VARCHAR(150) NULL,
+              \`image_url\` VARCHAR(500) NOT NULL,
+              \`pc_image_url\` VARCHAR(500) NULL,
+              \`tablet_image_url\` VARCHAR(500) NULL,
+              \`mobile_image_url\` VARCHAR(500) NULL,
+              \`link_url\` VARCHAR(500) NULL,
+              \`link_target\` ENUM('_self','_blank') NOT NULL DEFAULT '_self',
+              \`display_status\` ENUM('VISIBLE','HIDDEN','SCHEDULED') NOT NULL DEFAULT 'VISIBLE',
+              \`start_at\` DATETIME NULL,
+              \`end_at\` DATETIME NULL,
+              \`click_count\` INT UNSIGNED NOT NULL DEFAULT 0,
+              \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX \`idx_banner_items_banner\` (\`banner_id\`, \`sort_order\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log("✅ [DB Migration] admin_banner_items 테이블 확인/생성 완료.");
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`admin_popup_settings\` (
+              \`id\` TINYINT PRIMARY KEY DEFAULT 1,
+              \`is_enabled\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`dismiss_policy\` ENUM('DAY','WEEK','NONE') NOT NULL DEFAULT 'DAY',
+              \`show_pc\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`show_tablet\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`show_mobile\` TINYINT(1) NOT NULL DEFAULT 1,
+              \`mobile_display_mode\` ENUM('MODAL','BOTTOM_SHEET') NOT NULL DEFAULT 'BOTTOM_SHEET',
+              \`updated_by\` VARCHAR(30) NULL,
+              \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await pool.query("INSERT IGNORE INTO `admin_popup_settings` (`id`) VALUES (1)");
+        console.log("✅ [DB Migration] admin_popup_settings 테이블 확인/생성 및 시드 완료.");
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS \`admin_popup_slides\` (
+              \`id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
+              \`sort_order\` INT NOT NULL DEFAULT 0,
+              \`title\` VARCHAR(150) NULL,
+              \`image_url\` VARCHAR(500) NOT NULL,
+              \`link_url\` VARCHAR(500) NULL,
+              \`link_target\` ENUM('_self','_blank') NOT NULL DEFAULT '_self',
+              \`display_status\` ENUM('VISIBLE','HIDDEN','SCHEDULED') NOT NULL DEFAULT 'VISIBLE',
+              \`start_at\` DATETIME NULL,
+              \`end_at\` DATETIME NULL,
+              \`click_count\` INT UNSIGNED NOT NULL DEFAULT 0,
+              \`created_by\` VARCHAR(30) NULL,
+              \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX \`idx_popup_slides_sort\` (\`sort_order\`, \`id\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log("✅ [DB Migration] admin_popup_slides 테이블 확인/생성 완료.");
+
+        // 19) 2단계 관리자 등급(admin_level) 컬럼 추가 및 기존 관리자 SUPER 백필
+        const [adminLevelCols] = await pool.query("SHOW COLUMNS FROM `users` LIKE 'admin_level'");
+        if (adminLevelCols.length === 0) {
+            await pool.query("ALTER TABLE `users` ADD COLUMN `admin_level` ENUM('SUPER', 'NORMAL') NULL DEFAULT NULL AFTER `admin_name`");
+            console.log("✅ [DB Migration] users.admin_level 컬럼 추가 완료.");
+        }
+        await pool.query("UPDATE `users` SET `admin_level` = 'SUPER' WHERE `role` = 'ADMIN' AND `admin_level` IS NULL");
+
+        // 20) 회원 탈퇴(30일 유예·파기) 컬럼 추가
+        const withdrawCols = [
+            { name: 'withdrawn_reason', sql: 'ADD COLUMN `withdrawn_reason` VARCHAR(255) NULL AFTER `withdrawn_at`' },
+            { name: 'delete_content_on_withdraw', sql: 'ADD COLUMN `delete_content_on_withdraw` TINYINT(1) NOT NULL DEFAULT 0 AFTER `withdrawn_reason`' },
+            { name: 'withdrawn_purged_at', sql: 'ADD COLUMN `withdrawn_purged_at` DATETIME NULL AFTER `delete_content_on_withdraw`' }
+        ];
+        for (const col of withdrawCols) {
+            const [cols] = await pool.query(`SHOW COLUMNS FROM \`users\` LIKE '${col.name}'`);
+            if (cols.length === 0) {
+                await pool.query(`ALTER TABLE \`users\` ${col.sql}`);
+                console.log(`✅ [DB Migration] users.${col.name} 컬럼 추가 완료.`);
+            }
+        }
     } catch (err) {
         console.error("⚠️ [DB Migration] pet_journeys/posts 테이블 생성 실패:", err.message);
     }

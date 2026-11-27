@@ -39,6 +39,8 @@ export const getMainPostList = async () => {
                 'id', u.id,
                 'nickname', u.nickname,
                 'profile_image_url', u.profile_image_url,
+                'status', u.status,
+                'withdrawn_purged_at', u.withdrawn_purged_at,
                 'mentor_badge', u.mentor_badge,
                 'vet_license_info', u.vet_license_info,
                 'is_multi_species', (u.is_multi_species = 1)
@@ -223,6 +225,8 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                 'id', u.id,
                 'nickname', u.nickname,
                 'profile_image_url', u.profile_image_url,
+                'status', u.status,
+                'withdrawn_purged_at', u.withdrawn_purged_at,
                 'mentor_badge', u.mentor_badge,
                 'vet_license_info', u.vet_license_info,
                 'is_multi_species', (u.is_multi_species = 1)
@@ -354,7 +358,9 @@ export const getPostDetail = async (postId, userId = null, shouldIncrement = fal
                         'author', JSON_OBJECT(
                             'id', cu.id,
                             'nickname', IF(c.is_anonymous = 1, '익명 집사', cu.nickname),
-                            'profile_image_url', IF(c.is_anonymous = 1, NULL, cu.profile_image_url)
+                            'profile_image_url', IF(c.is_anonymous = 1, NULL, cu.profile_image_url),
+                            'status', cu.status,
+                            'withdrawn_purged_at', cu.withdrawn_purged_at
                         )
                     )
                 )
@@ -740,6 +746,8 @@ export const getPostList = async (boardId) => {
                 'id', u.id,
                 'nickname', u.nickname,
                 'profile_image_url', u.profile_image_url,
+                'status', u.status,
+                'withdrawn_purged_at', u.withdrawn_purged_at,
                 'mentor_badge', u.mentor_badge,
                 'vet_license_info', u.vet_license_info,
                 'is_multi_species', (u.is_multi_species = 1)

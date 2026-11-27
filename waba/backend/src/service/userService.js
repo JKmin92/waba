@@ -60,6 +60,62 @@ export const changeUserPassword = async (userId, { currentPassword, newPassword 
     return { message: '비밀번호가 성공적으로 변경되었습니다.' };
 };
 
+export const withdrawUser = async (userId, { currentPassword, confirmText, deleteContent = false, reason = null } = {}) => {
+    const user = await userModel.getUserForWithdraw(userId);
+    if (!user) {
+        const error = new Error('사용자를 찾을 수 없습니다.');
+        error.status = 404;
+        error.code = 'USER_NOT_FOUND';
+        throw error;
+    }
+    if (String(user.role || '').toUpperCase() === 'ADMIN') {
+        const error = new Error('관리자 계정은 직접 탈퇴할 수 없습니다.');
+        error.status = 403;
+        error.code = 'ADMIN_CANNOT_WITHDRAW';
+        throw error;
+    }
+    if (user.status === 'WITHDRAWN') {
+        const error = new Error('이미 탈퇴 처리된 계정입니다.');
+        error.status = 400;
+        error.code = 'ALREADY_WITHDRAWN';
+        throw error;
+    }
+
+    if (user.has_local_password) {
+        const currentHash = await userModel.getUserPasswordHash(userId);
+        if (!currentPassword || !currentHash) {
+            const error = new Error('현재 비밀번호가 일치하지 않습니다.');
+            error.status = 400;
+            error.code = 'INVALID_CURRENT_PASSWORD';
+            throw error;
+        }
+        const matches = await bcrypt.compare(String(currentPassword), currentHash);
+        if (!matches) {
+            const error = new Error('현재 비밀번호가 일치하지 않습니다.');
+            error.status = 400;
+            error.code = 'INVALID_CURRENT_PASSWORD';
+            throw error;
+        }
+    } else {
+        if (String(confirmText || '').trim() !== '탈퇴합니다') {
+            const error = new Error('"탈퇴합니다"를 정확히 입력해주세요.');
+            error.status = 400;
+            error.code = 'INVALID_CONFIRM_TEXT';
+            throw error;
+        }
+    }
+
+    const { withdrawn_at } = await userModel.markUserWithdrawn(userId, {
+        deleteContent: Boolean(deleteContent),
+        reason: reason ? String(reason).trim().slice(0, 255) : null
+    });
+
+    return {
+        message: '회원 탈퇴가 완료되었습니다. 30일 이내 복구 신청이 가능합니다.',
+        withdrawn_at
+    };
+};
+
 export const checkNickname = async (nickname) => {
     return await userModel.checkNickname(nickname);
 };
@@ -81,7 +137,21 @@ export const joinUser = async (userData, clientIp = null) => {
     }
 
     // 1. 이메일 중복 및 연동 여부 정밀 검사
-    const existingUser = await userModel.findUserByEmail(normalizedEmail);
+    let existingUser = await userModel.findUserByEmail(normalizedEmail);
+    if (existingUser && existingUser.status === 'WITHDRAWN') {
+        const withdrawnAtMs = existingUser.withdrawn_at ? new Date(existingUser.withdrawn_at).getTime() : 0;
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        if (!existingUser.withdrawn_purged_at && withdrawnAtMs && (Date.now() - withdrawnAtMs) < thirtyDaysMs) {
+            const error = new Error('탈퇴 후 30일 이내에는 동일 이메일로 재가입할 수 없습니다.');
+            error.status = 409;
+            error.code = 'WITHDRAWN_REJOIN_BLOCKED';
+            throw error;
+        }
+        if (!existingUser.withdrawn_purged_at) {
+            await userModel.purgeSingleWithdrawnUser(existingUser.id);
+        }
+        existingUser = null;
+    }
     if (existingUser) {
         const identities = await userModel.getUserIdentitiesByUserId(existingUser.id);
         const hasLocal = identities.some(i => i.provider === 'LOCAL');
@@ -289,7 +359,13 @@ export const loginUser = async ({ email, password, keepLogin }, clientIp = null)
         throw error;
     }
 
-    // 3. 계정 정지 여부 체크
+    // 3. 계정 정지/탈퇴 여부 체크
+    if (user.status === 'WITHDRAWN') {
+        const error = new Error('탈퇴 처리된 계정입니다. 30일 이내 고객센터를 통해 복구 신청이 가능합니다.');
+        error.status = 403;
+        error.code = 'USER_WITHDRAWN';
+        throw error;
+    }
     if (user.status !== 'ACTIVE') {
         const error = new Error('ACCOUNT_SUSPENDED');
         error.status = 403;

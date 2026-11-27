@@ -16,6 +16,8 @@ import {
 } from '@chakra-ui/react';
 import {
     LuHouse,
+    LuLogOut,
+    LuMegaphone,
     LuMenu,
     LuMessageSquare,
     LuMoon,
@@ -26,37 +28,24 @@ import {
     LuUser,
 } from 'react-icons/lu';
 import { usePathname, useRouter } from 'next/navigation';
-import { isAuthenticated } from '@/utils/authUtils';
+import { clearAuthSession, getUserInfo, isAuthenticated } from '@/utils/authUtils';
 import axiosInstance from '@/utils/api';
 import SearchModal from './SearchModal';
 import MemberModal from '../member/MemberModal';
 import UserAvatar from './UserAvatar';
 import { toaster } from '@/components/ui/toaster';
 
-interface PetSummary {
-    id: string | number;
-    name: string;
-    species?: string;
-    breed?: string;
-    latest_weight_kg?: number | string | null;
-    current_avatar_url?: string | null;
-}
-
 export default function SideBarShell({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
     const [isLogin, setIsLogin] = useState(false);
-    const [pets, setPets] = useState<PetSummary[]>([]);
-    const [primaryPet, setPrimaryPet] = useState<PetSummary | null>(null);
-    const [autoJournalEnabled, setAutoJournalEnabled] = useState(false);
-    const [latestHistory, setLatestHistory] = useState<{
-        title?: string;
-        pet_id?: number | string;
-        pet?: PetSummary;
-        pets?: PetSummary[];
+    const [userProfile, setUserProfile] = useState<{
+        nickname?: string;
+        email?: string;
+        profile_image_url?: string | null;
+        role?: string;
     } | null>(null);
-    const [latestHistoryTitle, setLatestHistoryTitle] = useState<string | null>(null);
     const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -67,55 +56,36 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
         setThemeMode(initialTheme);
         document.documentElement.setAttribute('data-theme', initialTheme);
 
-        const syncAuthAndPet = async () => {
+        const syncAuth = async () => {
             const authed = isAuthenticated();
             setIsLogin(authed);
             if (!authed) {
-                setPets([]);
-                setPrimaryPet(null);
-                setAutoJournalEnabled(false);
-                setLatestHistory(null);
-                setLatestHistoryTitle(null);
+                setUserProfile(null);
                 return;
             }
-            const [petsRes, settingRes, histRes] = await Promise.allSettled([
-                axiosInstance.get('/user/pets'),
-                axiosInstance.get('/user/settings/auto-journal'),
-                axiosInstance.get('/user/histories', { params: { limit: 1 } }),
-            ]);
-            let loadedPets: PetSummary[] = [];
-            if (petsRes.status === 'fulfilled') {
-                loadedPets = Array.isArray(petsRes.value.data) ? petsRes.value.data : petsRes.value.data?.pets || [];
-                setPets(loadedPets);
-                setPrimaryPet(loadedPets[0] || null);
-            } else {
-                setPets([]);
-                setPrimaryPet(null);
-            }
-            if (settingRes.status === 'fulfilled') {
-                const val = settingRes.value.data?.auto_journal_enabled ?? settingRes.value.data?.enabled;
-                setAutoJournalEnabled(Boolean(val));
-            } else {
-                setAutoJournalEnabled(false);
-            }
-            if (histRes.status === 'fulfilled') {
-                const firstHist = histRes.value.data?.histories?.[0] || null;
-                setLatestHistory(firstHist);
-                setLatestHistoryTitle(firstHist?.title || null);
-            } else {
-                setLatestHistory(null);
-                setLatestHistoryTitle(null);
+            const cached = getUserInfo();
+            setUserProfile(cached || null);
+            try {
+                const res = await axiosInstance.get('/user/profile');
+                const profile = res.data?.profile ?? res.data?.user;
+                setUserProfile(profile || cached || null);
+            } catch {
+                // keep cached
             }
         };
 
-        syncAuthAndPet();
-        window.addEventListener('auth-change', syncAuthAndPet);
-        window.addEventListener('history-change', syncAuthAndPet);
+        syncAuth();
+        window.addEventListener('auth-change', syncAuth);
         return () => {
-            window.removeEventListener('auth-change', syncAuthAndPet);
-            window.removeEventListener('history-change', syncAuthAndPet);
+            window.removeEventListener('auth-change', syncAuth);
         };
     }, []);
+
+    const handleLogout = () => {
+        clearAuthSession();
+        setMobileMenuOpen(false);
+        toaster.create({ title: '로그아웃되었습니다.', type: 'info' });
+    };
 
     const toggleTheme = () => {
         const nextTheme = themeMode === 'light' ? 'dark' : 'light';
@@ -152,6 +122,14 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
             active: pathname.startsWith('/notebook'),
         },
         {
+            key: 'notices',
+            label: '공지 · 이벤트',
+            mobileLabel: '공지',
+            href: '/notices',
+            icon: LuMegaphone,
+            active: pathname.startsWith('/notices'),
+        },
+        {
             key: 'user',
             label: '마이페이지',
             href: '/member/mypage',
@@ -174,184 +152,82 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
         router.push('/post/register');
     };
 
-    const PetMiniWidget = () => (
-        <Box
-            bg="var(--waba-surface)"
-            border="1px solid"
-            borderColor="var(--waba-line)"
-            borderRadius="18px"
-            p="14px"
-            display="flex"
-            flexDirection="column"
-            gap="10px"
-        >
-            {isLogin && pets.length === 1 && primaryPet ? (
-                <>
+    const UserFooterCard = () => (
+        <VStack align="stretch" gap={2.5} pt={3} borderTop="1px solid" borderColor="var(--waba-line)">
+            <Button
+                size="sm"
+                variant="outline"
+                borderRadius="full"
+                borderColor="var(--waba-line)"
+                bg="var(--waba-surface)"
+                color="var(--waba-ink-2)"
+                fontSize="12px"
+                fontWeight="700"
+                h="34px"
+                onClick={toggleTheme}
+                gap={1.5}
+            >
+                {themeMode === 'light' ? <LuMoon size={14} /> : <LuSun size={14} />}
+                {themeMode === 'light' ? '다크 모드' : '라이트 모드'}
+            </Button>
+
+            {isLogin ? (
+                <HStack
+                    p={2.5}
+                    borderRadius="14px"
+                    bg="var(--waba-surface)"
+                    border="1px solid"
+                    borderColor="var(--waba-line)"
+                    justify="space-between"
+                    gap={2}
+                >
                     <HStack
-                        gap="10px"
+                        gap={2.5}
+                        minW={0}
+                        flex={1}
                         cursor="pointer"
                         onClick={() => handleNavClick('/member/mypage')}
                     >
                         <UserAvatar
-                            src={primaryPet.current_avatar_url}
-                            alt={primaryPet.name}
-                            size="sm"
-                            fallbackType="pet"
-                            border="2px solid"
-                            borderColor="var(--waba-card)"
+                            src={userProfile?.profile_image_url}
+                            alt={userProfile?.nickname || '회원'}
+                            size="xs"
+                            fallbackType="user"
                         />
-                        <Box minW={0} flex="1">
-                            <HStack gap={1.5}>
-                                <Text fontSize="13px" fontWeight="800" color="var(--waba-ink)" truncate>
-                                    {primaryPet.name}
-                                </Text>
-                                {primaryPet.latest_weight_kg ? (
-                                    <Text fontSize="11px" fontWeight="600" color="var(--waba-ink-3)" flexShrink={0}>
-                                        {Number(primaryPet.latest_weight_kg).toFixed(1)}kg
-                                    </Text>
-                                ) : null}
-                            </HStack>
-                            {autoJournalEnabled && (
-                                <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600" truncate>
-                                    ✓ AI 건강 수첩 연동 중
-                                </Text>
-                            )}
+                        <Box minW={0} flex={1}>
+                            <Text fontSize="12px" fontWeight="700" color="var(--waba-ink)" truncate>
+                                {userProfile?.nickname || '회원'}
+                            </Text>
+                            <Text fontSize="10.5px" color="var(--waba-ink-3)" truncate>
+                                {userProfile?.email || ''}
+                            </Text>
                         </Box>
                     </HStack>
-                    <Box
-                        bg="var(--waba-card)"
-                        borderRadius="10px"
-                        px="10px"
-                        py="7px"
-                        fontSize="11px"
-                        color="var(--waba-ink-2)"
-                        border="1px solid"
-                        borderColor="var(--waba-line)"
-                        cursor="pointer"
-                        onClick={() => handleNavClick('/member/mypage')}
-                        truncate
+                    <IconButton
+                        aria-label="로그아웃"
+                        size="xs"
+                        variant="ghost"
+                        rounded="full"
+                        flexShrink={0}
+                        color="var(--waba-ink-3)"
+                        _hover={{ color: '#EF4444', bg: 'var(--waba-card)' }}
+                        onClick={handleLogout}
                     >
-                        {latestHistoryTitle ? (
-                            <>최근: <strong style={{ color: 'var(--waba-ink)' }}>{latestHistoryTitle}</strong></>
-                        ) : (
-                            '아직 수첩 기록이 없어요'
-                        )}
-                    </Box>
-                </>
-            ) : isLogin && pets.length >= 2 ? (
-                (() => {
-                    const matchedByHistory = latestHistory
-                        ? latestHistory.pets && latestHistory.pets.length > 0
-                            ? latestHistory.pets
-                            : latestHistory.pet
-                                ? [latestHistory.pet]
-                                : latestHistory.pet_id
-                                    ? pets.filter((p) => String(p.id) === String(latestHistory.pet_id))
-                                    : pets
-                        : pets;
-                    const displayPets = matchedByHistory.length > 0 ? matchedByHistory : pets;
-                    const namesText = displayPets.map((p) => p.name).join(latestHistory ? ', ' : ' · ');
-
-                    return (
-                        <>
-                            <HStack
-                                gap="10px"
-                                mb="10px"
-                                cursor="pointer"
-                                onClick={() => handleNavClick('/member/mypage')}
-                            >
-                                {displayPets.length === 1 ? (
-                                    <UserAvatar
-                                        src={displayPets[0].current_avatar_url}
-                                        alt={displayPets[0].name}
-                                        size="sm"
-                                        fallbackType="pet"
-                                        border="2px solid"
-                                        borderColor="var(--waba-card)"
-                                    />
-                                ) : (
-                                    <HStack gap={0} flexShrink={0}>
-                                        {displayPets.slice(0, 3).map((p, idx) => (
-                                            <Box
-                                                key={String(p.id)}
-                                                position="relative"
-                                                zIndex={idx}
-                                                ml={idx > 0 ? '-8px' : 0}
-                                                w="26px"
-                                                h="26px"
-                                                borderRadius="full"
-                                                border="2px solid var(--waba-surface)"
-                                                overflow="hidden"
-                                                flexShrink={0}
-                                            >
-                                                <UserAvatar
-                                                    src={p.current_avatar_url}
-                                                    alt={p.name}
-                                                    size="xs"
-                                                    fallbackType="pet"
-                                                    w="full"
-                                                    h="full"
-                                                />
-                                            </Box>
-                                        ))}
-                                    </HStack>
-                                )}
-                                <Box minW={0} flex="1">
-                                    <Text fontSize="13px" fontWeight="800" color="var(--waba-ink)" truncate>
-                                        {namesText}
-                                    </Text>
-                                    {autoJournalEnabled && (
-                                        <Text fontSize="11px" color="var(--waba-purple-text)" fontWeight="600" truncate>
-                                            ✓ AI 건강 수첩 연동 중
-                                        </Text>
-                                    )}
-                                </Box>
-                            </HStack>
-                            <Box
-                                bg="var(--waba-card)"
-                                borderRadius="10px"
-                                px="10px"
-                                py="7px"
-                                fontSize="11px"
-                                color="var(--waba-ink-2)"
-                                border="1px solid"
-                                borderColor="var(--waba-line)"
-                                cursor="pointer"
-                                onClick={() => handleNavClick('/member/mypage')}
-                                truncate
-                            >
-                                {latestHistory?.title ? (
-                                    <>최근: <strong style={{ color: 'var(--waba-ink)' }}>{latestHistory.title}</strong></>
-                                ) : (
-                                    '아직 수첩 기록이 없어요'
-                                )}
-                            </Box>
-                        </>
-                    );
-                })()
-            ) : isLogin ? (
-                <Box cursor="pointer" onClick={() => handleNavClick('/member/mypage')}>
-                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink)" mb={1}>
-                        🐾 내 반려동물 수첩
-                    </Text>
-                    <Text fontSize="11px" color="var(--waba-ink-3)" lineHeight="1.45">
-                        아이를 등록하고 AI 건강 기록을 시작해 보세요.
-                    </Text>
-                </Box>
+                        <LuLogOut size={14} />
+                    </IconButton>
+                </HStack>
             ) : (
-                <VStack align="stretch" gap={2}>
-                    <Text fontSize="12px" fontWeight="700" color="var(--waba-ink)">
-                        내 반려동물 미니 수첩
-                    </Text>
-                    <Text fontSize="11px" color="var(--waba-ink-3)" lineHeight="1.45">
-                        로그인 후 우리 아이 건강·산책 기록을 한눈에 확인하세요.
-                    </Text>
-                    <Box pt={0.5}>
-                        <MemberModal />
-                    </Box>
-                </VStack>
+                <Box
+                    p={2.5}
+                    borderRadius="14px"
+                    bg="var(--waba-surface)"
+                    border="1px solid"
+                    borderColor="var(--waba-line)"
+                >
+                    <MemberModal />
+                </Box>
             )}
-        </Box>
+        </VStack>
     );
 
     return (
@@ -455,26 +331,8 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
                     </Button>
                 </Box>
 
-                {/* Bottom: Pet Mini Widget + Light/Dark Toggle */}
-                <VStack align="stretch" gap="10px">
-                    <PetMiniWidget />
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        borderRadius="full"
-                        borderColor="var(--waba-line)"
-                        bg="var(--waba-surface)"
-                        color="var(--waba-ink-2)"
-                        fontSize="12px"
-                        fontWeight="700"
-                        h="34px"
-                        onClick={toggleTheme}
-                        gap={1.5}
-                    >
-                        {themeMode === 'light' ? <LuMoon size={14} /> : <LuSun size={14} />}
-                        {themeMode === 'light' ? '다크 모드' : '라이트 모드'}
-                    </Button>
-                </VStack>
+                {/* Bottom: User Footer Card */}
+                <UserFooterCard />
             </Box>
 
             {/* 2. Mobile & Tablet Portrait Top Bar (base ~ md) */}
@@ -593,7 +451,7 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
                         >
                             <IconComp size={18} />
                             <Text fontSize="10px" fontWeight={item.active ? '800' : '600'}>
-                                {item.label}
+                                {'mobileLabel' in item && item.mobileLabel ? item.mobileLabel : item.label}
                             </Text>
                         </VStack>
                     );
@@ -644,7 +502,7 @@ export default function SideBarShell({ children }: { children: React.ReactNode }
                             </VStack>
 
                             <Separator borderColor="var(--waba-line)" mb={4} />
-                            <PetMiniWidget />
+                            <UserFooterCard />
                         </Dialog.Content>
                     </Dialog.Positioner>
                 </Portal>

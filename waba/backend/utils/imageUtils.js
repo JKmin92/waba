@@ -293,3 +293,42 @@ export const processAndSavePetAvatar = async (userId, petId, file) => {
     await fs.promises.writeFile(destFilePath, optimizedBuffer);
     return `/public/pets/${p1}/${p2}/${fileName}`;
 };
+
+export const uploadMarketingImage = multer({
+    storage,
+    limits: { fileSize: 20 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype && file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('이미지 파일(jpg, png, webp 등)만 업로드할 수 있습니다.'));
+        }
+    }
+}).single('image');
+
+export const processAndSaveMarketingImage = async (category, file) => {
+    if (!file || !file.buffer) {
+        const err = new Error('업로드할 이미지 파일이 없습니다.');
+        err.status = 400;
+        throw err;
+    }
+    const safeCat = ['notices', 'banners', 'popups'].includes(String(category || '').toLowerCase())
+        ? String(category).toLowerCase()
+        : 'banners';
+    const now = new Date();
+    const yymm = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.webp`;
+    const destDir = path.join(PUBLIC_BASE_DIR, 'marketing', safeCat, yymm);
+    await fs.promises.mkdir(destDir, { recursive: true });
+    const destFilePath = path.join(destDir, fileName);
+
+    const optimizedBuffer = await sharp(file.buffer)
+        .rotate()
+        .resize({ width: 1500, withoutEnlargement: true, fit: 'inside' })
+        .withMetadata({ density: 72 })
+        .webp({ quality: 82 })
+        .toBuffer();
+
+    await fs.promises.writeFile(destFilePath, optimizedBuffer);
+    return `/public/marketing/${safeCat}/${yymm}/${fileName}`;
+};

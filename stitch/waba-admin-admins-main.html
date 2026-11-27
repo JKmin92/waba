@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 관리자 계정 관리</title>
+  <style>
+    :root {
+      --bg: #F7F7FA;
+      --card: #FFFFFF;
+      --border: #EAEAEF;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --danger: #DC2626;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1240px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 20px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 3px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 4px; }
+    .nav-item { padding: 9px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; align-items: center; }
+    .nav-item.active { background: #0F172A; color: #FFFFFF; font-weight: 700; }
+    .super-tag { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); }
+    .nav-item.active .super-tag { background: rgba(255,255,255,0.2); color: #fff; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .btn-primary { padding: 9px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .role-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .role-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+    .role-card.super { border-color: #D9CCF2; background: linear-gradient(180deg, #FAF7FF 0%, #FFFFFF 100%); }
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-super { background: var(--primary-soft); color: var(--primary); }
+    .b-normal { background: #F1F5F9; color: #334155; }
+    .b-active { background: var(--emerald-soft); color: var(--emerald); }
+    .b-me { background: #0F172A; color: #fff; font-size: 10px; padding: 2px 6px; margin-left: 4px; }
+    .b-excl { background: var(--danger-soft); color: var(--danger); font-size: 10px; }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .pill-group { display: flex; gap: 6px; }
+    .pill { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .select-box { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #fff; }
+    .search-input { width: 250px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #F8FAFC; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    .user-cell { display: flex; align-items: center; gap: 10px; }
+    .av { width: 34px; height: 34px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .btn-sm { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 11px; font-weight: 700; }
+    .btn-sm.disabled { opacity: 0.45; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드 총괄</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item">회원 · 반려동물</div>
+      <div class="nav-item">게시글 · 댓글 · 큐레이션</div>
+      <div class="nav-item">건강 수첩 · AI 분석</div>
+      <div class="nav-item">신고 센터</div>
+      <div class="nav-item">수의사 검증 · 질병</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item">게시판 관리</div>
+      <div class="nav-item">제휴 도메인 관리</div>
+      <div class="nav-item">공지 · 배너</div>
+      <div class="nav-item">감사 로그 <span class="super-tag">SUPER</span></div>
+      <div class="nav-item active">관리자 계정 관리 <span class="super-tag">SUPER</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>관리자 계정 관리</h1>
+        <p>슈퍼 관리자 전용 · 기존 회원을 관리자로 승격하고 등급(슈퍼/일반)과 직함을 관리합니다.</p>
+      </div>
+      <button class="btn-primary">+ 관리자 등록</button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">전체 관리자</div><div class="kpi-val">5명</div><div class="kpi-sub">활성 5명 / 정지 0명</div></div>
+      <div class="kpi-card"><div class="kpi-label">슈퍼 관리자</div><div class="kpi-val" style="color:var(--primary);">2명</div><div class="kpi-sub">시스템 보호: 최소 1명 유지</div></div>
+      <div class="kpi-card"><div class="kpi-label">일반 관리자</div><div class="kpi-val">3명</div><div class="kpi-sub">회원 승격·감사 로그·계정 관리 제외</div></div>
+      <div class="kpi-card"><div class="kpi-label">최근 7일 권한 변경</div><div class="kpi-val">4건</div><div class="kpi-sub">감사 로그 자동 기록</div></div>
+    </div>
+
+    <div class="role-summary-grid">
+      <div class="role-card super">
+        <div style="display:flex;align-items:center;gap:8px;"><span class="badge b-super">슈퍼 관리자 (SUPER)</span><strong style="font-size:13px;">전체 권한 보유</strong></div>
+        <div style="font-size:12px;color:var(--muted);">대시보드 · 커뮤니티 · 운영 설정 · 회원 관리 · <strong>감사 로그 열람/내보내기</strong> · <strong>회원 관리자 승격 및 관리자 계정 관리</strong> 등 모든 권한</div>
+      </div>
+      <div class="role-card">
+        <div style="display:flex;align-items:center;gap:8px;"><span class="badge b-normal">일반 관리자 (NORMAL)</span><strong style="font-size:13px;">운영 실무 권한</strong></div>
+        <div style="font-size:12px;color:var(--muted);">대시보드 · 게시글 · 건강 수첩 · 신고 센터 · 수의사 검증 · 게시판 · 제휴 도메인 · 공지/배너 · 비관리자 회원 관리 모든 권한</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;"><span class="badge b-excl">제외: 감사 로그</span><span class="badge b-excl">제외: 관리자 계정 관리</span><span class="badge b-excl">제외: 회원→관리자 승격</span></div>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div class="pill-group"><span class="pill active">전체 (5)</span><span class="pill">슈퍼 관리자 (2)</span><span class="pill">일반 관리자 (3)</span></div>
+        <div style="display:flex;gap:8px;">
+          <select class="select-box"><option>전체 상태</option><option>활성</option><option>정지</option></select>
+          <input class="search-input" type="text" placeholder="이름 · 닉네임 · 이메일 · 직함 검색" />
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>관리자</th><th>등급</th><th>직함 (admin_title)</th><th>상태</th><th>최근 감사 활동</th><th>관리</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="user-cell"><div class="av">정</div><div><strong>정기민</strong> <span class="badge b-me">나</span><div style="font-size:11px;color:var(--muted);">waba_ceo · admin@wabami.com</div></div></div></td>
+            <td><span class="badge b-super">슈퍼 관리자</span></td>
+            <td>총괄 운영자</td>
+            <td><span class="badge b-active">활성</span></td>
+            <td style="color:var(--muted);">오늘 13:08 · 제휴 도메인 수정</td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-sm">수정</button><button class="btn-sm disabled">권한 해제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="user-cell"><div class="av">박</div><div><strong>박보안</strong><div style="font-size:11px;color:var(--muted);">sec_lead · sec@wabami.com</div></div></div></td>
+            <td><span class="badge b-super">슈퍼 관리자</span></td>
+            <td>보안 책임자</td>
+            <td><span class="badge b-active">활성</span></td>
+            <td style="color:var(--muted);">어제 19:40 · 감사 로그 내보내기</td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-sm">수정</button><button class="btn-sm">권한 해제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="user-cell"><div class="av">김</div><div><strong>김운영</strong><div style="font-size:11px;color:var(--muted);">ops_kim · ops@wabami.com</div></div></div></td>
+            <td><span class="badge b-normal">일반 관리자</span></td>
+            <td>커뮤니티 매니저</td>
+            <td><span class="badge b-active">활성</span></td>
+            <td style="color:var(--muted);">오늘 11:52 · 신고 3건 승인</td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-sm">수정</button><button class="btn-sm">권한 해제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="user-cell"><div class="av">이</div><div><strong>이콘텐츠</strong><div style="font-size:11px;color:var(--muted);">content_lee · editor@wabami.com</div></div></div></td>
+            <td><span class="badge b-normal">일반 관리자</span></td>
+            <td>콘텐츠 · 룩북 매니저</td>
+            <td><span class="badge b-active">활성</span></td>
+            <td style="color:var(--muted);">어제 16:04 · 이벤트 공지 등록</td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-sm">수정</button><button class="btn-sm">권한 해제</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="user-cell"><div class="av">최</div><div><strong>최지원</strong><div style="font-size:11px;color:var(--muted);">cs_choi · cs@wabami.com</div></div></div></td>
+            <td><span class="badge b-normal">일반 관리자</span></td>
+            <td>CS 운영 매니저</td>
+            <td><span class="badge b-active">활성</span></td>
+            <td style="color:var(--muted);">3일 전 · 건강 수첩 비공개 전환</td>
+            <td><div style="display:flex;gap:6px;"><button class="btn-sm">수정</button><button class="btn-sm">권한 해제</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 감사 로그</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --amber: #D97706;
+      --amber-soft: #FEF3C7;
+      --danger: #DC2626;
+      --danger-soft: #FEF2F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1160px; background: var(--bg); color: var(--text); display: flex; }
+
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #475569; }
+    .nav-item.active { background: #0F172A; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .header-title h1 { font-size: 22px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; color: var(--text); }
+    .btn-icon { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 4px 0; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .pill-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 600; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .search-input { flex: 1; min-width: 240px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #F8FAFC; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 13px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-area { background: #F1F5F9; color: #334155; }
+    .b-create { background: var(--emerald-soft); color: var(--emerald); }
+    .b-update { background: var(--primary-soft); color: var(--primary); }
+    .b-danger { background: var(--danger-soft); color: var(--danger); }
+    .b-mono { font-family: ui-monospace, monospace; background: #F1F5F9; color: #334155; font-size: 10px; padding: 2px 7px; border-radius: 999px; }
+    .btn-detail { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 11px; font-weight: 700; }
+
+    .pagination { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; font-size: 12px; color: var(--muted); }
+    .page-btns { display: flex; gap: 6px; }
+    .page-btn { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--border); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .page-btn.active { background: #0F172A; color: #fff; border-color: #0F172A; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+    <div class="nav-group">
+      <div class="nav-label">운영 현황</div>
+      <div class="nav-item">대시보드</div>
+      <div class="nav-item">회원 · 반려동물</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">커뮤니티 관리</div>
+      <div class="nav-item">게시글 · 댓글 · 큐레이션</div>
+      <div class="nav-item">건강 수첩 · AI 분석</div>
+      <div class="nav-item">수의사 검증 · 질병</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">운영 설정</div>
+      <div class="nav-item">게시판 관리</div>
+      <div class="nav-item">제휴 도메인 관리</div>
+      <div class="nav-item">공지 · 배너</div>
+      <div class="nav-item active">감사 로그</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-title">
+        <h1>감사 로그</h1>
+        <p>관리자 콘솔에서 수행된 모든 변경·제재·운영 설정 이력을 실시간으로 추적합니다.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-outline">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSV 내보내기
+        </button>
+        <button class="btn-icon" title="새로고침">↻</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">전체 감사 로그</div><div class="kpi-val">384</div><div class="kpi-sub">오늘 18건 · 최근 7일 112건</div></div>
+      <div class="kpi-card"><div class="kpi-label">삭제 · 제재 조치</div><div class="kpi-val" style="color:var(--danger);">27</div><div class="kpi-sub">삭제 · 정지 · 비공개 · 신고 승인</div></div>
+      <div class="kpi-card"><div class="kpi-label">활동 관리자</div><div class="kpi-val" style="color:var(--primary);">3명</div><div class="kpi-sub">최근 7일 기준 작업 이력 보유</div></div>
+      <div class="kpi-card"><div class="kpi-label">최다 작업 영역</div><div class="kpi-val" style="color:var(--emerald);">게시글 · 신고</div><div class="kpi-sub">전체의 44% · 169건</div></div>
+    </div>
+
+    <section class="panel" style="gap:10px;">
+      <div class="pill-group">
+        <span class="pill active">전체</span><span class="pill">회원 · 펫</span><span class="pill">게시글 · 댓글</span><span class="pill">신고 · 이의제기</span><span class="pill">건강 수첩</span><span class="pill">게시판 · 제휴</span><span class="pill">공지 · 배너 · 팝업</span>
+      </div>
+      <div class="pill-group">
+        <span class="pill active">전체</span><span class="pill">생성 · 승인</span><span class="pill">수정 · 설정</span><span class="pill">삭제 · 제재</span>
+        <span style="width:1px;height:18px;background:var(--border);margin:0 4px;"></span>
+        <span class="pill active">최근 7일</span><span class="pill">오늘</span><span class="pill">30일</span><span class="pill">전체 기간</span>
+        <span class="pill">전체 관리자 ▾</span>
+        <input class="search-input" type="text" placeholder="요약 · 대상 ID · 액션 · IP 검색..." />
+      </div>
+    </section>
+
+    <section class="panel">
+      <table>
+        <thead>
+          <tr><th>발생 일시</th><th>관리자</th><th>영역 · 액션</th><th>작업 요약 · 대상 ID</th><th>접속 IP</th><th>상세</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>2026.11.27 13:08:14</strong><div style="font-size:11px;color:var(--muted);">3분 전</div></td>
+            <td><strong>정기민</strong><div style="font-size:11px;color:var(--muted);">총괄 관리자</div></td>
+            <td><span class="badge b-area">제휴 도메인</span> <span class="badge b-update">수정</span><div style="margin-top:4px;"><span class="b-mono">AFFILIATE_DOMAIN_UPDATE</span></div></td>
+            <td>제휴 도메인 'tntnfarm.com' 서브도메인 정책 변경 (SPECIFIC: m) <span class="b-mono">#14</span></td>
+            <td style="font-family:ui-monospace,monospace;">121.134.82.19</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+          <tr>
+            <td><strong>2026.11.27 12:41:09</strong><div style="font-size:11px;color:var(--muted);">30분 전</div></td>
+            <td><strong>정기민</strong><div style="font-size:11px;color:var(--muted);">총괄 관리자</div></td>
+            <td><span class="badge b-area">배너</span> <span class="badge b-create">생성</span><div style="margin-top:4px;"><span class="b-mono">BANNER_CREATE</span></div></td>
+            <td>배너 '메인 상단 봄맞이 히어로' (spring-main-hero) 생성 <span class="b-mono">#3</span></td>
+            <td style="font-family:ui-monospace,monospace;">121.134.82.19</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+          <tr>
+            <td><strong>2026.11.27 11:52:33</strong><div style="font-size:11px;color:var(--muted);">1시간 전</div></td>
+            <td><strong>김운영</strong><div style="font-size:11px;color:var(--muted);">커뮤니티 매니저</div></td>
+            <td><span class="badge b-area">신고</span> <span class="badge b-danger">제재</span><div style="margin-top:4px;"><span class="b-mono">POST_REPORTS_APPROVE</span></div></td>
+            <td>게시글 '스팸 홍보 링크...' 신고 3건 일괄 승인 및 삭제 처리 <span class="b-mono">P842261125</span></td>
+            <td style="font-family:ui-monospace,monospace;">58.120.44.91</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+          <tr>
+            <td><strong>2026.11.27 10:15:20</strong><div style="font-size:11px;color:var(--muted);">3시간 전</div></td>
+            <td><strong>김운영</strong><div style="font-size:11px;color:var(--muted);">커뮤니티 매니저</div></td>
+            <td><span class="badge b-area">건강 수첩</span> <span class="badge b-danger">제재</span><div style="margin-top:4px;"><span class="b-mono">HISTORY_VISIBILITY_CHANGE</span></div></td>
+            <td>건강 기록 #219 비공개 전환 (사유: 개인정보 노출 우려) <span class="b-mono">#219</span></td>
+            <td style="font-family:ui-monospace,monospace;">58.120.44.91</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+          <tr>
+            <td><strong>2026.11.26 18:22:05</strong><div style="font-size:11px;color:var(--muted);">어제</div></td>
+            <td><strong>정기민</strong><div style="font-size:11px;color:var(--muted);">총괄 관리자</div></td>
+            <td><span class="badge b-area">회원</span> <span class="badge b-update">수정</span><div style="margin-top:4px;"><span class="b-mono">USER_UPDATE</span></div></td>
+            <td>회원 '모찌집사' 권한 변경 (USER → VET) <span class="b-mono">U26091288</span></td>
+            <td style="font-family:ui-monospace,monospace;">121.134.82.19</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+          <tr>
+            <td><strong>2026.11.26 16:04:48</strong><div style="font-size:11px;color:var(--muted);">어제</div></td>
+            <td><strong>이콘텐츠</strong><div style="font-size:11px;color:var(--muted);">에디터</div></td>
+            <td><span class="badge b-area">공지</span> <span class="badge b-create">생성</span><div style="margin-top:4px;"><span class="b-mono">NOTICE_CREATE</span></div></td>
+            <td>이벤트 '봄맞이 우리 아이 룩북 챌린지' 등록 <span class="b-mono">#15</span></td>
+            <td style="font-family:ui-monospace,monospace;">211.36.142.8</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+          <tr>
+            <td><strong>2026.11.26 14:30:11</strong><div style="font-size:11px;color:var(--muted);">어제</div></td>
+            <td><strong>정기민</strong><div style="font-size:11px;color:var(--muted);">총괄 관리자</div></td>
+            <td><span class="badge b-area">게시판</span> <span class="badge b-update">수정</span><div style="margin-top:4px;"><span class="b-mono">BOARD_REORDER</span></div></td>
+            <td>게시판 노출 순서 변경 (4개)</td>
+            <td style="font-family:ui-monospace,monospace;">121.134.82.19</td>
+            <td><button class="btn-detail">상세 보기</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <span>총 384건 중 1–20 표시</span>
+        <div class="page-btns">
+          <span class="page-btn">‹</span><span class="page-btn active">1</span><span class="page-btn">2</span><span class="page-btn">3</span><span class="page-btn">4</span><span class="page-btn">5</span><span class="page-btn">›</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

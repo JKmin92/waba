@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 감사 로그 상세 드로어</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; height: 980px; background: #E2E8F0; color: var(--text); display: flex; justify-content: flex-end; overflow: hidden; position: relative; }
+    .backdrop { flex: 1; background: rgba(15, 23, 42, 0.32); padding: 40px; color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 700; }
+    .drawer { width: 580px; height: 100%; background: var(--card); border-left: 1px solid var(--border); padding: 28px; display: flex; flex-direction: column; gap: 18px; box-shadow: -12px 0 32px rgba(15, 23, 42, 0.12); overflow-y: auto; }
+    .d-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .b-update { background: var(--primary-soft); color: var(--primary); }
+    .b-area { background: #F1F5F9; color: #334155; }
+    .b-mono { font-family: ui-monospace, monospace; background: #F1F5F9; color: #334155; font-size: 11px; padding: 3px 8px; border-radius: 999px; }
+
+    .box { padding: 14px 16px; border-radius: 16px; background: #F8FAFC; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+    .av { width: 38px; height: 38px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .btn-primary { padding: 7px 14px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; }
+    .btn-pill { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 11px; font-weight: 700; }
+
+    .kv-row { display: grid; grid-template-columns: 160px 1fr; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px solid #EEF2F6; }
+    .kv-row:last-child { border-bottom: none; }
+    .code-block { background: #0F172A; color: #E2E8F0; padding: 14px; border-radius: 12px; font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.6; }
+    .notice-bar { margin-top: auto; padding: 12px 14px; border-radius: 12px; background: #F1F5F9; color: var(--muted); font-size: 11px; font-weight: 600; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="backdrop">/admin/audit-logs 배경 목록 (Dimmed)</div>
+
+  <aside class="drawer">
+    <div class="d-head">
+      <div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+          <h2 style="font-size:18px;font-weight:800;">감사 로그 상세 #384</h2>
+          <span class="badge b-update">수정 · 설정</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">2026.11.27 13:08:14</div>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+
+    <div class="box" style="flex-direction:row;justify-content:space-between;align-items:center;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="av">정</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;">정기민 <span style="font-weight:500;color:var(--muted);">총괄 관리자</span></div>
+          <div style="font-size:11px;color:var(--muted);">admin@wabami.com</div>
+        </div>
+      </div>
+      <span class="b-mono">IP 121.134.82.19</span>
+    </div>
+
+    <div class="box">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="badge b-area">제휴 도메인 (AFFILIATE_DOMAIN)</span>
+          <span class="b-mono">#14</span>
+        </div>
+        <button class="btn-primary">대상 화면 이동 →</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">액션: <span class="b-mono">AFFILIATE_DOMAIN_UPDATE</span></div>
+      <div style="font-size:13px;font-weight:700;">제휴 도메인 'tntnfarm.com' 서브도메인 정책 변경 (SPECIFIC: m)</div>
+    </div>
+
+    <div class="box">
+      <div style="font-size:12px;font-weight:800;">변경 상세 내역 (구조화 뷰)</div>
+      <div>
+        <div class="kv-row"><span style="color:var(--muted);font-weight:600;">domain</span><span style="font-family:ui-monospace,monospace;">tntnfarm.com</span></div>
+        <div class="kv-row"><span style="color:var(--muted);font-weight:600;">subdomain_policy</span><span style="font-family:ui-monospace,monospace;">ALL → <strong style="color:var(--primary);">SPECIFIC</strong></span></div>
+        <div class="kv-row"><span style="color:var(--muted);font-weight:600;">allowed_subdomains</span><span style="font-family:ui-monospace,monospace;">[] → <strong style="color:var(--primary);">["m"]</strong></span></div>
+        <div class="kv-row"><span style="color:var(--muted);font-weight:600;">is_active</span><span style="font-family:ui-monospace,monospace;">true</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;font-weight:800;">원본 JSON (detail_json)</span>
+        <button class="btn-pill">JSON 복사</button>
+      </div>
+      <pre class="code-block">{
+  "domain": "tntnfarm.com",
+  "subdomain_policy": { "before": "ALL", "after": "SPECIFIC" },
+  "allowed_subdomains": { "before": [], "after": ["m"] },
+  "is_active": true
+}</pre>
+    </div>
+
+    <div class="notice-bar">
+      감사 로그는 보안 및 운영 추적을 위한 읽기 전용 기록으로, 수정하거나 삭제할 수 없습니다.
+    </div>
+  </aside>
+</body>
+</html>

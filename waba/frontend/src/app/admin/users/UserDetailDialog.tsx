@@ -20,6 +20,7 @@ import axiosInstance from '@/utils/api';
 import { toaster } from '@/components/ui/toaster';
 import UserAvatar from '../../(main)/common/UserAvatar';
 import PostReportDetailDialog from '../components/PostReportDetailDialog';
+import { useAdminContext } from '../AdminContext';
 
 interface UserDetailDialogProps {
     open: boolean;
@@ -36,6 +37,7 @@ export default function UserDetailDialog({
     userId,
     onUpdated,
 }: UserDetailDialogProps) {
+    const { isSuperAdmin } = useAdminContext();
     const [activeTab, setActiveTab] = useState<DetailTab>('basic');
     const [loading, setLoading] = useState(false);
     const [detail, setDetail] = useState<any>(null);
@@ -481,6 +483,7 @@ export default function UserDetailDialog({
                                                 </Text>
                                                 <select
                                                     value={role}
+                                                    disabled={!isSuperAdmin && detail?.user?.role === 'ADMIN'}
                                                     onChange={(e) => setRole(e.target.value)}
                                                     style={{
                                                         width: '100%',
@@ -496,7 +499,7 @@ export default function UserDetailDialog({
                                                     <option value="USER">USER (일반)</option>
                                                     <option value="VET">VET (수의사)</option>
                                                     <option value="EDITOR">EDITOR (에디터)</option>
-                                                    <option value="ADMIN">ADMIN (관리자)</option>
+                                                    {isSuperAdmin && <option value="ADMIN">ADMIN (관리자)</option>}
                                                 </select>
                                             </Box>
                                             {role === 'VET' && (
@@ -576,6 +579,20 @@ export default function UserDetailDialog({
                                                 </>
                                             )}
                                         </Grid>
+                                        {!isSuperAdmin && detail?.user?.role === 'ADMIN' && (
+                                            <Box
+                                                mt={3}
+                                                p={2.5}
+                                                borderRadius="10px"
+                                                bg="rgba(245, 158, 11, 0.12)"
+                                                border="1px solid"
+                                                borderColor="rgba(245, 158, 11, 0.35)"
+                                            >
+                                                <Text fontSize="11.5px" fontWeight="700" color="#D97706">
+                                                    관리자 계정의 권한 및 상태 변경은 슈퍼 관리자만 가능합니다.
+                                                </Text>
+                                            </Box>
+                                        )}
                                         <Flex justify="flex-end" mt={3}>
                                             <Button
                                                 size="sm"
@@ -585,6 +602,7 @@ export default function UserDetailDialog({
                                                 borderRadius="12px"
                                                 px={4}
                                                 fontWeight="700"
+                                                disabled={!isSuperAdmin && detail?.user?.role === 'ADMIN'}
                                                 loading={savingRole}
                                                 onClick={handleSaveRole}
                                             >
@@ -611,6 +629,7 @@ export default function UserDetailDialog({
                                                 </Text>
                                                 <select
                                                     value={status}
+                                                    disabled={!isSuperAdmin && detail?.user?.role === 'ADMIN'}
                                                     onChange={(e) => setStatus(e.target.value)}
                                                     style={{
                                                         width: '100%',
@@ -634,6 +653,7 @@ export default function UserDetailDialog({
                                                 </Text>
                                                 <Input
                                                     value={statusReason}
+                                                    disabled={!isSuperAdmin && detail?.user?.role === 'ADMIN'}
                                                     onChange={(e) => setStatusReason(e.target.value)}
                                                     placeholder="제재 또는 상태 변경 사유를 입력하세요"
                                                     h="38px"
@@ -654,6 +674,7 @@ export default function UserDetailDialog({
                                                 borderRadius="12px"
                                                 px={4}
                                                 fontWeight="700"
+                                                disabled={!isSuperAdmin && detail?.user?.role === 'ADMIN'}
                                                 loading={savingStatus}
                                                 onClick={handleSaveStatus}
                                             >

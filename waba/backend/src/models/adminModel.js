@@ -551,7 +551,7 @@ export const getAdminUsers = async ({
         `SELECT
             u.id, u.email, u.nickname, u.profile_image_url, u.role,
             u.mentor_badge, u.vet_license_info, u.vet_license_number, u.vet_hospital_name,
-            u.admin_title, u.admin_name, u.auto_journal_enabled,
+            u.admin_title, u.admin_name, u.admin_level, u.auto_journal_enabled,
             u.report_count, u.status, u.last_login_at, u.created_at,
             (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.status = 'PUBLISHED') AS post_count,
             (SELECT COUNT(*) FROM pet_histories ph WHERE ph.user_id = u.id) AS history_count,
@@ -615,7 +615,7 @@ export const getAdminUserDetail = async (userId) => {
     const [userRows] = await db.query(
         `SELECT
             id, email, nickname, profile_image_url, bio, role, mentor_badge,
-            vet_license_info, vet_license_number, vet_hospital_name, admin_title, admin_name,
+            vet_license_info, vet_license_number, vet_hospital_name, admin_title, admin_name, admin_level,
             is_multi_species, auto_journal_enabled, report_count,
             status, last_ip, last_login_at, withdrawn_at, created_at, updated_at
          FROM users
@@ -818,7 +818,7 @@ export const getAdminUserDetail = async (userId) => {
 
 export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = null) => {
     const [existingRows] = await db.query(
-        `SELECT id, nickname, role, vet_license_info, vet_license_number, vet_hospital_name, admin_title, admin_name, status
+        `SELECT id, nickname, role, vet_license_info, vet_license_number, vet_hospital_name, admin_title, admin_name, admin_level, status, withdrawn_purged_at
          FROM users WHERE id = ? LIMIT 1`,
         [userId]
     );
@@ -829,29 +829,82 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
         throw error;
     }
 
-    const { role, vet_license_number, vet_hospital_name, admin_title, admin_name, status, reason } = data || {};
+    const { role, vet_license_number, vet_hospital_name, admin_title, admin_name, admin_level, status, reason } = data || {};
 
     if (role !== undefined && !VALID_USER_ROLES.includes(role)) {
         const error = new Error('INVALID_ROLE');
         error.status = 400;
+        error.code = 'INVALID_ROLE';
         throw error;
     }
     if (status !== undefined && !VALID_USER_STATUSES.includes(status)) {
         const error = new Error('INVALID_STATUS');
         error.status = 400;
+        error.code = 'INVALID_STATUS';
+        throw error;
+    }
+
+    const actorIsSuper = String(adminUser?.admin_level || '').toUpperCase() === 'SUPER';
+    if (!actorIsSuper && (existing.role === 'ADMIN' || role === 'ADMIN' || admin_level !== undefined || admin_title !== undefined || admin_name !== undefined)) {
+        const error = new Error('일반 관리자는 회원을 관리자로 승격하거나 기존 관리자 계정을 수정할 수 없습니다.');
+        error.status = 403;
+        error.code = 'SUPER_ADMIN_REQUIRED';
         throw error;
     }
 
     if (userId === adminUser.id && ((role !== undefined && role !== 'ADMIN') || (status !== undefined && status !== 'ACTIVE'))) {
         const error = new Error('CANNOT_DEMOTE_SELF');
         error.status = 400;
+        error.code = 'CANNOT_DEMOTE_SELF';
         throw error;
+    }
+
+    if (existing.status === 'WITHDRAWN' && existing.withdrawn_purged_at && status === 'ACTIVE') {
+        const error = new Error('30일이 경과해 영구 파기된 계정은 복구할 수 없습니다.');
+        error.status = 400;
+        error.code = 'ALREADY_PURGED';
+        throw error;
+    }
+
+    const effectiveRole = role !== undefined ? role : existing.role;
+    const nextStatus = status !== undefined ? status : existing.status;
+    let nextLevel = existing.admin_level || null;
+
+    if (effectiveRole === 'ADMIN') {
+        if (admin_level !== undefined) {
+            const upperLevel = String(admin_level || '').toUpperCase();
+            if (!['SUPER', 'NORMAL'].includes(upperLevel)) {
+                const error = new Error('올바른 관리자 등급(SUPER, NORMAL)을 선택해주세요.');
+                error.status = 400;
+                error.code = 'INVALID_ADMIN_LEVEL';
+                throw error;
+            }
+            nextLevel = upperLevel;
+        } else {
+            nextLevel = existing.role === 'ADMIN' ? (existing.admin_level || 'SUPER') : 'NORMAL';
+        }
+    } else {
+        nextLevel = null;
+    }
+
+    const wasActiveSuper = existing.role === 'ADMIN' && (existing.admin_level || 'SUPER') === 'SUPER' && existing.status === 'ACTIVE';
+    const willBeActiveSuper = effectiveRole === 'ADMIN' && nextLevel === 'SUPER' && nextStatus === 'ACTIVE';
+    if (wasActiveSuper && !willBeActiveSuper) {
+        const [[superRow]] = await db.query(
+            `SELECT COUNT(*) AS cnt FROM users WHERE role = 'ADMIN' AND COALESCE(admin_level, 'SUPER') = 'SUPER' AND status = 'ACTIVE'`
+        );
+        if (Number(superRow?.cnt || 0) <= 1) {
+            const error = new Error('최소 1명의 활성 슈퍼 관리자가 필요합니다.');
+            error.status = 400;
+            error.code = 'LAST_SUPER_ADMIN_PROTECTED';
+            throw error;
+        }
     }
 
     const updates = [];
     const params = [];
 
-    const hasRoleOrMetaChange = [role, vet_license_number, vet_hospital_name, admin_title, admin_name]
+    const hasRoleOrMetaChange = [role, vet_license_number, vet_hospital_name, admin_title, admin_name, admin_level]
         .some((v) => v !== undefined);
 
     if (role !== undefined) {
@@ -860,7 +913,6 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
     }
 
     if (hasRoleOrMetaChange) {
-        const effectiveRole = role !== undefined ? role : existing.role;
         if (effectiveRole === 'VET') {
             const license = vet_license_number !== undefined
                 ? (vet_license_number ? String(vet_license_number).trim() : null)
@@ -870,7 +922,7 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
                 : (existing.vet_hospital_name || null);
             const licenseInfo = [license, hospital].filter(Boolean).join(' / ') || null;
 
-            updates.push('vet_license_number = ?', 'vet_hospital_name = ?', 'vet_license_info = ?', 'admin_title = NULL', 'admin_name = NULL');
+            updates.push('vet_license_number = ?', 'vet_hospital_name = ?', 'vet_license_info = ?', 'admin_title = NULL', 'admin_name = NULL', 'admin_level = NULL');
             params.push(license, hospital, licenseInfo);
         } else if (effectiveRole === 'ADMIN') {
             const nextTitle = admin_title !== undefined
@@ -880,10 +932,10 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
                 ? (admin_name ? String(admin_name).trim() : null)
                 : (existing.admin_name || null);
 
-            updates.push('admin_title = ?', 'admin_name = ?', 'vet_license_number = NULL', 'vet_hospital_name = NULL', 'vet_license_info = NULL');
-            params.push(nextTitle, nextName);
+            updates.push('admin_title = ?', 'admin_name = ?', 'admin_level = ?', 'vet_license_number = NULL', 'vet_hospital_name = NULL', 'vet_license_info = NULL');
+            params.push(nextTitle, nextName, nextLevel);
         } else {
-            updates.push('vet_license_number = NULL', 'vet_hospital_name = NULL', 'vet_license_info = NULL', 'admin_title = NULL', 'admin_name = NULL');
+            updates.push('vet_license_number = NULL', 'vet_hospital_name = NULL', 'vet_license_info = NULL', 'admin_title = NULL', 'admin_name = NULL', 'admin_level = NULL');
         }
     }
 
@@ -893,7 +945,7 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
         if (status === 'WITHDRAWN') {
             updates.push('withdrawn_at = NOW()');
         } else if (status === 'ACTIVE') {
-            updates.push('withdrawn_at = NULL');
+            updates.push('withdrawn_at = NULL', 'withdrawn_reason = NULL', 'delete_content_on_withdraw = 0');
         }
     }
 
@@ -902,6 +954,21 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
         params.push(userId);
         await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
+        if (existing.status === 'WITHDRAWN' && status === 'ACTIVE') {
+            await db.query(
+                `UPDATE posts
+                 SET status = 'PUBLISHED', deleted_at = NULL, delete_type = NULL, delete_reason = NULL, purge_scheduled_at = NULL, updated_at = NOW()
+                 WHERE user_id = ? AND status = 'DELETED' AND delete_type = 'WITHDRAWAL'`,
+                [userId]
+            );
+            await db.query(
+                `UPDATE comments
+                 SET status = 'ACTIVE', updated_at = NOW()
+                 WHERE user_id = ? AND status = 'WITHDRAWAL_HIDDEN'`,
+                [userId]
+            );
+        }
+
         const action = status !== undefined && status !== existing.status ? 'USER_STATUS_CHANGE' : 'USER_ROLE_UPDATE';
         await logAdminAction({
             adminUserId: adminUser.id,
@@ -909,14 +976,14 @@ export const updateAdminUser = async (userId, data = {}, adminUser, ipAddress = 
             targetType: 'USER',
             targetId: userId,
             summary: `회원 '${existing.nickname}' 정보/상태 변경${reason ? ` (${String(reason).slice(0, 80)})` : ''}`,
-            detail: { role, vet_license_number, vet_hospital_name, admin_title, admin_name, status, reason: reason || null },
+            detail: { role, vet_license_number, vet_hospital_name, admin_title, admin_name, admin_level: nextLevel, status, reason: reason || null },
             ipAddress
         });
     }
 
     const [updatedRows] = await db.query(
         `SELECT id, email, nickname, profile_image_url, role, mentor_badge,
-                vet_license_info, vet_license_number, vet_hospital_name, admin_title, admin_name,
+                vet_license_info, vet_license_number, vet_hospital_name, admin_title, admin_name, admin_level,
                 status, withdrawn_at, updated_at
          FROM users WHERE id = ? LIMIT 1`,
         [userId]
@@ -3470,4 +3537,579 @@ export const deleteAdminAffiliateDomain = async (domainId, adminUser, ipAddress 
     });
 
     return { success: true, domainId: Number(domainId) };
+};
+
+// ==================== Audit Logs ====================
+
+const AUDIT_GROUP_MAP = {
+    USER_PET: { label: '회원 · 반려동물', types: ['USER', 'PET', 'ADMIN'] },
+    POST_COMMENT: { label: '게시물 · 댓글', types: ['POST', 'COMMENT'] },
+    REPORT: { label: '신고 센터', types: ['REPORT'] },
+    NOTEBOOK: { label: '건강 수첩', types: ['HISTORY', 'NOTEBOOK'] },
+    BOARD_AFFILIATE: { label: '게시판 · 제휴', types: ['BOARD', 'AFFILIATE_DOMAIN'] },
+    MARKETING: { label: '공지 · 배너 · 팝업', types: ['NOTICE', 'BANNER', 'POPUP'] }
+};
+
+const AUDIT_SEVERITY_SQL = `
+    CASE
+        WHEN RIGHT(l.action, 7) = '_DELETE' OR RIGHT(l.action, 7) = '_REJECT' OR l.action IN ('POST_STATUS_CHANGE', 'COMMENT_STATUS_CHANGE', 'USER_BAN', 'USER_SUSPEND', 'ADMIN_REVOKE') THEN 'DANGER'
+        WHEN RIGHT(l.action, 7) = '_CREATE' OR l.action IN ('POST_ADMIN_RESTORE', 'PET_ADMIN_RESTORE', 'POST_REPORTS_APPROVE', 'REPORT_APPROVE', 'ADMIN_PROMOTE') THEN 'CREATE'
+        ELSE 'UPDATE'
+    END
+`;
+
+const getAuditSeverity = (action) => {
+    const a = String(action || '').toUpperCase();
+    if (
+        a.endsWith('_DELETE') ||
+        a.endsWith('_REJECT') ||
+        ['POST_STATUS_CHANGE', 'COMMENT_STATUS_CHANGE', 'USER_BAN', 'USER_SUSPEND', 'ADMIN_REVOKE'].includes(a)
+    ) {
+        return 'DANGER';
+    }
+    if (
+        a.endsWith('_CREATE') ||
+        ['POST_ADMIN_RESTORE', 'PET_ADMIN_RESTORE', 'POST_REPORTS_APPROVE', 'REPORT_APPROVE', 'ADMIN_PROMOTE'].includes(a)
+    ) {
+        return 'CREATE';
+    }
+    return 'UPDATE';
+};
+
+const buildAuditLogWhere = ({ group = 'ALL', severity = 'ALL', period = 'all', startDate = '', endDate = '', adminId = '', q = '' } = {}) => {
+    const whereClauses = ['1=1'];
+    const params = [];
+
+    const upperGroup = String(group || 'ALL').trim().toUpperCase();
+    if (AUDIT_GROUP_MAP[upperGroup]) {
+        const types = AUDIT_GROUP_MAP[upperGroup].types;
+        const placeholders = types.map(() => '?').join(', ');
+        whereClauses.push(`l.target_type IN (${placeholders})`);
+        params.push(...types);
+    }
+
+    const upperSeverity = String(severity || 'ALL').trim().toUpperCase();
+    if (['CREATE', 'UPDATE', 'DANGER'].includes(upperSeverity)) {
+        whereClauses.push(`(${AUDIT_SEVERITY_SQL}) = ?`);
+        params.push(upperSeverity);
+    }
+
+    const lowerPeriod = String(period || 'all').trim().toLowerCase();
+    if (lowerPeriod === 'today') {
+        whereClauses.push('DATE(l.created_at) = CURDATE()');
+    } else if (lowerPeriod === '7d') {
+        whereClauses.push('l.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)');
+    } else if (lowerPeriod === '30d') {
+        whereClauses.push('l.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)');
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || '').trim())) {
+        whereClauses.push("l.created_at >= CONCAT(?, ' 00:00:00')");
+        params.push(String(startDate).trim());
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate || '').trim())) {
+        whereClauses.push("l.created_at <= CONCAT(?, ' 23:59:59')");
+        params.push(String(endDate).trim());
+    }
+
+    const trimmedAdminId = String(adminId || '').trim();
+    if (trimmedAdminId && trimmedAdminId.toUpperCase() !== 'ALL') {
+        whereClauses.push('l.admin_user_id = ?');
+        params.push(trimmedAdminId);
+    }
+
+    const trimmedQ = String(q || '').trim();
+    if (trimmedQ) {
+        const cleanQ = trimmedQ.startsWith('#') ? trimmedQ.slice(1).trim() : trimmedQ;
+        const like = `%${trimmedQ}%`;
+        const cleanLike = `%${cleanQ || trimmedQ}%`;
+        whereClauses.push(`(
+            l.summary LIKE ?
+            OR l.action LIKE ?
+            OR l.target_type LIKE ?
+            OR l.target_id LIKE ?
+            OR l.target_id LIKE ?
+            OR l.ip_address LIKE ?
+            OR u.nickname LIKE ?
+            OR u.admin_name LIKE ?
+            OR u.admin_title LIKE ?
+            OR u.email LIKE ?
+            OR u.id LIKE ?
+        )`);
+        params.push(like, like, like, like, cleanLike, like, like, like, like, like, like);
+    }
+
+    return {
+        whereSql: whereClauses.join(' AND '),
+        params
+    };
+};
+
+const formatAuditLogRow = (row) => {
+    let detail = null;
+    if (row.detail_json !== null && row.detail_json !== undefined) {
+        if (typeof row.detail_json === 'string') {
+            try {
+                detail = JSON.parse(row.detail_json);
+            } catch {
+                detail = null;
+            }
+        } else {
+            detail = row.detail_json;
+        }
+    }
+    return {
+        id: row.id,
+        admin_user_id: row.admin_user_id,
+        admin_name: row.admin_name || row.admin_nickname || row.admin_user_id,
+        admin_title: row.admin_title || null,
+        admin_email: row.admin_email || null,
+        admin_profile_image_url: row.admin_profile_image_url || null,
+        action: row.action,
+        severity: getAuditSeverity(row.action),
+        target_type: row.target_type,
+        target_id: row.target_id || null,
+        summary: row.summary,
+        detail,
+        ip_address: row.ip_address || null,
+        created_at: row.created_at
+    };
+};
+
+export const getAdminAuditLogs = async ({
+    group = 'ALL',
+    severity = 'ALL',
+    period = 'all',
+    startDate = '',
+    endDate = '',
+    adminId = '',
+    q = '',
+    page = 1,
+    pageSize = 20
+} = {}) => {
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safePageSize = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+    const offset = (safePage - 1) * safePageSize;
+
+    // 1. 글로벌 summary
+    const [[kpiRow]] = await db.query(
+        `SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN DATE(l.created_at) = CURDATE() THEN 1 ELSE 0 END) AS today,
+            SUM(CASE WHEN l.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) AS last_7d,
+            SUM(CASE WHEN (${AUDIT_SEVERITY_SQL}) = 'DANGER' THEN 1 ELSE 0 END) AS danger_count,
+            COUNT(DISTINCT CASE WHEN l.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN l.admin_user_id ELSE NULL END) AS active_admins_7d
+         FROM admin_audit_logs l`
+    );
+
+    const totalAll = Number(kpiRow?.total || 0);
+    const [groupRows] = await db.query(
+        `SELECT target_type, COUNT(*) AS cnt FROM admin_audit_logs GROUP BY target_type`
+    );
+    const typeCounts = new Map(groupRows.map((r) => [r.target_type, Number(r.cnt || 0)]));
+
+    let topGroup = { key: null, label: '-', count: 0, percent: 0 };
+    if (totalAll > 0) {
+        for (const [key, cfg] of Object.entries(AUDIT_GROUP_MAP)) {
+            const cnt = cfg.types.reduce((sum, t) => sum + (typeCounts.get(t) || 0), 0);
+            if (cnt > topGroup.count) {
+                topGroup = {
+                    key,
+                    label: cfg.label,
+                    count: cnt,
+                    percent: Math.round((cnt / totalAll) * 100)
+                };
+            }
+        }
+    }
+
+    const summary = {
+        total: totalAll,
+        today: Number(kpiRow?.today || 0),
+        last_7d: Number(kpiRow?.last_7d || 0),
+        danger_count: Number(kpiRow?.danger_count || 0),
+        active_admins_7d: Number(kpiRow?.active_admins_7d || 0),
+        top_group: topGroup
+    };
+
+    // 2. 관리자 목록
+    const [adminRows] = await db.query(
+        `SELECT DISTINCT
+            u.id,
+            COALESCE(u.admin_name, u.nickname) AS name,
+            u.admin_title AS title,
+            u.email
+         FROM users u
+         WHERE u.role = 'ADMIN'
+            OR EXISTS (SELECT 1 FROM admin_audit_logs l WHERE l.admin_user_id = u.id)
+         ORDER BY name ASC`
+    );
+
+    // 3. 필터링된 로그 목록
+    const { whereSql, params } = buildAuditLogWhere({ group, severity, period, startDate, endDate, adminId, q });
+
+    const [[countRow]] = await db.query(
+        `SELECT COUNT(*) AS total
+         FROM admin_audit_logs l
+         LEFT JOIN users u ON l.admin_user_id = u.id
+         WHERE ${whereSql}`,
+        params
+    );
+    const total = Number(countRow?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+
+    const [rows] = await db.query(
+        `SELECT
+            l.id, l.admin_user_id, l.action, l.target_type, l.target_id,
+            l.summary, l.detail_json, l.ip_address, l.created_at,
+            u.nickname AS admin_nickname, u.admin_name, u.admin_title,
+            u.email AS admin_email, u.profile_image_url AS admin_profile_image_url
+         FROM admin_audit_logs l
+         LEFT JOIN users u ON l.admin_user_id = u.id
+         WHERE ${whereSql}
+         ORDER BY l.created_at DESC, l.id DESC
+         LIMIT ? OFFSET ?`,
+        [...params, safePageSize, offset]
+    );
+
+    return {
+        summary,
+        admins: adminRows,
+        pagination: {
+            page: safePage,
+            pageSize: safePageSize,
+            total,
+            totalPages
+        },
+        logs: rows.map(formatAuditLogRow)
+    };
+};
+
+export const getAdminAuditLogsForExport = async (query = {}) => {
+    const { whereSql, params } = buildAuditLogWhere(query);
+    const [rows] = await db.query(
+        `SELECT
+            l.id, l.admin_user_id, l.action, l.target_type, l.target_id,
+            l.summary, l.detail_json, l.ip_address, l.created_at,
+            u.nickname AS admin_nickname, u.admin_name, u.admin_title,
+            u.email AS admin_email, u.profile_image_url AS admin_profile_image_url
+         FROM admin_audit_logs l
+         LEFT JOIN users u ON l.admin_user_id = u.id
+         WHERE ${whereSql}
+         ORDER BY l.created_at DESC, l.id DESC
+         LIMIT 5000`,
+        params
+    );
+    return rows.map(formatAuditLogRow);
+};
+
+// ==================== Admin Accounts (Super Admin Only) ====================
+
+export const getAdminAccounts = async ({ level = 'ALL', status = 'ALL', q = '' } = {}) => {
+    const [[kpiRow]] = await db.query(
+        `SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status = 'SUSPENDED' THEN 1 ELSE 0 END) AS suspended,
+            SUM(CASE WHEN COALESCE(admin_level, 'SUPER') = 'SUPER' THEN 1 ELSE 0 END) AS superCount,
+            SUM(CASE WHEN admin_level = 'NORMAL' THEN 1 ELSE 0 END) AS normalCount
+         FROM users
+         WHERE role = 'ADMIN'`
+    );
+    const [[recentRow]] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM admin_audit_logs WHERE target_type = 'ADMIN' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`
+    );
+
+    const summary = {
+        total: Number(kpiRow?.total || 0),
+        active: Number(kpiRow?.active || 0),
+        suspended: Number(kpiRow?.suspended || 0),
+        superCount: Number(kpiRow?.superCount || 0),
+        normalCount: Number(kpiRow?.normalCount || 0),
+        recentChanges7d: Number(recentRow?.cnt || 0)
+    };
+
+    const whereClauses = ["u.role = 'ADMIN'"];
+    const params = [];
+
+    const upperLevel = String(level || 'ALL').trim().toUpperCase();
+    if (upperLevel === 'SUPER') {
+        whereClauses.push("COALESCE(u.admin_level, 'SUPER') = 'SUPER'");
+    } else if (upperLevel === 'NORMAL') {
+        whereClauses.push("u.admin_level = 'NORMAL'");
+    }
+
+    const upperStatus = String(status || 'ALL').trim().toUpperCase();
+    if (['ACTIVE', 'SUSPENDED', 'WITHDRAWN'].includes(upperStatus)) {
+        whereClauses.push('u.status = ?');
+        params.push(upperStatus);
+    }
+
+    const trimmedQ = String(q || '').trim();
+    if (trimmedQ) {
+        const like = `%${trimmedQ}%`;
+        whereClauses.push('(u.email LIKE ? OR u.nickname LIKE ? OR u.admin_name LIKE ? OR u.admin_title LIKE ? OR u.id LIKE ?)');
+        params.push(like, like, like, like, like);
+    }
+
+    const [rows] = await db.query(
+        `SELECT
+            u.id, u.email, u.nickname, u.profile_image_url, u.role,
+            COALESCE(u.admin_level, 'SUPER') AS admin_level,
+            u.admin_name, u.admin_title, u.status, u.created_at, u.updated_at,
+            (SELECT l.created_at FROM admin_audit_logs l WHERE l.admin_user_id = u.id ORDER BY l.id DESC LIMIT 1) AS last_audit_at,
+            (SELECT l.action FROM admin_audit_logs l WHERE l.admin_user_id = u.id ORDER BY l.id DESC LIMIT 1) AS last_audit_action,
+            (SELECT l.summary FROM admin_audit_logs l WHERE l.admin_user_id = u.id ORDER BY l.id DESC LIMIT 1) AS last_audit_summary
+         FROM users u
+         WHERE ${whereClauses.join(' AND ')}
+         ORDER BY FIELD(COALESCE(u.admin_level, 'SUPER'), 'SUPER', 'NORMAL') ASC, u.created_at ASC`,
+        params
+    );
+
+    return { summary, admins: rows };
+};
+
+export const searchAdminCandidates = async ({ q = '', limit = 10 } = {}) => {
+    const safeLimit = Math.min(30, Math.max(1, parseInt(limit, 10) || 10));
+    const whereClauses = ["role != 'ADMIN'", "status = 'ACTIVE'"];
+    const params = [];
+
+    const trimmedQ = String(q || '').trim();
+    if (trimmedQ) {
+        const like = `%${trimmedQ}%`;
+        whereClauses.push('(email LIKE ? OR nickname LIKE ? OR id LIKE ?)');
+        params.push(like, like, like);
+    }
+
+    const [rows] = await db.query(
+        `SELECT id, email, nickname, profile_image_url, role, status, created_at
+         FROM users
+         WHERE ${whereClauses.join(' AND ')}
+         ORDER BY created_at DESC
+         LIMIT ?`,
+        [...params, safeLimit]
+    );
+
+    return { users: rows };
+};
+
+export const promoteAdminAccount = async ({
+    userId,
+    admin_level = 'NORMAL',
+    admin_name = null,
+    admin_title = null,
+    reason = ''
+} = {}, adminUser, ipAddress = null) => {
+    const targetId = String(userId || '').trim();
+    if (!targetId) {
+        const err = new Error('승격할 회원 ID를 입력해주세요.');
+        err.status = 400;
+        err.code = 'USER_ID_REQUIRED';
+        throw err;
+    }
+
+    const [rows] = await db.query(
+        `SELECT id, email, nickname, role, status FROM users WHERE id = ? LIMIT 1`,
+        [targetId]
+    );
+    const existing = rows[0];
+    if (!existing) {
+        const err = new Error('회원을 찾을 수 없습니다.');
+        err.status = 404;
+        err.code = 'USER_NOT_FOUND';
+        throw err;
+    }
+    if (existing.status !== 'ACTIVE') {
+        const err = new Error('활성 상태의 회원만 관리자로 승격할 수 있습니다.');
+        err.status = 400;
+        err.code = 'USER_NOT_ACTIVE';
+        throw err;
+    }
+    if (existing.role === 'ADMIN') {
+        const err = new Error('이미 관리자 권한을 가진 계정입니다.');
+        err.status = 409;
+        err.code = 'ALREADY_ADMIN';
+        throw err;
+    }
+
+    const upperLevel = String(admin_level || 'NORMAL').trim().toUpperCase();
+    if (!['SUPER', 'NORMAL'].includes(upperLevel)) {
+        const err = new Error('올바른 관리자 등급(SUPER, NORMAL)을 선택해주세요.');
+        err.status = 400;
+        err.code = 'INVALID_ADMIN_LEVEL';
+        throw err;
+    }
+
+    const nextName = admin_name ? String(admin_name).trim().slice(0, 60) : null;
+    const nextTitle = admin_title ? String(admin_title).trim().slice(0, 60) : null;
+
+    await db.query(
+        `UPDATE users
+         SET role = 'ADMIN', admin_level = ?, admin_name = ?, admin_title = ?,
+             vet_license_number = NULL, vet_hospital_name = NULL, vet_license_info = NULL,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [upperLevel, nextName, nextTitle, targetId]
+    );
+
+    await logAdminAction({
+        adminUserId: adminUser.id,
+        action: 'ADMIN_PROMOTE',
+        targetType: 'ADMIN',
+        targetId,
+        summary: `회원 '${existing.nickname}' 관리자(${upperLevel}) 승격`,
+        detail: {
+            before: { role: existing.role, admin_level: null },
+            after: { role: 'ADMIN', admin_level: upperLevel, admin_name: nextName, admin_title: nextTitle },
+            reason: reason || null
+        },
+        ipAddress
+    });
+
+    const [[updated]] = await db.query(
+        `SELECT id, email, nickname, profile_image_url, role, COALESCE(admin_level, 'SUPER') AS admin_level,
+                admin_name, admin_title, status, created_at, updated_at
+         FROM users WHERE id = ? LIMIT 1`,
+        [targetId]
+    );
+    return updated;
+};
+
+export const updateAdminAccount = async (userId, { admin_level, admin_name, admin_title, status, reason } = {}, adminUser, ipAddress = null) => {
+    const [rows] = await db.query(
+        `SELECT id, email, nickname, role, COALESCE(admin_level, 'SUPER') AS admin_level, admin_name, admin_title, status
+         FROM users WHERE id = ? AND role = 'ADMIN' LIMIT 1`,
+        [userId]
+    );
+    const existing = rows[0];
+    if (!existing) {
+        const err = new Error('관리자 계정을 찾을 수 없습니다.');
+        err.status = 404;
+        err.code = 'ADMIN_NOT_FOUND';
+        throw err;
+    }
+
+    if (userId === adminUser.id && (admin_level === 'NORMAL' || (status && status !== 'ACTIVE'))) {
+        const err = new Error('본인 계정의 등급을 낮추거나 비활성화할 수 없습니다.');
+        err.status = 400;
+        err.code = 'CANNOT_DEMOTE_SELF';
+        throw err;
+    }
+
+    const nextLevel = admin_level !== undefined ? String(admin_level || '').trim().toUpperCase() : existing.admin_level;
+    if (!['SUPER', 'NORMAL'].includes(nextLevel)) {
+        const err = new Error('올바른 관리자 등급(SUPER, NORMAL)을 선택해주세요.');
+        err.status = 400;
+        err.code = 'INVALID_ADMIN_LEVEL';
+        throw err;
+    }
+
+    const nextStatus = status !== undefined ? String(status || '').trim().toUpperCase() : existing.status;
+    if (!VALID_USER_STATUSES.includes(nextStatus)) {
+        const err = new Error('올바른 계정 상태를 선택해주세요.');
+        err.status = 400;
+        err.code = 'INVALID_STATUS';
+        throw err;
+    }
+
+    if (existing.admin_level === 'SUPER' && existing.status === 'ACTIVE' && (nextLevel !== 'SUPER' || nextStatus !== 'ACTIVE')) {
+        const [[superRow]] = await db.query(
+            `SELECT COUNT(*) AS cnt FROM users WHERE role = 'ADMIN' AND COALESCE(admin_level, 'SUPER') = 'SUPER' AND status = 'ACTIVE'`
+        );
+        if (Number(superRow?.cnt || 0) <= 1) {
+            const err = new Error('최소 1명의 활성 슈퍼 관리자가 필요합니다.');
+            err.status = 400;
+            err.code = 'LAST_SUPER_ADMIN_PROTECTED';
+            throw err;
+        }
+    }
+
+    const nextName = admin_name !== undefined ? (admin_name ? String(admin_name).trim().slice(0, 60) : null) : existing.admin_name;
+    const nextTitle = admin_title !== undefined ? (admin_title ? String(admin_title).trim().slice(0, 60) : null) : existing.admin_title;
+
+    await db.query(
+        `UPDATE users
+         SET admin_level = ?, admin_name = ?, admin_title = ?, status = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [nextLevel, nextName, nextTitle, nextStatus, userId]
+    );
+
+    await logAdminAction({
+        adminUserId: adminUser.id,
+        action: 'ADMIN_UPDATE',
+        targetType: 'ADMIN',
+        targetId: userId,
+        summary: `관리자 '${existing.nickname}' 정보/등급 변경`,
+        detail: {
+            before: { admin_level: existing.admin_level, admin_name: existing.admin_name, admin_title: existing.admin_title, status: existing.status },
+            after: { admin_level: nextLevel, admin_name: nextName, admin_title: nextTitle, status: nextStatus },
+            reason: reason || null
+        },
+        ipAddress
+    });
+
+    const [[updated]] = await db.query(
+        `SELECT id, email, nickname, profile_image_url, role, COALESCE(admin_level, 'SUPER') AS admin_level,
+                admin_name, admin_title, status, created_at, updated_at
+         FROM users WHERE id = ? LIMIT 1`,
+        [userId]
+    );
+    return updated;
+};
+
+export const revokeAdminAccount = async (userId, { reason = '' } = {}, adminUser, ipAddress = null) => {
+    const [rows] = await db.query(
+        `SELECT id, nickname, role, COALESCE(admin_level, 'SUPER') AS admin_level, status
+         FROM users WHERE id = ? AND role = 'ADMIN' LIMIT 1`,
+        [userId]
+    );
+    const existing = rows[0];
+    if (!existing) {
+        const err = new Error('관리자 계정을 찾을 수 없습니다.');
+        err.status = 404;
+        err.code = 'ADMIN_NOT_FOUND';
+        throw err;
+    }
+
+    if (userId === adminUser.id) {
+        const err = new Error('본인의 관리자 권한은 해제할 수 없습니다.');
+        err.status = 400;
+        err.code = 'CANNOT_DEMOTE_SELF';
+        throw err;
+    }
+
+    if (existing.admin_level === 'SUPER' && existing.status === 'ACTIVE') {
+        const [[superRow]] = await db.query(
+            `SELECT COUNT(*) AS cnt FROM users WHERE role = 'ADMIN' AND COALESCE(admin_level, 'SUPER') = 'SUPER' AND status = 'ACTIVE'`
+        );
+        if (Number(superRow?.cnt || 0) <= 1) {
+            const err = new Error('최소 1명의 활성 슈퍼 관리자가 필요합니다.');
+            err.status = 400;
+            err.code = 'LAST_SUPER_ADMIN_PROTECTED';
+            throw err;
+        }
+    }
+
+    await db.query(
+        `UPDATE users
+         SET role = 'USER', admin_level = NULL, admin_name = NULL, admin_title = NULL, updated_at = NOW()
+         WHERE id = ?`,
+        [userId]
+    );
+
+    await logAdminAction({
+        adminUserId: adminUser.id,
+        action: 'ADMIN_REVOKE',
+        targetType: 'ADMIN',
+        targetId: userId,
+        summary: `관리자 '${existing.nickname}' 권한 해제`,
+        detail: {
+            before: { role: 'ADMIN', admin_level: existing.admin_level },
+            after: { role: 'USER', admin_level: null },
+            reason: reason || null
+        },
+        ipAddress
+    });
+
+    return { userId, role: 'USER', admin_level: null };
 };

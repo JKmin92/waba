@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { cleanupExpiredAnalyticsData } from './src/models/analyticsModel.js';
 import { cleanupExpiredPostsAndDrafts } from './src/models/postModel.js';
+import { cleanupExpiredWithdrawnUsers } from './src/models/userModel.js';
 
 dotenv.config();
 
@@ -34,6 +35,15 @@ const runScheduledCleanups = async () => {
         }
     } catch (err) {
         console.error('⚠️ [Post Retention] 만료 게시글 정리 실패:', err.message);
+    }
+
+    try {
+        const { purgedUsers } = await cleanupExpiredWithdrawnUsers();
+        if (purgedUsers > 0) {
+            console.log(`🧹 [Withdraw Retention] 30일 경과 탈퇴 회원 영구 파기 완료 (${purgedUsers}명)`);
+        }
+    } catch (err) {
+        console.error('⚠️ [Withdraw Retention] 탈퇴 회원 영구 파기 실패:', err.message);
     }
 };
 

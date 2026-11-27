@@ -85,16 +85,18 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
     const inputStyle = {
         h: "48px",
         borderRadius: "16px",
-        bg: "waba.subtle",
+        bg: "var(--waba-surface)",
+        color: "var(--waba-ink)",
+        _placeholder: { color: "var(--waba-ink-3)" },
         border: "1px solid",
-        borderColor: "transparent",
+        borderColor: "var(--waba-line)",
         px: 5,
         fontSize: "14px",
-        _focus: { borderColor: "waba.purple", bg: "white", outline: "none" },
+        _focus: { borderColor: "#6338A9", bg: "var(--waba-card)", outline: "none" },
     }
 
     return (
-        <Flex flex="1" direction="column" justify="center" px={{ base: 6, md: 12 }} py={{ base: 10, md: 8 }}>
+        <Flex flex="1" direction="column" justify="center" px={{ base: 6, md: 9 }} py={{ base: 8, md: 8 }}>
             <Box maxW="520px" mx="auto" w="full">
 
                 {/* 1. Header Block */}
@@ -106,23 +108,23 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                         px={3}
                         py={1}
                         borderRadius="full"
-                        bg="waba.purpleLight"
-                        color="waba.purple"
+                        bg="var(--waba-purple-soft)"
+                        color="var(--waba-purple-text)"
                         fontSize="11px"
                         fontWeight="700"
                         letterSpacing="0.05em"
                         mb={3}
                     >
-                        <Box w="6px" h="6px" borderRadius="full" bg="waba.purple" />
+                        <Box w="6px" h="6px" borderRadius="full" bg="#6338A9" />
                         <Text>WELCOME TO WABA</Text>
                     </HStack>
 
                     <Dialog.Title asChild>
-                        <Heading fontSize={{ base: "26px", md: "28px" }} fontWeight="900" mb={1.5} color="waba.charcoal">
+                        <Heading fontSize={{ base: "26px", md: "28px" }} fontWeight="900" mb={1.5} color="var(--waba-ink)">
                             함께해서 반가워요, 집사님!
                         </Heading>
                     </Dialog.Title>
-                    <Dialog.Description fontSize="13px" color="waba.muted">
+                    <Dialog.Description fontSize="13px" color="var(--waba-ink-3)">
                         간편 계정 연동으로 3초 만에 시작하거나 이메일로 가입하세요.
                     </Dialog.Description>
                 </Box>
@@ -286,13 +288,13 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                                     h="48px"
                                     px={5}
                                     borderRadius="16px"
-                                    bg="waba.subtle"
+                                    bg="var(--waba-surface)"
                                     border="1px solid"
-                                    borderColor="blackAlpha.100"
-                                    color="waba.charcoal"
+                                    borderColor="var(--waba-line)"
+                                    color="var(--waba-ink)"
                                     fontSize="13px"
                                     fontWeight="700"
-                                    _hover={{ bg: "stone.200" }}
+                                    _hover={{ bg: "var(--waba-line)" }}
                                     flexShrink={0}
                                     onClick={checkNickname}
                                 >
@@ -307,13 +309,13 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                     <Box
                         p={4}
                         borderRadius="20px"
-                        bg="waba.subtle"
+                        bg="var(--waba-surface)"
                         border="1px solid"
-                        borderColor="blackAlpha.100"
+                        borderColor="var(--waba-line)"
                         mt={1}
                     >
                         {/* 전체 동의 마스터 체크 */}
-                        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", paddingBottom: 10, borderBottom: "1px solid rgba(0,0,0,0.08)", fontWeight: 700, fontSize: "14px", color: "#1A1C1E" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", paddingBottom: 10, borderBottom: "1px solid var(--waba-line)", fontWeight: 700, fontSize: "14px", color: "var(--waba-ink)" }}>
                             <input
                                 type="checkbox"
                                 checked={isAllChecked}
@@ -324,7 +326,7 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                         </label>
 
                         {/* 개별 세부 체크 항목들 */}
-                        <VStack gap={2.5} pt={3} align="stretch" fontSize="12.5px" color="waba.charcoal">
+                        <VStack gap={2.5} pt={3} align="stretch" fontSize="12.5px" color="var(--waba-ink-2)">
                             <Flex justify="space-between" align="center">
                                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                                     <input
@@ -334,7 +336,7 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                                         required
                                         style={{ width: 15, height: 15, accentColor: "#6338A9", cursor: "pointer" }}
                                     />
-                                    <span><Span color="waba.purple" fontWeight="700">[필수]</Span> 만 14세 이상입니다</span>
+                                    <span><Span color="var(--waba-purple-text)" fontWeight="700">[필수]</Span> 만 14세 이상입니다</span>
                                 </label>
                             </Flex>
 
@@ -347,9 +349,9 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                                         required
                                         style={{ width: 15, height: 15, accentColor: "#6338A9", cursor: "pointer" }}
                                     />
-                                    <span><Span color="waba.purple" fontWeight="700">[필수]</Span> 서비스 이용약관 및 개인정보 처리방침 동의</span>
+                                    <span><Span color="var(--waba-purple-text)" fontWeight="700">[필수]</Span> 서비스 이용약관 및 개인정보 처리방침 동의</span>
                                 </label>
-                                <Text as="span" textDecoration="underline" fontSize="11px" color="waba.muted" cursor="pointer" _hover={{ color: "waba.charcoal" }}>보기</Text>
+                                <Text as="span" textDecoration="underline" fontSize="11px" color="var(--waba-ink-3)" cursor="pointer" _hover={{ color: "var(--waba-ink)" }}>보기</Text>
                             </Flex>
 
                             <Flex justify="space-between" align="center">
@@ -360,9 +362,9 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                                         onChange={(e) => setAgreeMarketing(e.target.checked)}
                                         style={{ width: 15, height: 15, accentColor: "#6338A9", cursor: "pointer" }}
                                     />
-                                    <Span color="waba.muted"><Span color="waba.muted" fontWeight="500">[선택]</Span> 웰컴 3,000P 혜택 및 마케팅 정보 수신</Span>
+                                    <Span color="var(--waba-ink-3)"><Span color="var(--waba-ink-3)" fontWeight="500">[선택]</Span> 웰컴 3,000P 혜택 및 마케팅 정보 수신</Span>
                                 </label>
-                                <Box bg="waba.purpleLight" color="waba.purple" fontSize="11px" fontWeight="800" px={2.5} py={0.5} borderRadius="full">
+                                <Box bg="var(--waba-purple-soft)" color="var(--waba-purple-text)" fontSize="11px" fontWeight="800" px={2.5} py={0.5} borderRadius="full">
                                     +3,000P
                                 </Box>
                             </Flex>
@@ -375,11 +377,11 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
                         w="full"
                         h="52px"
                         borderRadius="full"
-                        bg="#141416"
-                        color="white"
+                        bg="var(--waba-ink)"
+                        color="var(--waba-bg)"
                         fontSize="15px"
                         fontWeight="700"
-                        _hover={{ bg: "black" }}
+                        _hover={{ bg: "#6338A9", color: "#FFFFFF" }}
                         mt={2}
                         gap={2}
                         boxShadow="md"
@@ -391,10 +393,10 @@ export default function JoinClient({ setModalType, setOpen }: { setModalType: (m
 
                 {/* 7. Login Direction Footer Link */}
                 <Box textAlign="center" pt={4}>
-                    <Text fontSize="12.5px" color="waba.muted">
+                    <Text fontSize="12.5px" color="var(--waba-ink-3)">
                         이미 WABA 계정이 있으신가요?{" "}
                         <Span
-                            color="waba.purple"
+                            color="var(--waba-purple-text)"
                             fontWeight="700"
                             textDecoration="underline"
                             cursor="pointer"

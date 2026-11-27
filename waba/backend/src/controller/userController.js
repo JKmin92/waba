@@ -80,8 +80,28 @@ export const loginUser = async (req, res, next) => {
         if (e.message === 'INVALID_CREDENTIALS') {
             return res.status(401).json({ message: '이메일 또는 비밀번호가 일치하지 않습니다.' });
         }
+        if (e.code === 'USER_WITHDRAWN') {
+            return res.status(403).json({ success: false, code: e.code, message: e.message });
+        }
         if (e.message === 'ACCOUNT_SUSPENDED') {
             return res.status(403).json({ message: '이용이 정지된 계정입니다. 고객센터에 문의해주세요.' });
+        }
+        next(e);
+    }
+};
+
+export const withdrawUser = async (req, res, next) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요한 서비스입니다.' });
+        }
+        const { currentPassword, confirmText, deleteContent, reason } = req.body || {};
+        const result = await userService.withdrawUser(userId, { currentPassword, confirmText, deleteContent, reason });
+        return res.status(200).json({ success: true, ...result });
+    } catch (e) {
+        if (e.status) {
+            return res.status(e.status).json({ success: false, code: e.code, message: e.message });
         }
         next(e);
     }

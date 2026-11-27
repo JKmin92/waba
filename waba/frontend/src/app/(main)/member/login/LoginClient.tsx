@@ -1,7 +1,7 @@
 'use client'
 
 import { Box, Button, Dialog, Field, Flex, Heading, HStack, IconButton, Image, Input, Link, Span, Text, VStack } from "@chakra-ui/react"
-import { Eye, EyeOff, Gift } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 import axiosInstance from "@/utils/api"
 import { setAuthSession } from "@/utils/authUtils"
@@ -59,20 +59,22 @@ export default function LoginClient({
     const inputStyle = {
         h: "52px",
         borderRadius: "16px",
-        bg: "waba.subtle",
+        bg: "var(--waba-surface)",
+        color: "var(--waba-ink)",
+        _placeholder: { color: "var(--waba-ink-3)" },
         border: "1px solid",
-        borderColor: "blackAlpha.100",
+        borderColor: "var(--waba-line)",
         px: 5,
         fontSize: "14px",
-        _focus: { borderColor: "waba.purple", bg: "white", outline: "none" },
+        _focus: { borderColor: "#6338A9", bg: "var(--waba-card)", outline: "none" },
     }
 
     return (
-        <Flex flex="1" direction="column" justify="center" px={{ base: 6, md: 14 }} py={{ base: 12, md: 10 }}>
+        <Flex flex="1" direction="column" justify="center" px={{ base: 6, md: 9 }} py={{ base: 10, md: 9 }}>
             <Box
                 alignSelf="flex-start"
-                bg="waba.purpleLight"
-                color="waba.purple"
+                bg="var(--waba-purple-soft)"
+                color="var(--waba-purple-text)"
                 fontSize="11px"
                 fontWeight="800"
                 letterSpacing="0.08em"
@@ -85,11 +87,11 @@ export default function LoginClient({
             </Box>
 
             <Dialog.Title asChild>
-                <Heading fontSize="32px" fontWeight="900" letterSpacing="-0.03em" mb={2}>
+                <Heading fontSize="30px" fontWeight="900" letterSpacing="-0.03em" mb={2} color="var(--waba-ink)">
                     반가워요, 집사님!
                 </Heading>
             </Dialog.Title>
-            <Dialog.Description fontSize="14px" color="waba.muted" mb={8}>
+            <Dialog.Description fontSize="14px" color="var(--waba-ink-3)" mb={7}>
                 이메일 또는 소셜 계정으로 간편하게 로그인하세요.
             </Dialog.Description>
 
@@ -142,7 +144,7 @@ export default function LoginClient({
                         </Box>
                     </Field.Root>
 
-                    <Flex justify="space-between" align="center" fontSize="12px" color="waba.muted">
+                    <Flex justify="space-between" align="center" fontSize="12px" color="var(--waba-ink-3)">
                         <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                             <input
                                 type="checkbox"
@@ -152,9 +154,9 @@ export default function LoginClient({
                             로그인 상태 유지
                         </label>
                         <HStack gap={2}>
-                            <Link href="#" color="waba.muted">아이디 찾기</Link>
+                            <Link href="#" color="var(--waba-ink-3)">아이디 찾기</Link>
                             <Text>·</Text>
-                            <Link href="#" color="waba.muted">비밀번호 찾기</Link>
+                            <Link href="#" color="var(--waba-ink-3)">비밀번호 찾기</Link>
                         </HStack>
                     </Flex>
 
@@ -162,10 +164,10 @@ export default function LoginClient({
                         type="submit"
                         h="56px"
                         borderRadius="full"
-                        bg="waba.charcoal"
-                        color="white"
+                        bg="var(--waba-ink)"
+                        color="var(--waba-bg)"
                         fontWeight="800"
-                        _hover={{ bg: "black" }}
+                        _hover={{ bg: "#6338A9", color: "#FFFFFF" }}
                         loading={isLoading}
                     >
                         이메일로 로그인
@@ -175,7 +177,7 @@ export default function LoginClient({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        color="waba.muted"
+                        color="var(--waba-ink-3)"
                         fontWeight="600"
                         onClick={() => setIsEmailMode(false)}
                     >
@@ -188,19 +190,19 @@ export default function LoginClient({
                         type="button"
                         h="56px"
                         borderRadius="full"
-                        bg="waba.charcoal"
-                        color="white"
+                        bg="var(--waba-ink)"
+                        color="var(--waba-bg)"
                         fontWeight="800"
-                        _hover={{ bg: "black" }}
+                        _hover={{ bg: "#6338A9", color: "#FFFFFF" }}
                         onClick={() => setIsEmailMode(true)}
                     >
                         이메일로 로그인
                     </Button>
 
-                    <Flex align="center" gap={4} my={6} color="waba.muted" fontSize="12px">
-                        <Box flex="1" h="1px" bg="blackAlpha.100" />
+                    <Flex align="center" gap={4} my={6} color="var(--waba-ink-3)" fontSize="12px">
+                        <Box flex="1" h="1px" bg="var(--waba-line)" />
                         <Text>또는 3초 만에 간편 시작</Text>
-                        <Box flex="1" h="1px" bg="blackAlpha.100" />
+                        <Box flex="1" h="1px" bg="var(--waba-line)" />
                     </Flex>
 
                     <VStack gap={3} align="stretch">
@@ -212,11 +214,11 @@ export default function LoginClient({
                             <Image src="/image/member/login/naver.svg" w="4" />
                             네이버로 시작하기
                         </Button>
-                        <Button h="52px" borderRadius="full" bg="white" color="black" fontWeight="700" border="1px solid" borderColor="blackAlpha.200">
+                        <Button h="52px" borderRadius="full" bg="#FFFFFF" color="#141416" fontWeight="700" border="1px solid" borderColor="var(--waba-line)" _hover={{ bg: "#F7F7FA" }}>
                             <Image src="/image/member/login/google.svg" w="4" />
                             Google로 시작하기
                         </Button>
-                        <Button h="52px" borderRadius="full" bg="white" color="black" border="1px solid" borderColor="blackAlpha.200" fontWeight="700">
+                        <Button h="52px" borderRadius="full" bg="#FFFFFF" color="#141416" border="1px solid" borderColor="var(--waba-line)" _hover={{ bg: "#F7F7FA" }} fontWeight="700">
                             <Image src="/image/member/login/apple.svg" w="4" />
                             Apple로 계속하기
                         </Button>
@@ -224,30 +226,9 @@ export default function LoginClient({
                 </>
             )}
 
-            <HStack
-                mt={6}
-                gap={3}
-                bg="waba.purpleLight"
-                border="1px solid"
-                borderColor="purple.100"
-                borderRadius="20px"
-                px={5}
-                py={4}
-                fontSize="13px"
-                color="waba.purple"
-                fontWeight="600"
-            >
-                <Gift size={22} />
-                <Text>
-                    신규 가입하고 첫 반려동물 등록 시
-                    <br />
-                    <Text as="span" color="black" fontWeight="800">3,000P 리워드</Text>가 즉시 지급됩니다!
-                </Text>
-            </HStack>
-
-            <Text textAlign="center" fontSize="12px" color="waba.muted" mt={6}>
+            <Text textAlign="center" fontSize="12px" color="var(--waba-ink-3)" mt={6}>
                 아직 WABA 회원이 아니신가요?{" "}
-                <Span color="waba.purple" fontWeight="800" onClick={() => setModalType('join')} cursor="pointer">
+                <Span color="var(--waba-purple-text)" fontWeight="800" onClick={() => setModalType('join')} cursor="pointer">
                     회원가입하기 →
                 </Span>
             </Text>

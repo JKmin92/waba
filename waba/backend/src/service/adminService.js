@@ -104,6 +104,34 @@ export const deleteAdminAffiliateDomain = async (domainId, adminUser, ipAddress)
     return await adminModel.deleteAdminAffiliateDomain(domainId, adminUser, ipAddress);
 };
 
+export const getAdminAuditLogs = async (query = {}) => {
+    return await adminModel.getAdminAuditLogs(query);
+};
+
+export const getAdminAuditLogsForExport = async (query = {}) => {
+    return await adminModel.getAdminAuditLogsForExport(query);
+};
+
+export const getAdminAccounts = async (query = {}) => {
+    return await adminModel.getAdminAccounts(query);
+};
+
+export const searchAdminCandidates = async (query = {}) => {
+    return await adminModel.searchAdminCandidates(query);
+};
+
+export const promoteAdminAccount = async (data, adminUser, ipAddress) => {
+    return await adminModel.promoteAdminAccount(data, adminUser, ipAddress);
+};
+
+export const updateAdminAccount = async (userId, data, adminUser, ipAddress) => {
+    return await adminModel.updateAdminAccount(userId, data, adminUser, ipAddress);
+};
+
+export const revokeAdminAccount = async (userId, data, adminUser, ipAddress) => {
+    return await adminModel.revokeAdminAccount(userId, data, adminUser, ipAddress);
+};
+
 export const getAdminUsers = async (query = {}) => {
     return await adminModel.getAdminUsers(query);
 };

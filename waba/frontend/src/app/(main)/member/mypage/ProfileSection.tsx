@@ -22,6 +22,12 @@ import { toaster } from "@/components/ui/toaster";
 import { User } from "@/interface";
 import UserAvatar from "../../common/UserAvatar";
 
+export interface UserIdentityInfo {
+    provider: string;
+    provider_email?: string | null;
+    created_at?: string | null;
+}
+
 export interface UserProfileData extends User {
     post_count: number;
     bookmark_count: number;
@@ -29,6 +35,8 @@ export interface UserProfileData extends User {
     draft_count: number;
     auto_journal_enabled?: boolean;
     has_local_password?: boolean;
+    identities?: UserIdentityInfo[];
+    primary_provider?: string | null;
 }
 
 interface ProfileSectionProps {

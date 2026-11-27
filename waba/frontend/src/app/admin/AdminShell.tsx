@@ -33,20 +33,14 @@ import {
     LuShieldAlert,
     LuShieldCheck,
     LuSun,
+    LuUserCog,
     LuUsers,
 } from 'react-icons/lu';
 import axiosInstance from '@/utils/api';
 import { clearAuthSession, isAuthenticated, setAuthSession } from '@/utils/authUtils';
 import { toaster } from '@/components/ui/toaster';
 import UserAvatar from '../(main)/common/UserAvatar';
-
-interface AdminUser {
-    id: string;
-    email?: string;
-    nickname?: string;
-    profile_image_url?: string | null;
-    role?: string;
-}
+import { AdminContext, AdminUser } from './AdminContext';
 
 interface AdminShellProps {
     children: React.ReactNode;
@@ -75,7 +69,8 @@ const MENU_GROUPS = [
             { label: '게시판 관리', href: '/admin/boards', icon: LuActivity },
             { label: '제휴 도메인 관리', href: '/admin/affiliate-domains', icon: LuGlobe },
             { label: '공지 · 배너', href: '/admin/notices', icon: LuMegaphone },
-            { label: '감사 로그', href: '/admin/audit-logs', icon: LuClipboardList },
+            { label: '감사 로그', href: '/admin/audit-logs', icon: LuClipboardList, superOnly: true },
+            { label: '관리자 계정 관리', href: '/admin/admins', icon: LuUserCog, superOnly: true },
         ],
     },
 ];
@@ -369,6 +364,10 @@ export default function AdminShell({ children }: AdminShellProps) {
         );
     }
 
+    const isSuperAdmin = String(adminUser?.admin_level || '').toUpperCase() === 'SUPER';
+    const isSuperOnlyRoute =
+        pathname?.startsWith('/admin/admins') || pathname?.startsWith('/admin/audit-logs');
+
     const SidebarContent = (
         <Flex direction="column" h="100%" justify="space-between" p={4} gap={4}>
             <Box>
@@ -406,7 +405,9 @@ export default function AdminShell({ children }: AdminShellProps) {
                                 {group.group}
                             </Text>
                             <VStack align="stretch" gap={1}>
-                                {group.items.map((item) => {
+                                {group.items
+                                    .filter((item: any) => !item.superOnly || isSuperAdmin)
+                                    .map((item: any) => {
                                     const isActive =
                                         item.href === '/admin'
                                             ? pathname === '/admin'
@@ -452,6 +453,20 @@ export default function AdminShell({ children }: AdminShellProps) {
                                                         lineHeight="1.2"
                                                     >
                                                         {pendingReportCount}
+                                                    </Box>
+                                                )}
+                                                {item.superOnly && isSuperAdmin && (
+                                                    <Box
+                                                        bg={isActive ? 'whiteAlpha.300' : 'var(--waba-purple-soft)'}
+                                                        color={isActive ? 'white' : 'var(--waba-purple-text)'}
+                                                        fontSize="9px"
+                                                        fontWeight="800"
+                                                        px={1.5}
+                                                        py="1px"
+                                                        borderRadius="999px"
+                                                        lineHeight="1.2"
+                                                    >
+                                                        SUPER
                                                     </Box>
                                                 )}
                                             </Flex>
@@ -614,7 +629,56 @@ export default function AdminShell({ children }: AdminShellProps) {
 
             {/* Main Content */}
             <Box flex={1} minW={0} p={{ base: 4, md: 6, xl: 8 }}>
-                {children}
+                <AdminContext.Provider value={{ adminUser, isSuperAdmin, refreshAdminMe: verifyAdmin }}>
+                    {authState === 'authorized' && !isSuperAdmin && isSuperOnlyRoute ? (
+                        <Flex py={20} justify="center" align="center">
+                            <Box
+                                maxW="440px"
+                                w="full"
+                                p={7}
+                                borderRadius="24px"
+                                bg="var(--waba-card)"
+                                border="1px solid"
+                                borderColor="var(--waba-line)"
+                                textAlign="center"
+                            >
+                                <Flex
+                                    w="48px"
+                                    h="48px"
+                                    mx="auto"
+                                    mb={3}
+                                    borderRadius="full"
+                                    bg="rgba(239, 68, 68, 0.12)"
+                                    color="#EF4444"
+                                    align="center"
+                                    justify="center"
+                                >
+                                    <LuShieldAlert size={22} />
+                                </Flex>
+                                <Text fontSize="17px" fontWeight="800" color="var(--waba-ink)">
+                                    슈퍼 관리자 전용 페이지입니다 (403)
+                                </Text>
+                                <Text fontSize="13px" color="var(--waba-ink-3)" mt={1.5} mb={5}>
+                                    이 메뉴는 SUPER 등급 관리자만 접근할 수 있습니다.
+                                </Text>
+                                <Link href="/admin">
+                                    <Button
+                                        size="sm"
+                                        bg="#6338A9"
+                                        color="#FFFFFF"
+                                        _hover={{ bg: '#522B8F' }}
+                                        borderRadius="999px"
+                                        px={5}
+                                    >
+                                        대시보드로 돌아가기
+                                    </Button>
+                                </Link>
+                            </Box>
+                        </Flex>
+                    ) : (
+                        children
+                    )}
+                </AdminContext.Provider>
             </Box>
         </Flex>
     );

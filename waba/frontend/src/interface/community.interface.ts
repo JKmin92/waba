@@ -202,6 +202,10 @@ export interface PostDetail {
     vet_license_info?: string | null;
     /** 다종 합사 가구 여부 (true/1: 2종 이상 합사) */
     is_multi_species: boolean | number;
+    /** 계정 상태 ('ACTIVE' | 'SUSPENDED' | 'WITHDRAWN') */
+    status?: string;
+    /** 탈퇴 후 개인정보 파기 일시 */
+    withdrawn_purged_at?: string | null;
   };
 
   /** 3) 게시글 사진 배열 (post_images 테이블: 0번 인덱스가 대표 썸네일 이미지) */

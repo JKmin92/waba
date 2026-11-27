@@ -2,7 +2,7 @@
 
 import { Box, Button, Flex, HStack, IconButton, Menu, Portal, Text, VStack } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import axiosInstance from "@/utils/api";
 import { clearAuthSession, isAuthenticated } from "@/utils/authUtils";
 import { formatPetShortName } from "@/utils/simpleUtils";
@@ -14,6 +14,7 @@ import MypageGuestView from "./MypageGuestView";
 import { UserProfileData } from "./ProfileSection";
 import ActivitySection from "./ActivitySection";
 import ProfileEditModal from "./ProfileEditModal";
+import WithdrawAccountModal from "./WithdrawAccountModal";
 import PetRegisterModal from "./PetRegisterModal";
 import PetManageAllModal from "./PetManageAllModal";
 import NotebookGroupModal from "./NotebookGroupModal";
@@ -30,6 +31,7 @@ import { NotebookItem } from "../../notebook/notebook-components/types";
 type MypageMainTab = 'notebook' | 'activity' | 'settings';
 
 export default function MypageClient() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const initialTabParam = searchParams.get('tab');
 
@@ -73,6 +75,7 @@ export default function MypageClient() {
 
     const [loading, setLoading] = useState(true);
     const [tabLoading, setTabLoading] = useState(false);
+    const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [petModalOpen, setPetModalOpen] = useState(false);
     const [allPetsModalOpen, setAllPetsModalOpen] = useState(false);
@@ -94,27 +97,32 @@ export default function MypageClient() {
     }, [pets, selectedPetId]);
 
     useEffect(() => {
-        if (!isAuthenticated()) {
+        const loadAuthenticatedData = () => {
+            setLoading(true);
+            fetchUserProfile();
+            fetchAutoJournalSetting();
+            fetchScrappedNotebooks();
+            fetchActivityTabData(activitySubTab);
+            fetchReportedDeletedPosts();
+        };
+
+        if (isAuthenticated()) {
+            loadAuthenticatedData();
+        } else {
             setLoading(false);
             openLoginModal();
-            return;
         }
-
-        fetchUserProfile();
-        fetchAutoJournalSetting();
-        fetchScrappedNotebooks();
-        fetchActivityTabData(activitySubTab);
-        fetchReportedDeletedPosts();
 
         const handleAuthChange = () => {
             if (isAuthenticated()) {
-                fetchUserProfile();
-                fetchAutoJournalSetting();
-                fetchScrappedNotebooks();
-                fetchActivityTabData(activitySubTab);
-        fetchReportedDeletedPosts();
+                loadAuthenticatedData();
             } else {
                 setProfile(null);
+                setPets([]);
+                setSelectedPetId(null);
+                setHistories([]);
+                setJourneys([]);
+                setLoading(false);
                 openLoginModal();
             }
         };
@@ -852,6 +860,12 @@ export default function MypageClient() {
                         onToggleAutoJournal={handleToggleAutoJournal}
                         onOpenEditProfile={() => setEditModalOpen(true)}
                         onLogout={handleLogout}
+                        userEmail={profile?.email}
+                        hasLocalPassword={profile?.has_local_password}
+                        primaryProvider={profile?.primary_provider}
+                        identities={profile?.identities}
+                        userRole={profile?.role}
+                        onOpenWithdraw={() => setWithdrawModalOpen(true)}
                     />
                 )}
             </VStack>
@@ -933,6 +947,17 @@ export default function MypageClient() {
                     setPetModalOpen(true);
                 }}
                 onDeletePet={handleDeletePet}
+            />
+
+            <WithdrawAccountModal
+                open={withdrawModalOpen}
+                onOpenChange={setWithdrawModalOpen}
+                nickname={profile?.nickname}
+                hasLocalPassword={profile?.has_local_password}
+                onWithdrawn={() => {
+                    clearAuthSession();
+                    router.replace('/');
+                }}
             />
         </Box>
     );

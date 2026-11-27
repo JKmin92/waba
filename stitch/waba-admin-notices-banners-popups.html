@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 배너 관리 &amp; 메인 팝업 관리</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --emerald: #059669;
+      --emerald-soft: #ECFDF5;
+      --amber: #D97706;
+      --amber-soft: #FEF3C7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; min-height: 1340px; background: var(--bg); color: var(--text); padding: 28px 32px; display: flex; flex-direction: column; gap: 32px; }
+    .sec-tag { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 800; margin-bottom: 10px; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .pill-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 600; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .search-input { width: 220px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; background: #F8FAFC; }
+    .btn-primary { padding: 9px 16px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; }
+    .btn-detail { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 11px; font-weight: 700; }
+    .btn-copy { padding: 5px 10px; border-radius: 999px; border: 1px solid #D9CCF2; background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 700; }
+    .code-snip { font-family: ui-monospace, monospace; font-size: 11px; background: #F1F5F9; color: #0F172A; padding: 4px 8px; border-radius: 8px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 10px 8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); font-size: 11px; }
+    td { padding: 14px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    .badge { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .b-show { background: var(--emerald-soft); color: var(--emerald); }
+    .b-sched { background: var(--amber-soft); color: var(--amber); }
+    .b-hide { background: #F1F5F9; color: var(--muted); }
+    .b-purple { background: var(--primary-soft); color: var(--primary); }
+    .helper-box { padding: 12px 16px; border-radius: 12px; background: #F8FAFC; border: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+
+    .master-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-radius: 16px; background: #F8FAFC; border: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+    .popup-split { display: grid; grid-template-columns: 36% 1fr; gap: 24px; align-items: start; }
+    .preview-card { border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: #fff; box-shadow: 0 12px 28px rgba(15,23,42,0.08); }
+    .preview-art { height: 320px; background: linear-gradient(135deg, #6338A9 0%, #9B6EE8 100%); color: #fff; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+    .preview-foot { padding: 12px 16px; display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--muted); border-top: 1px solid var(--border); }
+    .slide-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: #F8FAFC; }
+    .thumb-sm { width: 52px; height: 64px; border-radius: 10px; background: linear-gradient(135deg, #EDE7F6, #D8C7F0); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--primary); }
+  </style>
+</head>
+<body>
+  <!-- Section A -->
+  <div>
+    <span class="sec-tag">VIEW 2 — 배너 관리 탭 (배너 리스트 + Next.js 코드 복사)</span>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="pill-group">
+          <span class="pill active">전체</span><span class="pill">단일 이미지</span><span class="pill">스와이퍼</span><span class="pill">랜덤</span>
+          <span style="width:1px;height:18px;background:var(--border);margin:0 4px;"></span>
+          <span class="pill active">전체</span><span class="pill">노출 중</span><span class="pill">예약</span><span class="pill">미노출</span><span class="pill">만료</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="search-input" type="text" placeholder="배너명 · bannerKey 검색..." />
+          <button class="btn-primary">+ 배너 생성</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>배너명 · 코드</th><th>타입 · 구성</th><th>디바이스</th><th>배너 전체 상태 · 기간</th><th>Next.js 삽입 코드</th><th>클릭</th><th>관리</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>메인 상단 봄맞이 히어로</strong><div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">spring-main-hero</div></td>
+            <td><span class="badge b-purple">스와이퍼 (활성 3/4장 · 4초)</span></td>
+            <td>PC · 태블릿 · 모바일</td>
+            <td><span class="badge b-show">노출 중 · 2026.03.01 ~ 04.30</span><div style="font-size:11px;color:var(--muted);margin-top:2px;">이미지별 개별 기간 적용</div></td>
+            <td><div style="display:flex;align-items:center;gap:6px;"><code class="code-snip">&lt;WabaBanner bannerKey="spring-main-hero" /&gt;</code><button class="btn-copy">코드 복사</button></div></td>
+            <td>1,428</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><strong>룩북 띠배너 (단일)</strong><div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">lookbook-mid-strip</div></td>
+            <td><span class="badge" style="background:#F1F5F9;">단일 이미지 (1장 · 현재창)</span></td>
+            <td>공통</td>
+            <td><span class="badge b-show">노출 중 · 상시</span></td>
+            <td><div style="display:flex;align-items:center;gap:6px;"><code class="code-snip">&lt;WabaBanner bannerKey="lookbook-mid-strip" /&gt;</code><button class="btn-copy">코드 복사</button></div></td>
+            <td>512</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><strong>게시판 프로모션 랜덤</strong><div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">board-promo-random</div></td>
+            <td><span class="badge b-purple">랜덤 (활성 3/3장)</span></td>
+            <td>PC · 모바일</td>
+            <td><span class="badge b-show">노출 중 · 2026.01.01 ~ 종료일 없음</span><div style="font-size:11px;color:var(--muted);margin-top:2px;">이미지별 개별 기간 적용</div></td>
+            <td><div style="display:flex;align-items:center;gap:6px;"><code class="code-snip">&lt;WabaBanner bannerKey="board-promo-random" /&gt;</code><button class="btn-copy">코드 복사</button></div></td>
+            <td>890</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+          <tr>
+            <td><strong>여름 기획전 예고</strong><div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">summer-teaser</div></td>
+            <td><span class="badge" style="background:#F1F5F9;">단일 이미지 (1장 · 새창)</span></td>
+            <td>공통</td>
+            <td><span class="badge b-hide">미노출</span></td>
+            <td><div style="display:flex;align-items:center;gap:6px;"><code class="code-snip">&lt;WabaBanner bannerKey="summer-teaser" /&gt;</code><button class="btn-copy">코드 복사</button></div></td>
+            <td>0</td>
+            <td><button class="btn-detail">상세 관리</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="helper-box">
+        사용법: Next.js 원하는 위치에 <code>import WabaBanner from '@/app/(main)/common/WabaBanner'</code> 후 복사한 <code>&lt;WabaBanner bannerKey="..." /&gt;</code> 태그를 붙여넣으면 전체·슬라이드 기간, 디바이스 분기, 노출 여부가 자동 적용됩니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- Section B -->
+  <div>
+    <span class="sec-tag">VIEW 3 — 메인 팝업 관리 탭</span>
+    <div class="panel">
+      <div class="master-bar">
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:12px;">
+          <span class="badge b-show">팝업 전체 노출 ON</span>
+          <span>정책: <strong>오늘 하루 보지 않기 (24h)</strong></span>
+          <span>디바이스: <strong>PC ✓ · 태블릿 ✓ · 모바일(바텀시트) ✓</strong></span>
+        </div>
+        <button class="btn-primary">+ 팝업 이미지 추가</button>
+      </div>
+
+      <div class="popup-split">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="preview-card">
+            <div class="preview-art">
+              <span class="badge" style="background:rgba(255,255,255,0.2);color:#fff;align-self:flex-start;">WABA EVENT</span>
+              <div>
+                <h3 style="font-size:20px;font-weight:800;margin-bottom:6px;">봄맞이 우리 아이<br/>룩북 챌린지</h3>
+                <p style="font-size:12px;opacity:0.9;">참여 시 포인트 2배 리워드 지급</p>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+                <span>&lt;</span><span>1 / 3</span><span>&gt;</span>
+              </div>
+            </div>
+            <div class="preview-foot"><span>오늘 하루 보지 않기</span><span>닫기</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:8px 12px;background:#F8FAFC;border-radius:12px;border:1px solid var(--border);">
+            이미지 1장 등록 시 단일 팝업 / 2장 이상 등록 시 설정된 순서대로 스와이퍼 전환
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="slide-row">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:12px;color:var(--muted);">↑ ↓</span>
+              <div class="thumb-sm">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">봄맞이 룩북 챌린지 안내</div>
+                <div style="font-size:11px;color:var(--muted);">/events/spring-lookbook · <span class="badge b-purple" style="font-size:10px;padding:1px 6px;">현재창</span> · 상시</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="badge b-show">노출 중</span><button class="btn-detail">편집</button></div>
+          </div>
+          <div class="slide-row">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:12px;color:var(--muted);">↑ ↓</span>
+              <div class="thumb-sm">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/></svg>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">신규 집사 웰컴 3,000P</div>
+                <div style="font-size:11px;color:var(--muted);">https://waba.kr/welcome · <span class="badge b-purple" style="font-size:10px;padding:1px 6px;">새창</span> · 2026.03.01 ~ 03.31</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="badge b-show">노출 중</span><button class="btn-detail">편집</button></div>
+          </div>
+          <div class="slide-row">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:12px;color:var(--muted);">↑ ↓</span>
+              <div class="thumb-sm">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">4월 수의사 무료 Q&amp;A 라이브</div>
+                <div style="font-size:11px;color:var(--muted);">/board/qna · <span class="badge b-purple" style="font-size:10px;padding:1px 6px;">현재창</span> · 2026.03.15 ~ 종료일 없음</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="badge b-sched">예약</span><button class="btn-detail">편집</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

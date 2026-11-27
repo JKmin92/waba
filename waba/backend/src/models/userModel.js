@@ -1,6 +1,7 @@
 import db from '../../config/db.js';
 import crypto from 'crypto';
 import { generateNoteCode } from '../../utils/simpleUtils.js';
+import { deleteProfileImageFile, deletePostFolder } from '../../utils/imageUtils.js';
 
 export const checkNickname = async (nickname) => {
     const sql = `SELECT COUNT(*) AS count FROM users WHERE nickname = ?`;
@@ -62,7 +63,7 @@ export const insertUserIdentity = async (identity) => {
 
 export const findUserByEmail = async (email) => {
     const sql = `
-        SELECT id, email, nickname, role, mentor_badge, reward_points, status, profile_image_url, created_at
+        SELECT id, email, nickname, role, mentor_badge, reward_points, status, profile_image_url, withdrawn_at, withdrawn_purged_at, created_at
         FROM users 
         WHERE email = ?
     `;
@@ -223,10 +224,27 @@ export const getUserProfile = async (userId) => {
     if (!rows || rows.length === 0) return null;
 
     const pets = await getUserPets(userId);
+    const [identityRows] = await db.query(
+        `SELECT provider, provider_email, created_at
+         FROM user_identities
+         WHERE user_id = ?
+         ORDER BY created_at ASC`,
+        [userId]
+    );
+    const identities = identityRows.map((row) => ({
+        provider: String(row.provider || '').toUpperCase(),
+        provider_email: row.provider_email || null,
+        created_at: row.created_at || null
+    }));
+    const hasLocalPassword = Boolean(rows[0].has_local_password);
+    const primaryProvider = identities[0]?.provider || (hasLocalPassword ? 'LOCAL' : null);
+
     return {
         ...rows[0],
         auto_journal_enabled: Boolean(rows[0].auto_journal_enabled),
-        has_local_password: Boolean(rows[0].has_local_password),
+        has_local_password: hasLocalPassword,
+        identities,
+        primary_provider: primaryProvider,
         pets
     };
 };
@@ -1557,4 +1575,185 @@ export const getPublicJourneyBySlug = async (slug) => {
             posts: r.posts || []
         }))
     };
+};
+
+// ==================== 회원 탈퇴 (30일 유예 · 영구 파기) ====================
+
+export const getUserForWithdraw = async (userId) => {
+    const [rows] = await db.query(
+        `SELECT u.id, u.email, u.nickname, u.role, u.status, u.profile_image_url,
+                EXISTS(
+                    SELECT 1 FROM user_identities ui
+                    WHERE ui.user_id = u.id AND ui.provider = 'LOCAL' AND ui.password_hash IS NOT NULL
+                ) AS has_local_password
+         FROM users u
+         WHERE u.id = ?
+         LIMIT 1`,
+        [userId]
+    );
+    if (!rows[0]) return null;
+    return {
+        ...rows[0],
+        has_local_password: Boolean(rows[0].has_local_password)
+    };
+};
+
+export const markUserWithdrawn = async (userId, { deleteContent = false, reason = null } = {}) => {
+    const delFlag = deleteContent ? 1 : 0;
+    await db.query(
+        `UPDATE users
+         SET status = 'WITHDRAWN',
+             withdrawn_at = NOW(),
+             withdrawn_reason = ?,
+             delete_content_on_withdraw = ?,
+             refresh_token = NULL,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [reason || null, delFlag, userId]
+    );
+
+    if (deleteContent) {
+        await db.query(
+            `UPDATE posts
+             SET status = 'DELETED',
+                 delete_type = 'WITHDRAWAL',
+                 delete_reason = '회원 탈퇴',
+                 deleted_at = NOW(),
+                 purge_scheduled_at = DATE_ADD(NOW(), INTERVAL 30 DAY),
+                 updated_at = NOW()
+             WHERE user_id = ? AND status IN ('PUBLISHED', 'HIDDEN', 'DRAFT')`,
+            [userId]
+        );
+        await db.query(
+            `UPDATE comments
+             SET status = 'WITHDRAWAL_HIDDEN', updated_at = NOW()
+             WHERE user_id = ? AND status = 'ACTIVE'`,
+            [userId]
+        );
+    }
+
+    const [[updated]] = await db.query(`SELECT withdrawn_at FROM users WHERE id = ? LIMIT 1`, [userId]);
+    return { withdrawn_at: updated?.withdrawn_at || new Date() };
+};
+
+export const purgeSingleWithdrawnUser = async (userId) => {
+    const [rows] = await db.query(
+        `SELECT id, status, profile_image_url, delete_content_on_withdraw, withdrawn_purged_at
+         FROM users WHERE id = ? LIMIT 1`,
+        [userId]
+    );
+    const user = rows[0];
+    if (!user || user.status !== 'WITHDRAWN' || user.withdrawn_purged_at) {
+        return { purged: false };
+    }
+
+    // 1. 회원 프로필 이미지 물리 삭제
+    if (user.profile_image_url) {
+        await deleteProfileImageFile(user.profile_image_url);
+    }
+
+    // 2. 반려동물 아바타 이미지 물리 삭제
+    const [petRows] = await db.query(`SELECT id, current_avatar_url FROM pets WHERE user_id = ?`, [userId]);
+    for (const pet of petRows) {
+        if (pet.current_avatar_url) {
+            await deleteProfileImageFile(pet.current_avatar_url);
+        }
+    }
+
+    // 3. 수첩/반려동물 연관 행 안전 삭제
+    for (const sql of [
+        `DELETE php FROM pet_history_posts php JOIN pet_histories ph ON php.history_id = ph.id WHERE ph.user_id = ?`,
+        `DELETE phpets FROM pet_history_pets phpets JOIN pet_histories ph ON phpets.history_id = ph.id WHERE ph.user_id = ?`,
+        `DELETE pjp FROM pet_journey_pets pjp JOIN pet_journeys pj ON pjp.journey_id = pj.id WHERE pj.user_id = ?`,
+        `DELETE FROM pet_journey_scraps WHERE user_id = ?`,
+        `DELETE FROM pet_journey_comments WHERE user_id = ?`,
+        `DELETE FROM pet_histories WHERE user_id = ?`,
+        `DELETE FROM pet_journeys WHERE user_id = ?`,
+        `DELETE FROM pets WHERE user_id = ?`
+    ]) {
+        try {
+            await db.query(sql, [userId]);
+        } catch {
+            // ignore missing/cascade differences
+        }
+    }
+
+    // 4. 탈퇴 시 글/댓글 동시 삭제 선택 시 게시글·이미지·댓글 영구 삭제
+    if (Boolean(user.delete_content_on_withdraw)) {
+        const [postRows] = await db.query(`SELECT id, created_at FROM posts WHERE user_id = ?`, [userId]);
+        for (const p of postRows) {
+            const [imgRows] = await db.query(`SELECT image_url FROM post_images WHERE post_id = ?`, [p.id]);
+            for (const img of imgRows) {
+                if (img.image_url) await deleteProfileImageFile(img.image_url);
+            }
+            await deletePostFolder(p.id, p.created_at);
+
+            for (const pSql of [
+                `DELETE FROM post_images WHERE post_id = ?`,
+                `DELETE FROM product_pins WHERE post_id = ?`,
+                `DELETE FROM post_interactions WHERE post_id = ?`,
+                `DELETE FROM post_appeals WHERE post_id = ?`,
+                `DELETE cl FROM comment_likes cl JOIN comments c ON cl.comment_id = c.id WHERE c.post_id = ?`,
+                `DELETE FROM comments WHERE post_id = ?`
+            ]) {
+                try {
+                    await db.query(pSql, [p.id]);
+                } catch {
+                    // ignore
+                }
+            }
+        }
+        try {
+            await db.query(`DELETE FROM comment_likes WHERE user_id = ?`, [userId]);
+            await db.query(`DELETE FROM comments WHERE user_id = ?`, [userId]);
+            await db.query(`DELETE FROM posts WHERE user_id = ?`, [userId]);
+        } catch {
+            // ignore
+        }
+    }
+
+    // 5. 소셜/로컬 인증 정보 삭제
+    await db.query(`DELETE FROM user_identities WHERE user_id = ?`, [userId]);
+
+    // 6. 고유 4자리 익명 닉네임 생성
+    let anonymizedNickname = `탈퇴회원_${Math.floor(1000 + Math.random() * 9000)}`;
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = `탈퇴회원_${Math.floor(1000 + Math.random() * 9000)}`;
+        const [[dup]] = await db.query(`SELECT COUNT(*) AS cnt FROM users WHERE nickname = ?`, [candidate]);
+        if (Number(dup?.cnt || 0) === 0) {
+            anonymizedNickname = candidate;
+            break;
+        }
+    }
+
+    // 7. users 행 익명화 및 파기 완료 마킹
+    const anonymizedEmail = `withdrawn_${userId}@deleted.local`;
+    await db.query(
+        `UPDATE users
+         SET email = ?, nickname = ?, profile_image_url = NULL, bio = NULL,
+             last_ip = NULL, refresh_token = NULL, withdrawn_purged_at = NOW(), updated_at = NOW()
+         WHERE id = ?`,
+        [anonymizedEmail, anonymizedNickname, userId]
+    );
+
+    return { purged: true, userId, anonymizedNickname };
+};
+
+export const cleanupExpiredWithdrawnUsers = async () => {
+    const [rows] = await db.query(
+        `SELECT id
+         FROM users
+         WHERE status = 'WITHDRAWN'
+           AND withdrawn_purged_at IS NULL
+           AND withdrawn_at IS NOT NULL
+           AND withdrawn_at <= DATE_SUB(NOW(), INTERVAL 30 DAY)`
+    );
+
+    let purgedUsers = 0;
+    for (const row of rows) {
+        const res = await purgeSingleWithdrawnUser(row.id);
+        if (res.purged) purgedUsers += 1;
+    }
+
+    return { purgedUsers };
 };

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1.0" />
+  <title>WABA. ADMIN — 공지·이벤트 &amp; 배너 전용 편집 페이지</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+      --primary: #6338A9;
+      --primary-soft: #F3E8FF;
+      --danger: #DC2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Pretendard", "Noto Sans KR", -apple-system, sans-serif; }
+    body { width: 1440px; background: var(--bg); color: var(--text); display: flex; flex-direction: column; gap: 40px; padding-bottom: 40px; }
+    .page-shell { display: flex; width: 1440px; border-bottom: 2px dashed #CBD5E1; background: var(--bg); }
+    .sidebar { width: 240px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-weight: 800; font-size: 18px; }
+    .logo-badge { background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 12px 6px; }
+    .nav-item { padding: 10px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #475569; }
+    .nav-item.active { background: #0F172A; color: #FFFFFF; font-weight: 700; }
+
+    .main { flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .back-link { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+    .top-bar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+    .top-bar h1 { font-size: 22px; font-weight: 800; }
+    .actions { display: flex; gap: 8px; }
+    .btn-ghost { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; }
+    .btn-danger { padding: 8px 16px; border-radius: 999px; border: 1px solid #FECACA; background: #fff; color: var(--danger); font-size: 12px; font-weight: 700; }
+    .btn-primary { padding: 8px 18px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; }
+
+    .cols-2 { display: grid; grid-template-columns: 66% 1fr; gap: 20px; align-items: start; }
+    .stack { display: flex; flex-direction: column; gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .card-title { font-size: 14px; font-weight: 800; }
+    .label { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: block; }
+    .input { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); font-size: 13px; background: #F8FAFC; }
+    .pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; font-weight: 700; color: #475569; }
+    .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .upload-box { padding: 20px; border-radius: 14px; border: 1px dashed #C4B5FD; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 700; text-align: center; }
+    .code-box { padding: 10px 12px; border-radius: 12px; background: #F1F5F9; font-family: ui-monospace, monospace; font-size: 11px; }
+    .slide-card { padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; }
+  </style>
+</head>
+<body>
+  <!-- VIEW A -->
+  <div class="page-shell">
+    <aside class="sidebar">
+      <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+      <div class="nav-group"><div class="nav-label">운영 설정</div><div class="nav-item active">공지 · 배너</div></div>
+    </aside>
+    <main class="main">
+      <div class="top-bar">
+        <div>
+          <div class="back-link">← 공지 · 배너 · 팝업 목록으로</div>
+          <h1>공지 · 이벤트 수정</h1>
+        </div>
+        <div class="actions"><button class="btn-danger">삭제</button><button class="btn-ghost">취소</button><button class="btn-primary">저장하기</button></div>
+      </div>
+      <div class="cols-2">
+        <div class="card">
+          <div class="card-title">공지 내용 작성</div>
+          <div><span class="label">제목</span><input class="input" value="봄맞이 우리 아이 룩북 챌린지" /></div>
+          <div><span class="label">내용</span><textarea class="input" rows="8">봄맞이 산책 룩북을 공유하고 포인트 2배 리워드를 받아보세요!</textarea></div>
+          <div class="upload-box">대표 이미지 첨부 (선택) · WebP 자동 변환 · 최대 가로 1500px · 72 DPI</div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-title">타입 및 고정</div>
+            <div class="pill-row"><span class="pill">공지</span><span class="pill active">이벤트</span></div>
+            <label style="font-size:12px;font-weight:700;"><input type="checkbox" checked /> 상단 고정 (PIN)</label>
+          </div>
+          <div class="card">
+            <div class="card-title">이벤트 기간</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><input class="input" value="2026-03-01 00:00" /><input class="input" value="종료일 없음" /></div>
+            <label style="font-size:12px;"><input type="checkbox" checked /> 종료일 없음 (상시 진행)</label>
+          </div>
+          <div class="card">
+            <div class="card-title">노출 상태 · 기간</div>
+            <div class="pill-row"><span class="pill">노출 (상시)</span><span class="pill">미노출</span><span class="pill active">노출기간 설정</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><input class="input" value="2026-02-25 00:00" /><input class="input" value="2026-03-31 23:59" /></div>
+            <label style="font-size:12px;"><input type="checkbox" /> 종료일 없음</label>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- VIEW B -->
+  <div class="page-shell" style="border-bottom:none;">
+    <aside class="sidebar">
+      <div class="logo">WABA. <span class="logo-badge">ADMIN</span></div>
+      <div class="nav-group"><div class="nav-label">운영 설정</div><div class="nav-item active">공지 · 배너</div></div>
+    </aside>
+    <main class="main">
+      <div class="top-bar">
+        <div>
+          <div class="back-link">← 배너 리스트로 돌아가기</div>
+          <h1>배너 상세 설정 — 메인 상단 봄맞이 히어로</h1>
+        </div>
+        <div class="actions"><button class="btn-danger">삭제</button><button class="btn-ghost">취소</button><button class="btn-primary">저장하기</button></div>
+      </div>
+      <div class="cols-2">
+        <div class="stack">
+          <div class="card">
+            <div class="card-title">① 배너 기본 설정</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div><span class="label">배너명</span><input class="input" value="메인 상단 봄맞이 히어로" /></div>
+              <div><span class="label">bannerKey</span><input class="input" value="spring-main-hero" /></div>
+            </div>
+            <div class="pill-row"><span class="pill">단일 이미지</span><span class="pill active">스와이퍼 (4초 자동)</span><span class="pill">랜덤</span></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div class="card-title">② 이미지 슬라이드별 설정 (개별 기간 · 노출 · 디바이스 분기)</div>
+              <button class="btn-primary">+ 이미지 슬라이드 추가</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);">배너 전체 기간과 별도로 각 이미지별 노출·미노출 및 기간을 설정할 수 있습니다.</div>
+            <div class="slide-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>슬라이드 #1 (↑ ↓)</strong>
+                <div class="pill-row"><span class="pill">노출</span><span class="pill">미노출</span><span class="pill active">기간 설정 (2026-03-01 ~ 03.15)</span></div>
+              </div>
+              <div class="pill-row"><span class="pill">공통(기본)</span><span class="pill active">PC</span><span class="pill">태블릿</span><span class="pill">모바일</span><span style="font-size:11px;color:var(--muted);align-self:center;">미등록 시 PC/공통 자동 폴백</span></div>
+              <div class="upload-box">WebP 자동 변환 · 최대 가로 1500px · 72 DPI</div>
+              <div style="display:flex;gap:8px;align-items:center;"><input class="input" value="https://waba.kr/events/spring" /><span class="pill active">현재창</span><span class="pill">새창</span></div>
+            </div>
+            <div class="slide-card" style="flex-direction:row;justify-content:space-between;align-items:center;">
+              <div><strong>슬라이드 #2 (↑ ↓)</strong> · /board/lookbook (새창) · 2026-03-16 ~ 종료일 없음</div>
+              <div style="display:flex;gap:8px;align-items:center;"><span class="pill">미노출</span><button class="btn-ghost">펼치기</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="card-title">Next.js 삽입 코드</div>
+            <div class="code-box">&lt;WabaBanner bannerKey="spring-main-hero" /&gt;</div>
+            <button class="btn-primary" style="width:100%;">코드 복사</button>
+            <div style="font-size:11px;color:var(--muted);">import WabaBanner from '@/app/(main)/common/WabaBanner'</div>
+          </div>
+          <div class="card">
+            <div class="card-title">배너 전체 노출 상태 · 기간</div>
+            <div class="pill-row"><span class="pill">노출 (상시)</span><span class="pill">미노출</span><span class="pill active">노출기간 설정</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><input class="input" value="2026-03-01" /><input class="input" value="2026-04-30" /></div>
+            <label style="font-size:12px;"><input type="checkbox" /> 종료일 없음</label>
+          </div>
+          <div class="card">
+            <div class="card-title">운영 현황 요약</div>
+            <div style="font-size:13px;">활성 슬라이드 <strong>3 / 4장</strong></div>
+            <div style="font-size:13px;">누적 클릭 <strong>1,428회</strong></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

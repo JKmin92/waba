@@ -9,6 +9,7 @@ router.post('/join', userController.joinUser);
 router.post('/login', userController.loginUser);
 router.post('/refresh', userController.refreshToken);
 router.put('/password', verifyToken, userController.changePassword);
+router.post('/withdraw', verifyToken, userController.withdrawUser);
 router.get('/checkNickname', userController.checkNickname);
 router.get('/checkEmail', userController.checkEmail);
 router.get('/pets', verifyToken, userController.getUserPets);

@@ -15,13 +15,15 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react';
-import { LuBookmark, LuEllipsis, LuExternalLink, LuFolder, LuLogOut, LuPencil, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
+import { LuBookmark, LuChevronRight, LuEllipsis, LuExternalLink, LuFolder, LuLogOut, LuPencil, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
 import { useRouter } from 'next/navigation';
 import { Pet } from '@/interface';
 import UserAvatar from '../../common/UserAvatar';
 import { formatPetShortName } from '@/utils/simpleUtils';
 import PetFilterSelectModal from './PetFilterSelectModal';
 import { getNotebookStatusBadge, NotebookItem } from '../../notebook/notebook-components/types';
+import { UserIdentityInfo } from './ProfileSection';
+import SocialAccountsAccordion from './SocialAccountsAccordion';
 
 export interface MypageHistoryPet {
     id: number | string;
@@ -969,6 +971,12 @@ interface MypageSettingsTabProps {
     onToggleAutoJournal: (checked: boolean) => void;
     onOpenEditProfile: () => void;
     onLogout: () => void;
+    userEmail?: string | null;
+    hasLocalPassword?: boolean;
+    primaryProvider?: string | null;
+    identities?: UserIdentityInfo[];
+    userRole?: string;
+    onOpenWithdraw?: () => void;
 }
 
 export function MypageSettingsTab({
@@ -977,9 +985,24 @@ export function MypageSettingsTab({
     onToggleAutoJournal,
     onOpenEditProfile,
     onLogout,
+    userEmail,
+    hasLocalPassword,
+    primaryProvider,
+    identities,
+    userRole,
+    onOpenWithdraw,
 }: MypageSettingsTabProps) {
     return (
         <VStack align="stretch" gap="16px" minW={0}>
+            {/* 로그인 수단 및 계정 연결 (초기 접힘) */}
+            <SocialAccountsAccordion
+                email={userEmail}
+                hasLocalPassword={hasLocalPassword}
+                primaryProvider={primaryProvider}
+                identities={identities}
+                onOpenEditProfile={onOpenEditProfile}
+            />
+
             {/* AI 건강 수첩 자동 기록 설정 */}
             <Flex
                 bg="var(--waba-card)"
@@ -1080,6 +1103,25 @@ export function MypageSettingsTab({
                     </Button>
                 </HStack>
             </Flex>
+
+            {userRole !== 'ADMIN' && onOpenWithdraw && (
+                <Flex justify="flex-end" px={1}>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        fontSize="12.5px"
+                        color="var(--waba-ink-3)"
+                        _hover={{ color: '#EF4444', bg: 'transparent' }}
+                        gap={0.5}
+                        px={1}
+                        onClick={onOpenWithdraw}
+                    >
+                        <Text>회원 탈퇴</Text>
+                        <LuChevronRight size={14} />
+                    </Button>
+                </Flex>
+            )}
         </VStack>
     );
 }

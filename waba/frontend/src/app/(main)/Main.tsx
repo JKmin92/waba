@@ -10,6 +10,7 @@ import MainTopBar from './main-components/MainTopBar';
 import SpotlightHero from './main-components/SpotlightHero';
 import HotQnASection from './main-components/HotQnASection';
 import LifeSnapFeedSection from './main-components/LifeSnapFeedSection';
+import MainPopupModal from './common/MainPopupModal';
 
 interface PetSummary {
     id: string | number;
@@ -193,6 +194,7 @@ export default function Main() {
 
                 <LifeSnapFeedSection posts={filteredFeedPosts} />
             </VStack>
+            <MainPopupModal />
         </Box>
     );
 }

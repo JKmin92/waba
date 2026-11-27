@@ -498,6 +498,23 @@ export default function Comment({
                                             <Heading fontSize="sm" fontWeight="700" color="var(--waba-ink)">
                                                 @{item.author?.nickname || "익명 집사"}
                                             </Heading>
+                                            {!item.is_anonymous &&
+                                                item.author?.status === 'WITHDRAWN' &&
+                                                !item.author?.withdrawn_purged_at && (
+                                                    <Box
+                                                        bg="var(--waba-surface)"
+                                                        color="var(--waba-ink-3)"
+                                                        border="1px solid"
+                                                        borderColor="var(--waba-line)"
+                                                        fontSize="10px"
+                                                        fontWeight="700"
+                                                        px={2}
+                                                        py="1px"
+                                                        borderRadius="999px"
+                                                    >
+                                                        탈퇴한 회원
+                                                    </Box>
+                                                )}
 
                                             {/* ⭐️ 게시글 원작성자 뱃지 (누구에게나 보임) */}
                                             {isPostAuthor && (

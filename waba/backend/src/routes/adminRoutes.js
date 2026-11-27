@@ -1,6 +1,8 @@
 import express from 'express';
-import { verifyToken, verifyAdmin } from '../middleware/authMiddleware.js';
+import { verifyToken, verifyAdmin, verifySuperAdmin } from '../middleware/authMiddleware.js';
 import * as adminController from '../controller/adminController.js';
+import * as marketingController from '../controller/marketingController.js';
+import { uploadMarketingImage } from '../../utils/imageUtils.js';
 
 const router = express.Router();
 
@@ -47,5 +49,40 @@ router.get('/users', verifyToken, verifyAdmin, adminController.getUsers);
 router.get('/users/:userId', verifyToken, verifyAdmin, adminController.getUserDetail);
 router.patch('/users/:userId', verifyToken, verifyAdmin, adminController.updateUser);
 router.patch('/pets/:petId/status', verifyToken, verifyAdmin, adminController.updatePetStatus);
+
+// 마케팅 (공지/이벤트, 배너, 팝업)
+router.post('/marketing/upload-image', verifyToken, verifyAdmin, uploadMarketingImage, marketingController.uploadMarketingImage);
+router.get('/marketing/summary', verifyToken, verifyAdmin, marketingController.getMarketingSummary);
+
+router.get('/notices', verifyToken, verifyAdmin, marketingController.getNotices);
+router.get('/notices/:noticeId', verifyToken, verifyAdmin, marketingController.getNoticeDetail);
+router.post('/notices', verifyToken, verifyAdmin, marketingController.createNotice);
+router.patch('/notices/:noticeId', verifyToken, verifyAdmin, marketingController.updateNotice);
+router.delete('/notices/:noticeId', verifyToken, verifyAdmin, marketingController.deleteNotice);
+
+router.get('/banners', verifyToken, verifyAdmin, marketingController.getBanners);
+router.get('/banners/:bannerId', verifyToken, verifyAdmin, marketingController.getBannerDetail);
+router.post('/banners', verifyToken, verifyAdmin, marketingController.createBanner);
+router.patch('/banners/:bannerId', verifyToken, verifyAdmin, marketingController.updateBanner);
+router.delete('/banners/:bannerId', verifyToken, verifyAdmin, marketingController.deleteBanner);
+
+router.get('/popups', verifyToken, verifyAdmin, marketingController.getPopups);
+router.patch('/popups/settings', verifyToken, verifyAdmin, marketingController.updatePopupSettings);
+router.patch('/popups/slides/reorder', verifyToken, verifyAdmin, marketingController.reorderPopupSlides);
+router.get('/popups/slides/:slideId', verifyToken, verifyAdmin, marketingController.getPopupSlideDetail);
+router.post('/popups/slides', verifyToken, verifyAdmin, marketingController.createPopupSlide);
+router.patch('/popups/slides/:slideId', verifyToken, verifyAdmin, marketingController.updatePopupSlide);
+router.delete('/popups/slides/:slideId', verifyToken, verifyAdmin, marketingController.deletePopupSlide);
+
+// 감사 로그
+router.get('/audit-logs/export', verifyToken, verifyAdmin, verifySuperAdmin, adminController.exportAuditLogsCsv);
+router.get('/audit-logs', verifyToken, verifyAdmin, verifySuperAdmin, adminController.getAuditLogs);
+
+// 관리자 계정 관리 (슈퍼 관리자 전용)
+router.get('/admins/candidates', verifyToken, verifyAdmin, verifySuperAdmin, adminController.searchAdminCandidates);
+router.get('/admins', verifyToken, verifyAdmin, verifySuperAdmin, adminController.getAdminAccounts);
+router.post('/admins', verifyToken, verifyAdmin, verifySuperAdmin, adminController.promoteAdminAccount);
+router.patch('/admins/:userId', verifyToken, verifyAdmin, verifySuperAdmin, adminController.updateAdminAccount);
+router.delete('/admins/:userId', verifyToken, verifyAdmin, verifySuperAdmin, adminController.revokeAdminAccount);
 
 export default router;

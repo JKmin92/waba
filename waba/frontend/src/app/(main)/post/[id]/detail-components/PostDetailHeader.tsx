@@ -209,6 +209,21 @@ export default function PostDetailHeader({
                             <Text fontSize="14px" fontWeight="700" color="var(--waba-ink)">
                                 @{postDetail?.user.nickname}
                             </Text>
+                            {postDetail?.user?.status === 'WITHDRAWN' && !postDetail?.user?.withdrawn_purged_at && (
+                                <Box
+                                    bg="var(--waba-surface)"
+                                    color="var(--waba-ink-3)"
+                                    border="1px solid"
+                                    borderColor="var(--waba-line)"
+                                    fontSize="10px"
+                                    fontWeight="700"
+                                    px={2}
+                                    py="1px"
+                                    borderRadius="999px"
+                                >
+                                    탈퇴한 회원
+                                </Box>
+                            )}
                             {isAuthor && (
                                 <>
                                     <Badge
